@@ -23,7 +23,7 @@ describe("migration runner", () => {
   it("is idempotent: a second run applies nothing", async () => {
     expect(await runMigrations(db, dir)).toEqual([]);
     const { rows } = await db.query<{ name: string }>("select name from schema_migrations");
-    expect(rows.map((r) => r.name)).toEqual(["0001_users_and_roles.sql"]);
+    expect(rows.map((r) => r.name)).toEqual(["0001_users_and_roles.sql", "0002_user_sessions.sql"]);
   });
 });
 
@@ -72,5 +72,16 @@ describe("user_roles", () => {
     await db.query("delete from users where id = $1", [id]);
     const left = await db.query("select * from user_roles");
     expect(left.rows).toHaveLength(0);
+  });
+});
+
+describe("user_sessions", () => {
+  it("enforces one row per (user, auth session) and cascades on user delete", async () => {
+    const { rows } = await insertUser("a@example.com", null);
+    const id = (rows[0] as { id: string }).id;
+    await db.query("insert into user_sessions (user_id, auth_session_id) values ($1, 's1')", [id]);
+    await expect(db.query("insert into user_sessions (user_id, auth_session_id) values ($1, 's1')", [id])).rejects.toThrow();
+    await db.query("delete from users where id = $1", [id]);
+    expect((await db.query("select * from user_sessions")).rows).toHaveLength(0);
   });
 });

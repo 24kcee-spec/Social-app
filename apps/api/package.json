@@ -8,14 +8,16 @@
     "start": "tsx src/server.ts",
     "migrate": "tsx src/migrate-cli.ts",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "setup-check": "tsx src/doctor.ts"
   },
   "dependencies": {
     "@sp/config": "workspace:*",
     "@sp/types": "workspace:*",
     "@sp/validation": "workspace:*",
     "fastify": "^5.1.0",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "jose": "^5.9.6"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.2.15",

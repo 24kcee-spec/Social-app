@@ -22,3 +22,12 @@ Enforced in both validation and DB constraints so uniqueness is case-insensitive
 
 ## D-007 | OPEN | Pilot eligibility rule
 Options: university email domain, invite code, or both. Decide before Phase 12.
+
+## D-008 | 2026-10-01 | Auth: Supabase issues tokens, our API verifies them
+Asymmetric tokens (ES256/RS256) are verified locally against the project JWKS (issuer + audience "authenticated" enforced). Legacy HS256 tokens are verified by calling the Auth server with the publishable key. users.id = Supabase user id; first authenticated request creates the users row + default 'user' role. Anonymous sign-ins are rejected. Email/phone clashes with another account return 409 (account linking is Phase 10).
+
+## D-009 | 2026-10-01 | App-level session revocation
+user_sessions rows (one per Supabase session_id) can be revoked by the owner; the API rejects revoked sessions immediately. Limitation: the provider's own session stays valid until sign-out/expiry; full provider-side revocation needs the secret key (later).
+
+## D-010 | 2026-10-01 | TLS to remote Postgres without certificate pinning
+Remote DB connections use TLS with rejectUnauthorized=false (Supabase pooler). Acceptable for the pilot; revisit with the provider CA certificate before public launch.

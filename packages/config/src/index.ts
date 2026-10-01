@@ -7,10 +7,15 @@ const apiEnvSchema = z
     APP_ENV: z.enum(["local", "staging", "production"]).default("local"),
     PORT: z.preprocess(emptyToUndefined, z.coerce.number().int().min(1).max(65535).default(4000)),
     DATABASE_URL: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    SUPABASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    SUPABASE_PUBLISHABLE_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
   })
   .superRefine((env, ctx) => {
     if (env.APP_ENV !== "local" && !env.DATABASE_URL) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["DATABASE_URL"], message: "Required when APP_ENV is staging or production" });
+    }
+    if (env.APP_ENV !== "local" && !env.SUPABASE_URL) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["SUPABASE_URL"], message: "Required when APP_ENV is staging or production" });
     }
   });
 
