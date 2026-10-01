@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.next/
+.expo/
+coverage/
+*.log
+.DS_Store
+# Secrets - never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
