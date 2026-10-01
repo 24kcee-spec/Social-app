@@ -9,9 +9,9 @@ Paste this whole file into any new Claude session, attach `Social-Connection-Pla
 | Local repo | `C:\Dev\social-platform` |
 | GitHub | `https://github.com/24kcee-spec/Social-app.git` (branch `main`; set to PRIVATE) |
 | Stack | pnpm workspaces, TypeScript, Fastify API, Postgres (Supabase planned), Expo (mobile), Next.js (web), vitest, zod |
-| Done | Phase 0 docs; monorepo; shared packages; API `/health` + `/ready`; migrations 0001 (users/roles) + 0002 (user_sessions); Supabase JWT verification; `/me`, `/me/sessions`, `DELETE /me/sessions/:id`; `requireAuth`/`requireRole`; `pnpm --filter @sp/api run setup-check`; `scripts/smoke-auth.ps1` |
-| Current step | Phase 1: run live Supabase checks (setup-check + smoke test), then web + mobile shells with sign-in (see 4.1) |
-| Tests | `pnpm verify` = typecheck + all tests. Baseline 56 passing (config 6, validation 7, api 43). Update count each delivery |
+| Done | Phase 0 docs; monorepo; shared packages; API `/health` + `/ready`; migrations 0001 (users/roles) + 0002 (user_sessions); Supabase JWT verification; `/me`, `/me/sessions`, `DELETE /me/sessions/:id`; `requireAuth`/`requireRole`; `pnpm --filter @sp/api run setup-check`; `scripts/smoke-auth.ps1`; CORS allow-list; `@sp/auth-client`; web shell (apps/web, Next.js); mobile shell (apps/mobile, Expo) |
+| Current step | Phase 1 gate: run the live checks in 4.1 (web + phone + API), then start Phase 2 (profile + onboarding) |
+| Tests | `pnpm verify` = typecheck + all tests. Baseline 82 passing (config 7, validation 10, auth-client 15, api 50). Update count each delivery |
 | Pilot | NUST / Bulawayo students, invite-only, 100-300 users |
 | Open decision | D-007 pilot eligibility (university email vs invite code) |
 
@@ -21,7 +21,7 @@ Files to read first in the repo: `docs/decisions.md`, `docs/product-definition.m
 **Claude must:**
 1. Build in blueprint order. Do not skip phases. Do not build P2 features (AI, streaming, monetisation, multi-provider music) before the pilot shows repeat use.
 2. Output complete copy-paste PowerShell. No placeholders for the user to fill in. One paste = one outcome.
-3. Deliver code as ONE `.ps1` delivery script per phase, same pattern as `Deliver-P0P1-Foundation-SOCIAL.ps1`: files embedded as base64 with SHA-256 check, backup + rollback on failure, preflight (git, node >= 20, pnpm, git identity), `pnpm install`, **gate = `pnpm verify` with an exact expected test count**, scoped `git add` of listed paths only, commit, push (never force).
+3. Deliver code as ONE `.ps1` delivery script per phase, same pattern as `Deliver-P0P1-Foundation-SOCIAL.ps1`: files embedded as base64 with SHA-256 check, backup + rollback on failure, preflight (git, node >= 22.13, pnpm, git identity), `pnpm install`, **gate = `pnpm verify` with an exact expected test count**, scoped `git add` of listed paths only, commit, push (never force).
 4. Strip ANSI colour codes before parsing test output (vitest colours broke the counter once).
 5. Test everything it can in its own sandbox before delivering (typecheck, tests, running the script in a clean folder). State plainly what it could NOT test (Windows PowerShell 5.1, real Supabase, real devices).
 6. Never ask the user to paste secrets (service-role key, passwords, DB password) in chat. Keys go in `.env` only.
@@ -64,10 +64,13 @@ Never `git push --force`. If push says "rejected / fetch first": `git fetch orig
 
 ## 4. Remaining work by phase
 
-### 4.1 Phase 1 - finish (next)
-Backend auth is DONE and tested (decisions D-008..D-010). Remaining:
-1. User: create Supabase project, fill `.env`, run `pnpm --filter @sp/api run migrate`, `pnpm --filter @sp/api run setup-check`, start API, run `scripts\smoke-auth.ps1` (all must pass).
-2. Claude: web shell (Next.js) + mobile shell (Expo) with sign-up, sign-in, sign-out, password reset against Supabase (publishable key only in clients; never the secret key); CORS on the API.
+### 4.1 Phase 1 - live gate check (next, user side)
+Code is DONE and tested (D-008..D-013). Do these once, in order; send Claude any red text:
+1. `.env` filled (DATABASE_URL, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY). Optional: MOBILE_API_URL=http://<PC LAN IP>:4000.
+2. Supabase > Auth > URL Configuration > Redirect URLs: add `http://localhost:3000/reset`.
+3. `pnpm --filter @sp/api run migrate`, then `pnpm --filter @sp/api run setup-check`, then start the API (`pnpm --filter @sp/api dev`) and run `scripts\smoke-auth.ps1`.
+4. Web: `pnpm --filter @sp/web dev` -> http://localhost:3000: create account, sign out, sign in, "Forgot password?" -> email -> new password -> sign in.
+5. Phone: `pnpm --filter @sp/mobile start`, scan the QR in Expo Go: sign in with the SAME account. Web "Your devices" must now list 2 devices; sign the phone out from the web list; the phone must return to the sign-in screen.
 **Gate:** new account registers on web and mobile, signs in on a second device, logs out, resets access, sees only its own data.
 
 ### 4.2 Phase 2 - Profile + onboarding (days 8-14)

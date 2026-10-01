@@ -1,3 +1,4 @@
+import cors from "@fastify/cors";
 import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
 import type { HealthResponse, ReadyResponse } from "@sp/types";
 
@@ -7,11 +8,22 @@ export type ReadinessCheck = () => Promise<void>;
 export interface AppOptions {
   readinessChecks?: Record<string, ReadinessCheck>;
   logger?: boolean;
+  /** Exact browser origins allowed to call the API (web app). Empty/undefined = no CORS headers at all. */
+  corsOrigins?: string[];
 }
 
 export function buildApp(opts: AppOptions = {}): FastifyInstance {
   const app = Fastify({ logger: opts.logger ?? false });
   const checks = opts.readinessChecks ?? {};
+
+  if (opts.corsOrigins && opts.corsOrigins.length > 0) {
+    void app.register(cors, {
+      origin: opts.corsOrigins,
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+      allowedHeaders: ["authorization", "content-type"],
+      maxAge: 600,
+    });
+  }
 
   // Liveness: process is up. No dependencies touched.
   app.get("/health", async (): Promise<HealthResponse> => ({

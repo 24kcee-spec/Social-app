@@ -31,3 +31,13 @@ user_sessions rows (one per Supabase session_id) can be revoked by the owner; th
 
 ## D-010 | 2026-10-01 | TLS to remote Postgres without certificate pinning
 Remote DB connections use TLS with rejectUnauthorized=false (Supabase pooler). Acceptable for the pilot; revisit with the provider CA certificate before public launch.
+
+## D-011 | 2026-10-01 | One shared auth client for web and mobile (@sp/auth-client)
+Both apps call the same package: validation (shared zod schemas), Supabase Auth with the PUBLISHABLE key only, friendly error codes, and the /me, /me/sessions calls. Reason: one identity and one set of rules on Android, iOS and web; auth logic is unit-tested once. Sign-out uses local scope (this device only) so signing out on a phone does not kill the laptop session. Password reset never reveals whether an email has an account. Rejected: separate auth code per app.
+
+## D-012 | 2026-10-01 | Web = Next.js (App Router, client components); mobile = Expo with AsyncStorage sessions
+Both read the repo-root .env and expose only SUPABASE_URL, the publishable key and API addresses. Password-reset emails open the web /reset page (works for web and mobile users); native deep-link reset comes with Phase 10. Rejected: Expo Router/web-from-Expo for now (more moving parts than the pilot needs).
+
+## D-013 | 2026-10-01 | CORS is an allow-list, fail closed
+CORS_ORIGINS (exact origins, no wildcard). Local default: http://localhost:3000 only. Staging/production with nothing set = no browser access. Native apps are unaffected (no CORS).
+

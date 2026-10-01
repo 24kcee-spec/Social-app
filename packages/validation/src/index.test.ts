@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { profileUpdateSchema, signupSchema } from "./index";
+import { newPasswordSchema, passwordResetRequestSchema, profileUpdateSchema, signInSchema, signUpFormSchema, signupSchema } from "./index";
 
 describe("signupSchema", () => {
   it("normalises email to lower case and trims", () => {
@@ -28,5 +28,23 @@ describe("profileUpdateSchema", () => {
   it("rejects unknown social styles and over-long bios", () => {
     expect(profileUpdateSchema.safeParse({ socialStyles: ["loud"] }).success).toBe(false);
     expect(profileUpdateSchema.safeParse({ bio: "x".repeat(281) }).success).toBe(false);
+  });
+});
+
+describe("auth form schemas", () => {
+  it("signIn normalises email and requires a password", () => {
+    expect(signInSchema.parse({ email: " A@B.Co ", password: "x" }).email).toBe("a@b.co");
+    expect(signInSchema.safeParse({ email: "a@b.co", password: "" }).success).toBe(false);
+  });
+  it("signUp enforces password length 8-72 and a valid email", () => {
+    expect(signUpFormSchema.safeParse({ email: "a@b.co", password: "1234567" }).success).toBe(false);
+    expect(signUpFormSchema.safeParse({ email: "a@b.co", password: "x".repeat(73) }).success).toBe(false);
+    expect(signUpFormSchema.safeParse({ email: "nope", password: "12345678" }).success).toBe(false);
+    expect(signUpFormSchema.safeParse({ email: "a@b.co", password: "12345678", displayName: "Kuda" }).success).toBe(true);
+  });
+  it("reset request and new password schemas validate", () => {
+    expect(passwordResetRequestSchema.safeParse({ email: "bad" }).success).toBe(false);
+    expect(newPasswordSchema.safeParse({ password: "short" }).success).toBe(false);
+    expect(newPasswordSchema.safeParse({ password: "long-enough-1" }).success).toBe(true);
   });
 });

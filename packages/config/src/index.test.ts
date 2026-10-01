@@ -25,4 +25,8 @@ describe("loadApiEnv", () => {
   it("does not leak secret values in errors", () => {
     expect(() => loadApiEnv({ APP_ENV: "staging", PORT: "secret-value-123" })).not.toThrow(/secret-value-123/);
   });
+  it("passes CORS_ORIGINS through and treats empty as unset", () => {
+    expect(loadApiEnv({ CORS_ORIGINS: "https://app.example.com" }).CORS_ORIGINS).toBe("https://app.example.com");
+    expect(loadApiEnv({ CORS_ORIGINS: "" }).CORS_ORIGINS).toBeUndefined();
+  });
 });

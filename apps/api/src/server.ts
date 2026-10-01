@@ -1,6 +1,7 @@
 import { loadApiEnv } from "@sp/config";
 import { buildApp, type ReadinessCheck } from "./app";
 import { registerAuth } from "./auth/plugin";
+import { resolveCorsOrigins } from "./cors";
 import { createAuthStore } from "./auth/store";
 import { createTokenVerifier } from "./auth/verify";
 import { makePool } from "./db";
@@ -17,7 +18,7 @@ if (pool) {
   };
 }
 
-const app = buildApp({ readinessChecks, logger: true });
+const app = buildApp({ readinessChecks, logger: true, corsOrigins: resolveCorsOrigins(env) });
 
 if (pool && env.SUPABASE_URL) {
   const verify = createTokenVerifier({ supabaseUrl: env.SUPABASE_URL, publishableKey: env.SUPABASE_PUBLISHABLE_KEY });

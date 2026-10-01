@@ -31,3 +31,15 @@ export const profileUpdateSchema = z.object({
   socialStyles: z.array(socialStyleSchema).max(SOCIAL_STYLES.length).optional(),
 });
 export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
+
+/** Supabase Auth caps passwords at 72 bytes; 8 is our minimum. Used identically by web and mobile. */
+export const passwordSchema = z.string().min(8, "Use at least 8 characters").max(72, "Use at most 72 characters");
+
+export const signInSchema = z.object({ email: emailSchema, password: z.string().min(1, "Enter your password").max(72) });
+export type SignInInput = z.infer<typeof signInSchema>;
+
+export const signUpFormSchema = z.object({ email: emailSchema, password: passwordSchema, displayName: displayNameSchema.optional() });
+export type SignUpFormInput = z.infer<typeof signUpFormSchema>;
+
+export const passwordResetRequestSchema = z.object({ email: emailSchema });
+export const newPasswordSchema = z.object({ password: passwordSchema });
