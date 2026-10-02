@@ -1,153 +1,94 @@
 import { AuthClientError, type Me } from "@sp/auth-client";
+import type { Interest, Profile, PromptDefinition, SocialStyle } from "@sp/types";
+import type { OnboardingInput } from "@sp/validation";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { ActivityIndicator, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { auth, config, errorMessage, isConfigured } from "./src/auth";
+import { deleteProfileImage, getProfileClient, getSignedMediaUrl, pickAndUploadProfileImage } from "./src/profile";
+import type { ProfileClient } from "@sp/profile-client";
+
+const STYLES: { id: SocialStyle; label: string }[] = [
+  { id: "small_group", label: "Small groups" }, { id: "one_to_one", label: "One-to-one" }, { id: "text_first", label: "Text-first" }, { id: "voice_first", label: "Voice-first" }, { id: "low_pressure", label: "Low pressure" },
+];
 
 type Mode = "signin" | "signup" | "forgot";
 type Phase = { kind: "loading" } | { kind: "signedOut" } | { kind: "signedIn"; me: Me } | { kind: "error"; message: string };
 
 export default function App() {
   const [phase, setPhase] = useState<Phase>({ kind: "loading" });
-
   const load = useCallback(async () => {
-    try {
-      if (!(await auth.isSignedIn())) return setPhase({ kind: "signedOut" });
-      setPhase({ kind: "signedIn", me: await auth.fetchMe() });
-    } catch (err) {
-      if (err instanceof AuthClientError && (err.code === "unauthorized" || err.code === "not_signed_in")) {
-        await auth.signOut().catch(() => undefined);
-        return setPhase({ kind: "signedOut" });
-      }
-      setPhase({ kind: "error", message: errorMessage(err) });
-    }
+    try { if (!(await auth.isSignedIn())) return setPhase({ kind: "signedOut" }); setPhase({ kind: "signedIn", me: await auth.fetchMe() }); }
+    catch (err) { if (err instanceof AuthClientError && (err.code === "unauthorized" || err.code === "not_signed_in")) { await auth.signOut().catch(() => undefined); return setPhase({ kind: "signedOut" }); } setPhase({ kind: "error", message: errorMessage(err) }); }
   }, []);
+  useEffect(() => { if (!isConfigured) return setPhase({ kind: "error", message: "Supabase is not configured. Fill the repo-root .env and restart Expo." }); void load(); return auth.onAuthChange((event) => { if (["SIGNED_IN", "SIGNED_OUT"].includes(event)) void load(); }); }, [load]);
 
-  useEffect(() => {
-    if (!isConfigured) return setPhase({ kind: "error", message: "Supabase is not configured. Fill SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY in the repo-root .env and restart Expo." });
-    void load();
-    return auth.onAuthChange((event) => {
-      if (event === "SIGNED_IN" || event === "SIGNED_OUT") void load();
-    });
-  }, [load]);
-
-  return (
-    <SafeAreaView style={s.screen}>
-      <StatusBar style="auto" />
-      <View style={s.card}>
-        {phase.kind === "loading" && <ActivityIndicator />}
-        {phase.kind === "error" && (
-          <>
-            <Text style={s.err} accessibilityRole="alert">{phase.message}</Text>
-            {isConfigured && <Button label="Try again" onPress={() => { setPhase({ kind: "loading" }); void load(); }} />}
-          </>
-        )}
-        {phase.kind === "signedOut" && <AuthForm />}
-        {phase.kind === "signedIn" && <Account me={phase.me} />}
-      </View>
-    </SafeAreaView>
-  );
+  return <SafeAreaView style={s.screen}><StatusBar style="dark" />
+    {phase.kind === "loading" && <ActivityIndicator />}
+    {phase.kind === "error" && <Card><Text style={s.err} accessibilityRole="alert">{phase.message}</Text><Button label="Try again" onPress={() => void load()} /></Card>}
+    {phase.kind === "signedOut" && <Card><AuthForm /></Card>}
+    {phase.kind === "signedIn" && <ProfileHome me={phase.me} />}
+  </SafeAreaView>;
 }
 
-function Button({ label, onPress, disabled, link }: { label: string; onPress: () => void; disabled?: boolean; link?: boolean }) {
-  return (
-    <Pressable accessibilityRole="button" onPress={onPress} disabled={disabled} style={[link ? s.link : s.button, disabled && s.disabled]}>
-      <Text style={link ? s.linkText : s.buttonText}>{label}</Text>
-    </Pressable>
-  );
-}
+function Card({ children }: { children: ReactNode }) { return <ScrollView contentContainerStyle={s.scroll}><View style={s.card}>{children}</View></ScrollView>; }
+function Button({ label, onPress, disabled, secondary }: { label: string; onPress: () => void; disabled?: boolean; secondary?: boolean }) { return <Pressable accessibilityRole="button" onPress={onPress} disabled={disabled} style={[s.button, secondary && s.secondary, disabled && s.disabled]}><Text style={[s.buttonText, secondary && s.secondaryText]}>{label}</Text></Pressable>; }
+function Field({ label, value, onChangeText, secure = false, placeholder }: { label: string; value: string; onChangeText: (v: string) => void; secure?: boolean; placeholder?: string }) { return <View style={s.field}><Text style={s.label}>{label}</Text><TextInput style={s.input} value={value} onChangeText={onChangeText} secureTextEntry={secure} placeholder={placeholder} placeholderTextColor="#8a94a6" autoCapitalize="none" /></View>; }
 
 function AuthForm() {
-  const [mode, setMode] = useState<Mode>("signin");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [fields, setFields] = useState<Record<string, string>>({});
-  const [notice, setNotice] = useState<string | null>(null);
+  const [mode, setMode] = useState<Mode>("signin"); const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [displayName, setDisplayName] = useState(""); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null); const [notice, setNotice] = useState<string | null>(null);
+  const submit = async () => { setBusy(true); setError(null); setNotice(null); try { if (mode === "signin") await auth.signIn({ email, password }); else if (mode === "signup") { const r = await auth.signUp({ email, password, displayName: displayName.trim() || undefined }); if (r === "confirm_email") setNotice("Check your email, then sign in."); } else { await auth.requestPasswordReset(email, `${config.webUrl}/reset`); setNotice("If that email has an account, a reset link is on its way."); } } catch (err) { setError(errorMessage(err)); } finally { setBusy(false); } };
+  return <>
+    <Text style={s.eyebrow}>SOCIAL APP</Text><Text style={s.h1}>{mode === "signin" ? "Sign in" : mode === "signup" ? "Create your account" : "Reset password"}</Text><Text style={s.muted}>Find people, conversations and activities at your pace.</Text>
+    {mode === "signup" && <Field label="Display name" value={displayName} onChangeText={setDisplayName} />}
+    <Field label="Email" value={email} onChangeText={setEmail} placeholder="you@example.com" />
+    {mode !== "forgot" && <Field label="Password" value={password} onChangeText={setPassword} secure />}
+    {error && <Text style={s.err} accessibilityRole="alert">{error}</Text>}{notice && <Text style={s.ok}>{notice}</Text>}
+    <Button label={busy ? "Please wait…" : mode === "forgot" ? "Send reset link" : mode === "signin" ? "Sign in" : "Create account"} onPress={() => void submit()} disabled={busy} />
+    <View style={s.row}>{mode !== "signin" && <TextButton label="Sign in" onPress={() => { setMode("signin"); setError(null); }} />}{mode !== "signup" && <TextButton label="Create account" onPress={() => { setMode("signup"); setError(null); }} />}{mode === "signin" && <TextButton label="Forgot password?" onPress={() => { setMode("forgot"); setError(null); }} />}</View>
+  </>;
+}
+function TextButton({ label, onPress }: { label: string; onPress: () => void }) { return <Pressable accessibilityRole="button" onPress={onPress} style={s.link}><Text style={s.linkText}>{label}</Text></Pressable>; }
 
-  const switchTo = (m: Mode) => { setMode(m); setError(null); setNotice(null); setFields({}); };
-
-  async function submit() {
-    setBusy(true); setError(null); setFields({}); setNotice(null);
-    try {
-      if (mode === "signin") await auth.signIn({ email, password });
-      else if (mode === "signup") {
-        const r = await auth.signUp({ email, password, displayName: displayName.trim() || undefined });
-        if (r === "confirm_email") setNotice("Check your email and tap the confirmation link, then sign in.");
-      } else {
-        await auth.requestPasswordReset(email, `${config.webUrl}/reset`);
-        setNotice("If that email has an account, a reset link is on its way.");
-      }
-    } catch (err) {
-      setError(errorMessage(err));
-      if (err instanceof AuthClientError) setFields(err.fieldErrors);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const title = mode === "signin" ? "Sign in" : mode === "signup" ? "Create your account" : "Reset your password";
-  return (
-    <>
-      <Text style={s.h1}>{title}</Text>
-      {mode === "signup" && (
-        <>
-          <Text style={s.label}>Display name (optional)</Text>
-          <TextInput style={s.input} value={displayName} onChangeText={setDisplayName} autoComplete="nickname" />
-          {fields.displayName ? <Text style={s.err}>{fields.displayName}</Text> : null}
-        </>
-      )}
-      <Text style={s.label}>Email</Text>
-      <TextInput style={s.input} value={email} onChangeText={setEmail} autoCapitalize="none" autoCorrect={false} keyboardType="email-address" autoComplete="email" />
-      {fields.email ? <Text style={s.err}>{fields.email}</Text> : null}
-      {mode !== "forgot" && (
-        <>
-          <Text style={s.label}>Password</Text>
-          <TextInput style={s.input} value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" autoComplete={mode === "signup" ? "new-password" : "current-password"} />
-          {fields.password ? <Text style={s.err}>{fields.password}</Text> : null}
-        </>
-      )}
-      {error ? <Text style={s.err} accessibilityRole="alert">{error}</Text> : null}
-      {notice ? <Text style={s.ok}>{notice}</Text> : null}
-      <Button label={busy ? "Please wait..." : mode === "forgot" ? "Send reset link" : title} onPress={() => void submit()} disabled={busy} />
-      <View style={s.row}>
-        {mode !== "signin" && <Button link label="Sign in" onPress={() => switchTo("signin")} />}
-        {mode !== "signup" && <Button link label="Create account" onPress={() => switchTo("signup")} />}
-        {mode === "signin" && <Button link label="Forgot password?" onPress={() => switchTo("forgot")} />}
-      </View>
-    </>
-  );
+function ProfileHome({ me }: { me: Me }) {
+  const client = useMemo<ProfileClient>(() => getProfileClient(), []); const [profile, setProfile] = useState<Profile | null>(null); const [interests, setInterests] = useState<Interest[]>([]); const [prompts, setPrompts] = useState<PromptDefinition[]>([]); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null);
+  const load = useCallback(async () => { setLoading(true); setError(null); try { const [p,i,pr] = await Promise.all([client.getProfile(),client.listInterests(),client.listPrompts()]); setProfile(p); setInterests(i); setPrompts(pr); } catch(err){setError(errorMessage(err));} finally{setLoading(false);} },[client]);
+  useEffect(()=>{void load();},[load]);
+  if (loading) return <Card><ActivityIndicator /><Text style={s.muted}>Loading your profile…</Text></Card>;
+  if (!profile) return <Card><Text style={s.err}>{error ?? "Profile unavailable."}</Text><Button label="Retry" onPress={()=>void load()} /></Card>;
+  return <Card><View style={s.topbar}><View><Text style={s.eyebrow}>YOUR SPACE</Text><Text style={s.h1}>{profile.onboardingCompleted ? `Welcome, ${profile.displayName}` : "Let's build your profile"}</Text><Text style={s.muted}>{me.email ?? me.phone}</Text></View><Button label="Sign out" secondary onPress={()=>void auth.signOut().catch(err=>setError(errorMessage(err)))} /></View>{error && <Text style={s.err}>{error}</Text>}{!profile.onboardingCompleted ? <Onboarding profile={profile} interests={interests} prompts={prompts} client={client} onDone={setProfile} /> : <Editor profile={profile} interests={interests} prompts={prompts} client={client} onSaved={setProfile} />}</Card>;
 }
 
-function Account({ me }: { me: Me }) {
-  const [error, setError] = useState<string | null>(null);
-  return (
-    <>
-      <Text style={s.h1}>You are signed in</Text>
-      <Text style={s.body}>{me.email ?? me.phone}</Text>
-      <Text style={s.muted}>Account status: {me.status}</Text>
-      {error ? <Text style={s.err}>{error}</Text> : null}
-      <Button label="Sign out" onPress={() => void auth.signOut().catch((e: unknown) => setError(errorMessage(e)))} />
-    </>
-  );
+function Onboarding({ profile, interests, prompts, client, onDone }: { profile: Profile; interests: Interest[]; prompts: PromptDefinition[]; client: ProfileClient; onDone: (p: Profile)=>void }) {
+  const [displayName,setDisplayName]=useState(profile.displayName === "New member" ? "" : profile.displayName); const [bio,setBio]=useState(profile.bio); const [styles,setStyles]=useState<SocialStyle[]>(profile.socialStyles.length?profile.socialStyles:["low_pressure"]); const [privacy,setPrivacy]=useState(profile.privacy); const [selected,setSelected]=useState<string[]>([]); const [chosenPrompts,setChosenPrompts]=useState<string[]>([]); const [answers,setAnswers]=useState<Record<string,string>>({}); const [busy,setBusy]=useState(false); const [error,setError]=useState<string|null>(null);
+  const save=async()=>{setBusy(true);setError(null);try{const input:OnboardingInput={displayName:displayName.trim(),bio:bio.trim(),socialStyles:styles,privacy,interests:selected.map(interestId=>({interestId,strength:2 as const})),answers:chosenPrompts.map(promptId=>({promptId,answer:(answers[promptId]??"").trim()}))};onDone(await client.completeOnboarding(input));}catch(err){setError(errorMessage(err));}finally{setBusy(false);}};
+  return <>
+    <Section title="1 · Basics" note="Minimum information now; you can edit it later."><Field label="Display name" value={displayName} onChangeText={setDisplayName} /><View style={s.field}><Text style={s.label}>Bio</Text><TextInput style={[s.input,s.textarea]} value={bio} onChangeText={setBio} multiline maxLength={280} placeholder="What are you into?" /></View><StyleChoices values={styles} onToggle={v=>setStyles(styles.includes(v)?styles.filter(x=>x!==v):[...styles,v])}/></Section>
+    <Section title="2 · Interests" note="Choose at least 3."><View style={s.chips}>{interests.map(i=><Pressable key={i.id} onPress={()=>setSelected(x=>x.includes(i.id)?x.filter(id=>id!==i.id):[...x,i.id])} style={[s.chip,selected.includes(i.id)&&s.chipSelected]}><Text style={selected.includes(i.id)?s.chipSelectedText:s.chipText}>{i.name}</Text></Pressable>)}</View><Text style={selected.length>=3?s.ok:s.err}>{selected.length} selected</Text></Section>
+    <Section title="3 · Prompts" note="Choose 1–3 and answer them."><View style={s.promptList}>{prompts.map(p=>{const chosen=chosenPrompts.includes(p.id);return <View style={s.prompt} key={p.id}><Pressable onPress={()=>setChosenPrompts(x=>chosen?x.filter(id=>id!==p.id):x.length<3?[...x,p.id]:x)}><Text style={s.promptToggle}>{chosen?"☑":"☐"} {p.prompt}</Text></Pressable>{chosen&&<TextInput style={[s.input,s.textarea]} value={answers[p.id]??""} onChangeText={v=>setAnswers(a=>({...a,[p.id]:v}))} multiline maxLength={240} placeholder="Write your answer…"/>}</View>})}</View><Text style={chosenPrompts.length? s.ok:s.err}>{chosenPrompts.length} selected</Text></Section>
+    <Section title="4 · Privacy" note="Control discoverability and who can reach you."><Privacy privacy={privacy} setPrivacy={setPrivacy}/>{error&&<Text style={s.err} accessibilityRole="alert">{error}</Text>}<Button label={busy?"Saving…":"Finish setup"} onPress={()=>void save()} disabled={busy||displayName.trim().length<2||selected.length<3||chosenPrompts.length<1}/></Section>
+  </>;
 }
 
-const s = StyleSheet.create({
-  screen: { flex: 1, justifyContent: "center", backgroundColor: "#fafafa" },
-  card: { margin: 16, padding: 20, borderRadius: 12, backgroundColor: "#fff", borderWidth: 1, borderColor: "#ddd" },
-  h1: { fontSize: 22, fontWeight: "600", marginBottom: 12, color: "#1a1a1a" },
-  label: { fontSize: 14, marginTop: 12, marginBottom: 4, color: "#1a1a1a" },
-  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 12, fontSize: 16, color: "#1a1a1a", backgroundColor: "#fff" },
-  body: { fontSize: 16, color: "#1a1a1a" },
-  muted: { fontSize: 14, color: "#666", marginTop: 4 },
-  err: { color: "#b00020", fontSize: 14, marginTop: 6 },
-  ok: { color: "#146c2e", fontSize: 15, marginTop: 8 },
-  button: { marginTop: 16, backgroundColor: "#4f46e5", borderRadius: 8, padding: 14, alignItems: "center" },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  link: { marginTop: 8, marginRight: 16, paddingVertical: 6 },
-  linkText: { color: "#4f46e5", fontSize: 15 },
-  row: { flexDirection: "row", flexWrap: "wrap" },
-  disabled: { opacity: 0.6 },
+function Editor({profile,interests,prompts,client,onSaved}:{profile:Profile;interests:Interest[];prompts:PromptDefinition[];client:ProfileClient;onSaved:(p:Profile)=>void}){
+  const [displayName,setDisplayName]=useState(profile.displayName);const [bio,setBio]=useState(profile.bio);const [styles,setStyles]=useState(profile.socialStyles);const [privacy,setPrivacy]=useState(profile.privacy);const [selected,setSelected]=useState(profile.interests.map(i=>i.id));const [answers,setAnswers]=useState<Record<string,string>>(Object.fromEntries(profile.prompts.map(p=>[p.promptId,p.answer])));const [busy,setBusy]=useState(false);const [message,setMessage]=useState<string|null>(null);const [error,setError]=useState<string|null>(null);const [mediaUrls,setMediaUrls]=useState<Record<string,string>>({});
+  const refreshMedia=useCallback(async()=>{const pairs=await Promise.all(profile.media.map(async m=>[m.id,await getSignedMediaUrl(m.thumbnailPath)] as const));setMediaUrls(Object.fromEntries(pairs));},[profile.media]);useEffect(()=>{void refreshMedia().catch(()=>undefined)},[refreshMedia]);
+  const save=async()=>{setBusy(true);setError(null);try{let next=await client.updateProfile({displayName:displayName.trim(),bio:bio.trim(),socialStyles:styles,privacy});next=await client.updateInterests({interests:selected.map(interestId=>({interestId,strength:2 as const}))});next=await client.updatePrompts({answers:Object.entries(answers).filter(([,v])=>v.trim()).slice(0,3).map(([promptId,answer])=>({promptId,answer:answer.trim()}))});onSaved(next);setMessage("Saved.");}catch(err){setError(errorMessage(err));}finally{setBusy(false);}};
+  const add=async()=>{setError(null);try{const media=await pickAndUploadProfileImage(profile.media);if(media) {onSaved({...profile,media:[...profile.media,media]});setMessage("Photo added.");}}catch(err){setError(errorMessage(err));}};
+  const remove=async(mediaId:string)=>{const media=profile.media.find(m=>m.id===mediaId);if(!media)return;try{await deleteProfileImage(media);onSaved({...profile,media:profile.media.filter(m=>m.id!==mediaId)});}catch(err){setError(errorMessage(err));}};
+  return <><Section title="Profile" note="Your profile becomes the base for later discovery explanations."><Field label="Display name" value={displayName} onChangeText={setDisplayName}/><View style={s.field}><Text style={s.label}>Bio</Text><TextInput style={[s.input,s.textarea]} value={bio} onChangeText={setBio} multiline maxLength={280}/></View><StyleChoices values={styles} onToggle={v=>setStyles(styles.includes(v)?styles.filter(x=>x!==v):[...styles,v])}/><Button label={busy?"Saving…":"Save profile"} onPress={()=>void save()} disabled={busy}/></Section>
+  <Section title="Interests" note={`${selected.length} selected`}><View style={s.chips}>{interests.map(i=><Pressable key={i.id} onPress={()=>setSelected(x=>x.includes(i.id)?x.filter(id=>id!==i.id):[...x,i.id])} style={[s.chip,selected.includes(i.id)&&s.chipSelected]}><Text style={selected.includes(i.id)?s.chipSelectedText:s.chipText}>{i.name}</Text></Pressable>)}</View></Section>
+  <Section title="Prompts"><View style={s.promptList}>{prompts.slice(0,6).map(p=><View key={p.id} style={s.prompt}><Text style={s.label}>{p.prompt}</Text><TextInput style={[s.input,s.textarea]} value={answers[p.id]??""} onChangeText={v=>setAnswers(a=>({...a,[p.id]:v}))} maxLength={240} multiline/></View>)}</View><Button label="Save prompts" onPress={()=>void save()} disabled={busy}/></Section>
+  <Section title="Photos" note="Up to 6 images, max 5 MB each."><View style={s.photoGrid}>{profile.media.map(m=><View style={s.photo} key={m.id}>{mediaUrls[m.id]?<Image source={{uri:mediaUrls[m.id]}} style={s.photoImage}/>:<View style={s.photoPlaceholder}><ActivityIndicator/></View>}<Button label="Remove" secondary onPress={()=>void remove(m.id)}/></View>)}{profile.media.length<6&&<Button label="+ Add photo" secondary onPress={()=>void add()}/>}</View></Section>
+  <Section title="Privacy"><Privacy privacy={privacy} setPrivacy={setPrivacy}/><Button label="Save privacy" onPress={()=>void save()} disabled={busy}/></Section>
+  {message&&<Text style={s.ok}>{message}</Text>}{error&&<Text style={s.err} accessibilityRole="alert">{error}</Text>}
+  </>;
+}
+
+function Section({title,note,children}:{title:string;note?:string;children:ReactNode}){return <View style={s.section}><Text style={s.h2}>{title}</Text>{note&&<Text style={s.muted}>{note}</Text>}{children}</View>}
+function StyleChoices({values,onToggle}:{values:SocialStyle[];onToggle:(v:SocialStyle)=>void}){return <View style={s.choiceGrid}>{STYLES.map(x=><Pressable key={x.id} onPress={()=>onToggle(x.id)} style={s.choice}><Text style={s.choiceText}>{values.includes(x.id)?"☑":"☐"} {x.label}</Text></Pressable>)}</View>}
+function Privacy({privacy,setPrivacy}:{privacy:Profile["privacy"];setPrivacy:(v:Profile["privacy"])=>void}){return <View style={s.privacy}><Pressable onPress={()=>setPrivacy({...privacy,discoverable:!privacy.discoverable})}><Text style={s.choiceText}>{privacy.discoverable?"☑":"☐"} Allow my profile to be discoverable</Text></Pressable><Text style={s.label}>Who can message me?</Text><View style={s.choiceGrid}>{(["everyone","connections","nobody"] as const).map(v=><Pressable key={v} onPress={()=>setPrivacy({...privacy,messagePermission:v})} style={s.choice}><Text style={s.choiceText}>{privacy.messagePermission===v?"◉":"○"} {v}</Text></Pressable>)}</View><Text style={s.label}>Story visibility</Text><View style={s.choiceGrid}>{(["public","connections","private"] as const).map(v=><Pressable key={v} onPress={()=>setPrivacy({...privacy,storyVisibility:v})} style={s.choice}><Text style={s.choiceText}>{privacy.storyVisibility===v?"◉":"○"} {v}</Text></Pressable>)}</View><Text style={s.label}>Activity visibility</Text><View style={s.choiceGrid}>{(["public","connections","private"] as const).map(v=><Pressable key={v} onPress={()=>setPrivacy({...privacy,activityVisibility:v})} style={s.choice}><Text style={s.choiceText}>{privacy.activityVisibility===v?"◉":"○"} {v}</Text></Pressable>)}</View></View>}
+
+const s=StyleSheet.create({
+  screen:{flex:1,backgroundColor:"#f5f7fb"},scroll:{padding:16},card:{backgroundColor:"#fff",borderRadius:18,borderWidth:1,borderColor:"#dfe5ee",padding:20},eyebrow:{fontSize:12,fontWeight:"800",letterSpacing:1,color:"#4f46e5"},h1:{fontSize:28,fontWeight:"700",color:"#152033",marginTop:4,marginBottom:6},h2:{fontSize:20,fontWeight:"700",color:"#152033"},label:{fontSize:14,fontWeight:"700",color:"#334155",marginBottom:6},muted:{fontSize:14,color:"#667085",marginBottom:8},err:{color:"#b42318",fontSize:14,marginTop:6},ok:{color:"#167647",fontSize:14,marginTop:6},field:{marginTop:10},input:{borderWidth:1,borderColor:"#dfe5ee",borderRadius:10,padding:12,fontSize:16,color:"#152033",backgroundColor:"#fff"},textarea:{minHeight:88,textAlignVertical:"top"},button:{marginTop:14,backgroundColor:"#4f46e5",padding:13,borderRadius:10,alignItems:"center"},buttonText:{color:"#fff",fontSize:16,fontWeight:"700"},secondary:{backgroundColor:"#fff",borderWidth:1,borderColor:"#bfc7dd"},secondaryText:{color:"#4f46e5"},disabled:{opacity:.55},row:{flexDirection:"row",flexWrap:"wrap",marginTop:8},link:{paddingVertical:8,paddingRight:18},linkText:{color:"#4f46e5",fontWeight:"700"},topbar:{flexDirection:"row",justifyContent:"space-between",gap:12,marginBottom:14},section:{borderTopWidth:1,borderTopColor:"#e8edf5",paddingTop:18,marginTop:18},choiceGrid:{gap:6,marginTop:8},choice:{paddingVertical:6},choiceText:{fontSize:15,color:"#334155"},chips:{flexDirection:"row",flexWrap:"wrap",gap:8,marginTop:10},chip:{borderWidth:1,borderColor:"#dfe5ee",borderRadius:999,paddingVertical:8,paddingHorizontal:10},chipSelected:{backgroundColor:"#eef2ff",borderColor:"#aeb8ff"},chipText:{color:"#334155",fontSize:13},chipSelectedText:{color:"#4f46e5",fontSize:13,fontWeight:"700"},promptList:{gap:12,marginTop:8},prompt:{borderTopWidth:1,borderTopColor:"#eef2f7",paddingTop:10},promptToggle:{fontSize:15,color:"#334155",paddingVertical:4},privacy:{gap:6},photoGrid:{gap:12,marginTop:8},photo:{borderWidth:1,borderColor:"#dfe5ee",borderRadius:12,padding:8},photoImage:{width:"100%",aspectRatio:1,borderRadius:8,backgroundColor:"#f8fafc"},photoPlaceholder:{width:"100%",aspectRatio:1,borderRadius:8,backgroundColor:"#f8fafc",alignItems:"center",justifyContent:"center"}
 });

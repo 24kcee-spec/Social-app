@@ -5,6 +5,8 @@ import { resolveCorsOrigins } from "./cors";
 import { createAuthStore } from "./auth/store";
 import { createTokenVerifier } from "./auth/verify";
 import { makePool } from "./db";
+import { createProfileStore } from "./profile/store";
+import { registerProfile } from "./profile/plugin";
 import { loadDotEnv } from "./env";
 
 loadDotEnv();
@@ -22,8 +24,10 @@ const app = buildApp({ readinessChecks, logger: true, corsOrigins: resolveCorsOr
 
 if (pool && env.SUPABASE_URL) {
   const verify = createTokenVerifier({ supabaseUrl: env.SUPABASE_URL, publishableKey: env.SUPABASE_PUBLISHABLE_KEY });
-  const store = createAuthStore({ exec: (sql) => pool.query(sql), query: (sql, params) => pool.query(sql, params as unknown[]) as never });
-  registerAuth(app, { verify, store });
+  const db = { exec: (sql: string) => pool.query(sql), query: (sql: string, params?: unknown[]) => pool.query(sql, params as unknown[]) as never };
+  const store = createAuthStore(db);
+  const { requireAuth } = registerAuth(app, { verify, store });
+  registerProfile(app, { requireAuth, store: createProfileStore(db) });
 } else {
   app.log.warn("DATABASE_URL and/or SUPABASE_URL not set: auth routes (/me, /me/sessions) are NOT registered");
 }

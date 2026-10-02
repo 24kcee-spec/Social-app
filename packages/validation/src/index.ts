@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SOCIAL_STYLES, USER_ROLES } from "@sp/types";
+import { CONTENT_VISIBILITIES, INTEREST_STRENGTHS, MESSAGE_PERMISSIONS, PROFILE_MEDIA_KINDS, SOCIAL_STYLES, USER_ROLES } from "@sp/types";
 
 /** Emails are normalised to lower case so uniqueness is case-insensitive (the DB enforces the same rule). */
 export const emailSchema = z.string().trim().toLowerCase().email().max(254);
@@ -11,6 +11,10 @@ export const displayNameSchema = z.string().trim().min(2).max(50);
 
 export const roleSchema = z.enum(USER_ROLES);
 export const socialStyleSchema = z.enum(SOCIAL_STYLES);
+export const messagePermissionSchema = z.enum(MESSAGE_PERMISSIONS);
+export const contentVisibilitySchema = z.enum(CONTENT_VISIBILITIES);
+export const interestStrengthSchema = z.number().int().min(1).max(3).transform((v) => v as 1 | 2 | 3);
+export const profileMediaKindSchema = z.enum(PROFILE_MEDIA_KINDS);
 
 /** Signup needs a display name plus at least one contact method. Minimum data, per onboarding principle. */
 export const signupSchema = z
@@ -25,12 +29,65 @@ export const signupSchema = z
   });
 export type SignupInput = z.infer<typeof signupSchema>;
 
+export const profilePrivacySchema = z.object({
+  discoverable: z.boolean(),
+  messagePermission: messagePermissionSchema,
+  storyVisibility: contentVisibilitySchema,
+  activityVisibility: contentVisibilitySchema,
+});
+
 export const profileUpdateSchema = z.object({
   displayName: displayNameSchema.optional(),
   bio: z.string().trim().max(280).optional(),
-  socialStyles: z.array(socialStyleSchema).max(SOCIAL_STYLES.length).optional(),
+  socialStyles: z.array(socialStyleSchema).max(SOCIAL_STYLES.length).refine((v) => new Set(v).size === v.length, "Choose each social style only once").optional(),
+  privacy: profilePrivacySchema.optional(),
 });
 export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
+
+export const interestSelectionSchema = z.object({
+  interestId: z.string().uuid(),
+  strength: interestStrengthSchema.default(2),
+});
+
+export const interestSelectionsRequestSchema = z
+  .object({ interests: z.array(interestSelectionSchema).max(12) })
+  .refine((v) => new Set(v.interests.map((i) => i.interestId)).size === v.interests.length, "Choose each interest only once");
+export type InterestSelectionsRequest = z.infer<typeof interestSelectionsRequestSchema>;
+
+export const promptAnswerSchema = z.object({
+  promptId: z.string().min(1).max(60),
+  answer: z.string().trim().min(2).max(240),
+});
+
+export const promptAnswersRequestSchema = z
+  .object({ answers: z.array(promptAnswerSchema).max(3) })
+  .refine((v) => new Set(v.answers.map((a) => a.promptId)).size === v.answers.length, "Choose each prompt only once");
+export type PromptAnswersRequest = z.infer<typeof promptAnswersRequestSchema>;
+
+export const onboardingSchema = z
+  .object({
+    displayName: displayNameSchema,
+    bio: z.string().trim().max(280),
+    socialStyles: z.array(socialStyleSchema).min(1).max(SOCIAL_STYLES.length).refine((v) => new Set(v).size === v.length, "Choose each social style only once"),
+    privacy: profilePrivacySchema,
+    interests: z.array(interestSelectionSchema).min(3).max(12),
+    answers: z.array(promptAnswerSchema).min(1).max(3),
+  })
+  .refine((v) => new Set(v.interests.map((i) => i.interestId)).size === v.interests.length, { message: "Choose each interest only once", path: ["interests"] })
+  .refine((v) => new Set(v.answers.map((a) => a.promptId)).size === v.answers.length, { message: "Choose each prompt only once", path: ["answers"] });
+export type OnboardingInput = z.infer<typeof onboardingSchema>;
+
+export const profileMediaRegistrationSchema = z.object({
+  kind: profileMediaKindSchema,
+  storagePath: z.string().min(5).max(300).regex(/^[A-Za-z0-9._/-]+$/, "Storage path contains unsupported characters").refine((v) => !v.split("/").includes(".."), "Storage path cannot contain parent traversal"),
+  thumbnailPath: z.string().min(5).max(300).regex(/^[A-Za-z0-9._/-]+$/, "Thumbnail path contains unsupported characters").refine((v) => !v.split("/").includes(".."), "Thumbnail path cannot contain parent traversal"),
+  contentType: z.enum(["image/jpeg", "image/png", "image/webp"]),
+  sizeBytes: z.number().int().positive().max(5 * 1024 * 1024),
+  width: z.number().int().min(1).max(8000),
+  height: z.number().int().min(1).max(8000),
+  sortOrder: z.number().int().min(0).max(5),
+});
+export type ProfileMediaRegistrationInput = z.infer<typeof profileMediaRegistrationSchema>;
 
 /** Supabase Auth caps passwords at 72 bytes; 8 is our minimum. Used identically by web and mobile. */
 export const passwordSchema = z.string().min(8, "Use at least 8 characters").max(72, "Use at most 72 characters");

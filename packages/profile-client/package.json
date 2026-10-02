@@ -1,0 +1,10 @@
+{
+  "name": "@sp/profile-client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "typecheck": "tsc -p tsconfig.json", "test": "vitest run" },
+  "dependencies": { "@sp/types": "workspace:*", "@sp/validation": "workspace:*" },
+  "devDependencies": { "typescript": "^5.6.3", "vitest": "^2.1.8" }
+}

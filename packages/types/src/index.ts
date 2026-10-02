@@ -15,6 +15,18 @@ export const SOCIAL_STYLES = [
 ] as const;
 export type SocialStyle = (typeof SOCIAL_STYLES)[number];
 
+export const MESSAGE_PERMISSIONS = ["everyone", "connections", "nobody"] as const;
+export type MessagePermission = (typeof MESSAGE_PERMISSIONS)[number];
+
+export const CONTENT_VISIBILITIES = ["public", "connections", "private"] as const;
+export type ContentVisibility = (typeof CONTENT_VISIBILITIES)[number];
+
+export const INTEREST_STRENGTHS = [1, 2, 3] as const;
+export type InterestStrength = (typeof INTEREST_STRENGTHS)[number];
+
+export const PROFILE_MEDIA_KINDS = ["avatar"] as const;
+export type ProfileMediaKind = (typeof PROFILE_MEDIA_KINDS)[number];
+
 export interface User {
   id: string;
   email: string | null;
@@ -23,6 +35,65 @@ export interface User {
   roles: UserRole[];
   createdAt: string;
   lastActiveAt: string | null;
+}
+
+export interface ProfilePrivacySettings {
+  discoverable: boolean;
+  messagePermission: MessagePermission;
+  storyVisibility: ContentVisibility;
+  activityVisibility: ContentVisibility;
+}
+
+export interface Profile {
+  userId: string;
+  displayName: string;
+  bio: string;
+  socialStyles: SocialStyle[];
+  privacy: ProfilePrivacySettings;
+  onboardingCompleted: boolean;
+  createdAt: string;
+  updatedAt: string;
+  interests: Interest[];
+  prompts: PromptAnswer[];
+  media: ProfileMedia[];
+}
+
+export interface Interest {
+  id: string;
+  name: string;
+  category: string;
+  slug: string;
+  sortOrder: number;
+  strength?: InterestStrength;
+}
+
+export interface PromptDefinition {
+  id: string;
+  prompt: string;
+  category: string;
+  sortOrder: number;
+  active: boolean;
+}
+
+export interface PromptAnswer {
+  promptId: string;
+  prompt: string;
+  category: string;
+  answer: string;
+  updatedAt: string;
+}
+
+export interface ProfileMedia {
+  id: string;
+  kind: ProfileMediaKind;
+  storagePath: string;
+  thumbnailPath: string;
+  contentType: string;
+  sizeBytes: number;
+  width: number;
+  height: number;
+  sortOrder: number;
+  createdAt: string;
 }
 
 export interface HealthResponse {

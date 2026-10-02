@@ -41,3 +41,9 @@ Both read the repo-root .env and expose only SUPABASE_URL, the publishable key a
 ## D-013 | 2026-10-01 | CORS is an allow-list, fail closed
 CORS_ORIGINS (exact origins, no wildcard). Local default: http://localhost:3000 only. Staging/production with nothing set = no browser access. Native apps are unaffected (no CORS).
 
+
+## D-014 | 2026-10-01 | Phase 2 profile data is API-owned with private Storage
+Profiles, interests, prompt answers and profile media metadata are written through authenticated API endpoints scoped to the signed-in user. Supabase Storage uses a private `profile-media` bucket with per-user object paths. Reason: one authorization boundary for mobile/web and no public profile/media leakage before discovery/safety phases. Rejected: direct public profile tables and public media bucket during MVP foundation.
+
+## D-015 | 2026-10-01 | Profile onboarding uses a small deterministic minimum dataset
+A usable profile requires display name, at least three interests, at least one prompt answer, one social-style preference and explicit privacy settings. Media is optional during onboarding and editable immediately after. Reason: useful within minutes without a 20-minute form. Rejected: requiring a photo before the product provides value.

@@ -38,17 +38,10 @@ export class AuthClientError extends Error {
   }
 }
 
-interface BackendError {
-  message?: string;
-  status?: number;
-  code?: string;
-}
-interface BackendSession {
-  access_token: string;
-}
+interface BackendError { message?: string; status?: number; code?: string; }
+interface BackendSession { access_token: string; }
 type BackendResult<T> = Promise<{ data: T; error: BackendError | null }>;
 
-/** The slice of supabase.auth we use. Tests inject a fake; production uses the real client. */
 export interface AuthBackend {
   signUp(args: { email: string; password: string; options?: { data?: Record<string, unknown> } }): BackendResult<{ session: BackendSession | null }>;
   signInWithPassword(args: { email: string; password: string }): BackendResult<unknown>;
@@ -68,25 +61,36 @@ export interface Me {
   createdAt: string;
   lastActiveAt: string | null;
 }
-export interface DeviceSession {
-  id: string;
-  userAgent: string | null;
-  firstSeenAt: string;
-  lastSeenAt: string;
-  current: boolean;
-}
+export interface DeviceSession { id: string; userAgent: string | null; firstSeenAt: string; lastSeenAt: string; current: boolean; }
 
 export interface AuthClientConfig {
   /** Supabase project URL + PUBLISHABLE key only. The secret key must never be passed to a client. */
   supabaseUrl: string;
   publishableKey: string;
   apiUrl: string;
-  /** localStorage on web (default); AsyncStorage on mobile. */
   storage?: unknown;
-  /** true on web (reads recovery links from the URL), false on mobile. */
   detectSessionInUrl?: boolean;
   backend?: AuthBackend;
   fetchImpl?: typeof fetch;
+}
+
+export interface SupabaseClientConfig {
+  supabaseUrl: string;
+  publishableKey: string;
+  storage?: unknown;
+  detectSessionInUrl?: boolean;
+}
+
+/** Shared Supabase client factory for Storage and other non-auth features. Publishable key only. */
+export function createSupabaseClient(config: SupabaseClientConfig) {
+  return createClient(config.supabaseUrl, config.publishableKey, {
+    auth: {
+      storage: config.storage as never,
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: config.detectSessionInUrl ?? false,
+    },
+  });
 }
 
 export function mapBackendError(err: BackendError | null | undefined): AuthClientError {
@@ -108,16 +112,8 @@ function fieldErrorsOf(issues: { path: (string | number)[]; message: string }[])
 }
 
 export function createAuthClient(config: AuthClientConfig) {
-  const backend: AuthBackend =
-    config.backend ??
-    (createClient(config.supabaseUrl, config.publishableKey, {
-      auth: {
-        storage: config.storage as never,
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: config.detectSessionInUrl ?? false,
-      },
-    }).auth as unknown as AuthBackend);
+  const supabase = createSupabaseClient(config);
+  const backend: AuthBackend = config.backend ?? (supabase.auth as unknown as AuthBackend);
   const doFetch = config.fetchImpl ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
   const api = config.apiUrl.replace(/\/+$/, "");
 
@@ -127,11 +123,15 @@ export function createAuthClient(config: AuthClientConfig) {
     return data.session.access_token;
   }
 
-  async function apiCall<T>(path: string, init: { method?: string } = {}): Promise<T | undefined> {
+  async function apiCall<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T | undefined> {
     const token = await accessToken();
     let res: Response;
     try {
-      res = await doFetch(`${api}${path}`, { method: init.method ?? "GET", headers: { authorization: `Bearer ${token}` } });
+      res = await doFetch(`${api}${path}`, {
+        method: init.method ?? "GET",
+        headers: { authorization: `Bearer ${token}`, ...(init.body === undefined ? {} : { "content-type": "application/json" }) },
+        ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
+      });
     } catch {
       throw new AuthClientError("service_unavailable");
     }
@@ -141,7 +141,6 @@ export function createAuthClient(config: AuthClientConfig) {
   }
 
   return {
-    /** "signed_in" when the project does not require email confirmation; otherwise "confirm_email". */
     async signUp(input: { email: string; password: string; displayName?: string }): Promise<"signed_in" | "confirm_email"> {
       const p = signUpFormSchema.safeParse(input);
       if (!p.success) throw new AuthClientError("validation", fieldErrorsOf(p.error.issues));
@@ -161,13 +160,11 @@ export function createAuthClient(config: AuthClientConfig) {
       if (error) throw mapBackendError(error);
     },
 
-    /** Signs out THIS device only ("local"); other devices stay signed in. */
     async signOut(): Promise<void> {
       const { error } = await backend.signOut({ scope: "local" });
       if (error) throw mapBackendError(error);
     },
 
-    /** Always resolves for unknown emails (no account enumeration); only rate limits and outages surface. */
     async requestPasswordReset(email: string, redirectTo: string): Promise<void> {
       const p = passwordResetRequestSchema.safeParse({ email });
       if (!p.success) throw new AuthClientError("validation", fieldErrorsOf(p.error.issues));
@@ -177,7 +174,6 @@ export function createAuthClient(config: AuthClientConfig) {
       if (mapped.code === "rate_limited" || mapped.code === "service_unavailable") throw mapped;
     },
 
-    /** Used after the user opens the recovery link (they hold a temporary session). */
     async setNewPassword(password: string): Promise<void> {
       const p = newPasswordSchema.safeParse({ password });
       if (!p.success) throw new AuthClientError("validation", fieldErrorsOf(p.error.issues));
@@ -185,24 +181,19 @@ export function createAuthClient(config: AuthClientConfig) {
       if (error) throw mapBackendError(error);
     },
 
-    async isSignedIn(): Promise<boolean> {
-      return (await backend.getSession()).data.session !== null;
-    },
+    async isSignedIn(): Promise<boolean> { return (await backend.getSession()).data.session !== null; },
+    async getAccessToken(): Promise<string> { return accessToken(); },
 
     onAuthChange(cb: (event: string, signedIn: boolean) => void): () => void {
       const { data } = backend.onAuthStateChange((event, session) => cb(event, session !== null));
       return () => data.subscription.unsubscribe();
     },
 
-    async fetchMe(): Promise<Me> {
-      return (await apiCall<Me>("/me")) as Me;
-    },
-    async listSessions(): Promise<DeviceSession[]> {
-      return ((await apiCall<{ sessions: DeviceSession[] }>("/me/sessions")) as { sessions: DeviceSession[] }).sessions;
-    },
-    async revokeSession(id: string): Promise<void> {
-      await apiCall(`/me/sessions/${encodeURIComponent(id)}`, { method: "DELETE" });
-    },
+    async fetchMe(): Promise<Me> { return (await apiCall<Me>("/me")) as Me; },
+    async listSessions(): Promise<DeviceSession[]> { return ((await apiCall<{ sessions: DeviceSession[] }>("/me/sessions")) as { sessions: DeviceSession[] }).sessions; },
+    async revokeSession(id: string): Promise<void> { await apiCall(`/me/sessions/${encodeURIComponent(id)}`, { method: "DELETE" }); },
+    async apiRequest<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T | undefined> { return apiCall<T>(path, init); },
+    getSupabaseClient: () => supabase,
   };
 }
 export type AuthClient = ReturnType<typeof createAuthClient>;

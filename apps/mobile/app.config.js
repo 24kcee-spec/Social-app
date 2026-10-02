@@ -15,6 +15,7 @@ module.exports = {
     version: "0.0.1",
     orientation: "portrait",
     userInterfaceStyle: "automatic",
+    plugins: [["expo-image-picker", { photosPermission: "Allow Social app to use your photos for your profile." }]],
     ios: { supportsTablet: false, bundleIdentifier: "app.social.dev" },
     android: { package: "app.social.dev" },
     extra: {

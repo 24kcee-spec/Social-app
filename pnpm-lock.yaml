@@ -63,12 +63,27 @@ importers:
       '@sp/auth-client':
         specifier: workspace:*
         version: link:../../packages/auth-client
+      '@sp/profile-client':
+        specifier: workspace:*
+        version: link:../../packages/profile-client
+      '@sp/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+      '@sp/validation':
+        specifier: workspace:*
+        version: link:../../packages/validation
       expo:
         specifier: ~57.0.26
         version: 57.0.26(@babel/core@7.29.7)(@expo/dom-webview@57.0.1)(react-dom@19.3.0(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)(typescript@5.9.3)
       expo-constants:
         specifier: ~57.0.20
         version: 57.0.20(expo@57.0.26)(react-native@0.86.3(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.3))
+      expo-image-manipulator:
+        specifier: ~57.0.20
+        version: 57.0.20(expo@57.0.26)
+      expo-image-picker:
+        specifier: ~57.0.17
+        version: 57.0.20(expo@57.0.26)
       expo-status-bar:
         specifier: ~57.0.1
         version: 57.0.1(expo@57.0.26)(react-native@0.86.3(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
@@ -94,6 +109,15 @@ importers:
       '@sp/auth-client':
         specifier: workspace:*
         version: link:../../packages/auth-client
+      '@sp/profile-client':
+        specifier: workspace:*
+        version: link:../../packages/profile-client
+      '@sp/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+      '@sp/validation':
+        specifier: workspace:*
+        version: link:../../packages/validation
       next:
         specifier: ^16.3.8
         version: 16.3.8(@types/node@20.19.43)(babel-plugin-react-compiler@1.0.0)(react-dom@19.3.0(react@19.2.3))(react@19.2.3)
@@ -142,6 +166,22 @@ importers:
       '@types/node':
         specifier: ^20.17.0
         version: 20.19.43
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@20.19.43)(lightningcss@1.33.0)(terser@5.51.2)
+
+  packages/profile-client:
+    dependencies:
+      '@sp/types':
+        specifier: workspace:*
+        version: link:../types
+      '@sp/validation':
+        specifier: workspace:*
+        version: link:../validation
+    devDependencies:
       typescript:
         specifier: ^5.6.3
         version: 5.9.3
@@ -1984,6 +2024,21 @@ packages:
       expo: '*'
       react: '*'
       react-native: '*'
+
+  expo-image-loader@57.0.1:
+    resolution: {integrity: sha512-uhrZKLT/cTl2mXyR28kPpVkS5O+PK9N1QA/07IFM4f5T4g0lTW1JHT3NEWwEEsGFldPmVX4j7LwUVVZxE+woug==}
+    peerDependencies:
+      expo: '*'
+
+  expo-image-manipulator@57.0.20:
+    resolution: {integrity: sha512-LyuoLOJVNWNVEOABqcNCHrAiTtaRQm3usJMK4veG1hnglmt85eSuQTgUaug2TdUyAwGDJbdee4Iif+toTQwNgA==}
+    peerDependencies:
+      expo: '*'
+
+  expo-image-picker@57.0.20:
+    resolution: {integrity: sha512-plgcGuMZMWqDchjXQW6S/WepYLB5KqfbZOzwC6xe0+j5IhY4ipvVuRZcXeP/0NgKgU0Jiu/XoTK4Bi8crtZ+sQ==}
+    peerDependencies:
+      expo: '*'
 
   expo-keep-awake@57.0.2:
     resolution: {integrity: sha512-GqgH746wtJImmsbyHmCQoi7cOslKuWQBbJHXr53S35Bpf5UvxCAztvnitUEd7D0QvFN2rvkOhylbZpgZZfBLlQ==}
@@ -5323,6 +5378,20 @@ snapshots:
       fontfaceobserver: 2.3.0
       react: 19.2.3
       react-native: 0.86.3(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.3)
+
+  expo-image-loader@57.0.1(expo@57.0.26):
+    dependencies:
+      expo: 57.0.26(@babel/core@7.29.7)(@expo/dom-webview@57.0.1)(react-dom@19.3.0(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)(typescript@5.9.3)
+
+  expo-image-manipulator@57.0.20(expo@57.0.26):
+    dependencies:
+      expo: 57.0.26(@babel/core@7.29.7)(@expo/dom-webview@57.0.1)(react-dom@19.3.0(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)(typescript@5.9.3)
+      expo-image-loader: 57.0.1(expo@57.0.26)
+
+  expo-image-picker@57.0.20(expo@57.0.26):
+    dependencies:
+      expo: 57.0.26(@babel/core@7.29.7)(@expo/dom-webview@57.0.1)(react-dom@19.3.0(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.7)(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)(typescript@5.9.3)
+      expo-image-loader: 57.0.1(expo@57.0.26)
 
   expo-keep-awake@57.0.2(expo@57.0.26)(react@19.2.3):
     dependencies:

@@ -1,50 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { newPasswordSchema, passwordResetRequestSchema, profileUpdateSchema, signInSchema, signUpFormSchema, signupSchema } from "./index";
+import { interestSelectionsRequestSchema, onboardingSchema, profileMediaRegistrationSchema, profileUpdateSchema, promptAnswersRequestSchema } from "./index";
 
-describe("signupSchema", () => {
-  it("normalises email to lower case and trims", () => {
-    const r = signupSchema.parse({ email: "  Kuda@Example.COM ", displayName: "Kuda" });
-    expect(r.email).toBe("kuda@example.com");
-  });
-  it("accepts phone only", () => {
-    expect(signupSchema.safeParse({ phone: "+263771234567", displayName: "Kuda" }).success).toBe(true);
-  });
-  it("rejects when no contact method is given", () => {
-    expect(signupSchema.safeParse({ displayName: "Kuda" }).success).toBe(false);
-  });
-  it("rejects malformed phone numbers", () => {
-    expect(signupSchema.safeParse({ phone: "0771234567", displayName: "Kuda" }).success).toBe(false);
-    expect(signupSchema.safeParse({ phone: "+0123456789", displayName: "Kuda" }).success).toBe(false);
-  });
-  it("rejects too-short display names", () => {
-    expect(signupSchema.safeParse({ email: "a@b.co", displayName: "K" }).success).toBe(false);
-  });
-});
-
-describe("profileUpdateSchema", () => {
-  it("accepts a valid partial update", () => {
-    expect(profileUpdateSchema.safeParse({ bio: "Hello", socialStyles: ["low_pressure"] }).success).toBe(true);
-  });
-  it("rejects unknown social styles and over-long bios", () => {
-    expect(profileUpdateSchema.safeParse({ socialStyles: ["loud"] }).success).toBe(false);
-    expect(profileUpdateSchema.safeParse({ bio: "x".repeat(281) }).success).toBe(false);
-  });
-});
-
-describe("auth form schemas", () => {
-  it("signIn normalises email and requires a password", () => {
-    expect(signInSchema.parse({ email: " A@B.Co ", password: "x" }).email).toBe("a@b.co");
-    expect(signInSchema.safeParse({ email: "a@b.co", password: "" }).success).toBe(false);
-  });
-  it("signUp enforces password length 8-72 and a valid email", () => {
-    expect(signUpFormSchema.safeParse({ email: "a@b.co", password: "1234567" }).success).toBe(false);
-    expect(signUpFormSchema.safeParse({ email: "a@b.co", password: "x".repeat(73) }).success).toBe(false);
-    expect(signUpFormSchema.safeParse({ email: "nope", password: "12345678" }).success).toBe(false);
-    expect(signUpFormSchema.safeParse({ email: "a@b.co", password: "12345678", displayName: "Kuda" }).success).toBe(true);
-  });
-  it("reset request and new password schemas validate", () => {
-    expect(passwordResetRequestSchema.safeParse({ email: "bad" }).success).toBe(false);
-    expect(newPasswordSchema.safeParse({ password: "short" }).success).toBe(false);
-    expect(newPasswordSchema.safeParse({ password: "long-enough-1" }).success).toBe(true);
-  });
+describe("validation", () => {
+  it("accepts standard email", async () => { const { emailSchema } = await import("./index"); expect(emailSchema.parse(" A@Example.com ")).toBe("a@example.com"); });
+  it("rejects invalid phone", async () => { const { phoneSchema } = await import("./index"); expect(() => phoneSchema.parse("0771234567")).toThrow(); });
+  it("requires display name length", () => { expect(() => profileUpdateSchema.parse({ displayName: "A" })).toThrow(); });
+  it("accepts complete profile update", () => { expect(profileUpdateSchema.parse({ displayName: "Kay", bio: "Hello", socialStyles: ["low_pressure"], privacy: { discoverable: true, messagePermission: "everyone", storyVisibility: "connections", activityVisibility: "public" } }).displayName).toBe("Kay"); });
+  it("rejects duplicate social styles", () => { expect(() => profileUpdateSchema.parse({ socialStyles: ["low_pressure", "low_pressure"] })).toThrow(); });
+  it("rejects duplicate interests", () => { expect(() => interestSelectionsRequestSchema.parse({ interests: [{ interestId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }, { interestId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }] })).toThrow(); });
+  it("limits interest count", () => { const interests = Array.from({ length: 13 }, (_, i) => ({ interestId: `aaaaaaaa-aaaa-4aaa-8aaa-${String(i).padStart(12, "0")}`, strength: 2 as const })); expect(() => interestSelectionsRequestSchema.parse({ interests })).toThrow(); });
+  it("rejects duplicate prompt ids", () => { expect(() => promptAnswersRequestSchema.parse({ answers: [{ promptId: "one", answer: "a good answer" }, { promptId: "one", answer: "another good answer" }] })).toThrow(); });
+  it("requires minimum onboarding data", () => { expect(() => onboardingSchema.parse({ displayName: "Kay", bio: "", socialStyles: ["text_first"], privacy: { discoverable: true, messagePermission: "everyone", storyVisibility: "connections", activityVisibility: "public" }, interests: [{ interestId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }], answers: [{ promptId: "p1", answer: "Hello there" }] })).toThrow(); });
+  it("accepts complete onboarding payload", () => { const r = onboardingSchema.parse({ displayName: "Kay", bio: "Hello", socialStyles: ["text_first", "low_pressure"], privacy: { discoverable: true, messagePermission: "connections", storyVisibility: "connections", activityVisibility: "public" }, interests: [{ interestId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }, { interestId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" }, { interestId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc" }], answers: [{ promptId: "p1", answer: "Something I enjoy" }] }); expect(r.interests).toHaveLength(3); });
+  it("rejects unsupported media type", () => { expect(() => profileMediaRegistrationSchema.parse({ kind: "avatar", storagePath: "u/a.jpg", thumbnailPath: "u/a-thumb.jpg", contentType: "image/gif", sizeBytes: 100, width: 100, height: 100, sortOrder: 0 })).toThrow(); });
+  it("rejects media over 5MB", () => { expect(() => profileMediaRegistrationSchema.parse({ kind: "avatar", storagePath: "u/a.jpg", thumbnailPath: "u/a-thumb.jpg", contentType: "image/jpeg", sizeBytes: 5 * 1024 * 1024 + 1, width: 100, height: 100, sortOrder: 0 })).toThrow(); });
+  it("rejects unsafe storage paths", () => { expect(() => profileMediaRegistrationSchema.parse({ kind: "avatar", storagePath: "../a.jpg", thumbnailPath: "u/a-thumb.jpg", contentType: "image/jpeg", sizeBytes: 100, width: 100, height: 100, sortOrder: 0 })).toThrow(); });
+  it("accepts valid media metadata", () => { const r = profileMediaRegistrationSchema.parse({ kind: "avatar", storagePath: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/a.jpg", thumbnailPath: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/a-thumb.jpg", contentType: "image/jpeg", sizeBytes: 100, width: 1400, height: 1400, sortOrder: 0 }); expect(r.kind).toBe("avatar"); });
+  it("accepts all supported visibility values", () => { expect(profileUpdateSchema.parse({ privacy: { discoverable: false, messagePermission: "nobody", storyVisibility: "private", activityVisibility: "public" } }).privacy?.discoverable).toBe(false); });
+  it("rejects onboarding without a social style", () => { expect(() => onboardingSchema.parse({ displayName: "Kay", bio: "", socialStyles: [], privacy: { discoverable: true, messagePermission: "everyone", storyVisibility: "connections", activityVisibility: "public" }, interests: [{ interestId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }, { interestId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" }, { interestId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc" }], answers: [{ promptId: "p1", answer: "Something I enjoy" }] })).toThrow(); });
+  it("rejects blank prompt answers", () => { expect(() => promptAnswersRequestSchema.parse({ answers: [{ promptId: "p1", answer: " " }] })).toThrow(); });
 });

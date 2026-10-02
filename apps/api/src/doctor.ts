@@ -21,8 +21,33 @@ if (env) {
     try {
       await pool.query("select 1");
       ok("Database reachable");
-      const t = await pool.query("select to_regclass('public.users') as users, to_regclass('public.user_sessions') as sessions");
-      t.rows[0]?.users && t.rows[0]?.sessions ? ok("Migrations applied (users, user_sessions exist)") : fail("Tables missing", "Run: pnpm --filter @sp/api run migrate");
+      const t = await pool.query("select to_regclass('public.users') as users, to_regclass('public.user_sessions') as sessions, to_regclass('public.profiles') as profiles, to_regclass('public.interests') as interests, to_regclass('public.user_interests') as user_interests, to_regclass('public.prompt_catalog') as prompt_catalog, to_regclass('public.prompt_answers') as prompt_answers, to_regclass('public.profile_media') as profile_media");
+      const row = t.rows[0] as Record<string, unknown> | undefined;
+      const phase1 = Boolean(row?.users && row?.sessions);
+      const phase2 = Boolean(row?.profiles && row?.interests && row?.user_interests && row?.prompt_catalog && row?.prompt_answers && row?.profile_media);
+      phase1 ? ok("Phase 1 migrations applied (users, user_sessions exist)") : fail("Phase 1 tables missing", "Run: pnpm --filter @sp/api run migrate");
+      phase2 ? ok("Phase 2 migrations applied (profile tables exist)") : fail("Phase 2 tables missing", "Run: pnpm --filter @sp/api run migrate");
+      if (phase2) {
+        const [interestCount, promptCount, rls, storageSchema] = await Promise.all([
+          pool.query("select count(*)::int as count from interests where active=true"),
+          pool.query("select count(*)::int as count from prompt_catalog where active=true"),
+          pool.query("select relname, relrowsecurity from pg_class where relnamespace = 'public'::regnamespace and relname = any($1::text[])", [["users","user_roles","user_sessions","profiles","interests","user_interests","prompt_catalog","prompt_answers","profile_media"]]),
+          pool.query("select to_regclass('storage.buckets') as storage_buckets"),
+        ]);
+        Number(interestCount.rows[0]?.count) >= 40 ? ok("Interest catalogue seeded") : fail("Interest catalogue is incomplete", "Run: pnpm --filter @sp/api run migrate");
+        Number(promptCount.rows[0]?.count) >= 6 ? ok("Prompt catalogue seeded") : fail("Prompt catalogue is incomplete", "Run: pnpm --filter @sp/api run migrate");
+        const expectedRls = new Set(["users","user_roles","user_sessions","profiles","interests","user_interests","prompt_catalog","prompt_answers","profile_media"]);
+        const secured = new Set(rls.rows.filter((r) => Boolean(r.relrowsecurity)).map((r) => String(r.relname)));
+        [...expectedRls].every((name) => secured.has(name)) ? ok("RLS enabled on Phase 1 + Phase 2 tables") : fail("RLS is not enabled on all profile/identity tables", "Run docs/supabase-phase2-security.sql in Supabase SQL Editor");
+        if (storageSchema.rows[0]?.storage_buckets) {
+          const bucket = await pool.query("select id, public, file_size_limit from storage.buckets where id='profile-media'");
+          bucket.rows[0]?.id === "profile-media" && bucket.rows[0]?.public === false && Number(bucket.rows[0]?.file_size_limit) <= 5242880 ? ok("Private profile-media Storage bucket is ready") : fail("profile-media Storage bucket is missing or unsafe", "Run docs/supabase-phase2-security.sql in Supabase SQL Editor");
+          const policies = await pool.query("select count(*)::int as count from pg_policies where schemaname='storage' and tablename='objects' and policyname in ('profile_media_storage_insert','profile_media_storage_select','profile_media_storage_update','profile_media_storage_delete')");
+          Number(policies.rows[0]?.count) === 4 ? ok("Profile-media Storage policies are installed") : fail("Profile-media Storage policies are incomplete", "Run docs/supabase-phase2-security.sql in Supabase SQL Editor");
+        } else {
+          fail("Supabase Storage schema is unavailable", "Use a Supabase Postgres project and run docs/supabase-phase2-security.sql");
+        }
+      }
     } catch (e) {
       fail(`Database connection failed: ${(e as Error).message.replace(/:\/\/[^@\s]*@/g, "://***@")}`, "Use the Session pooler string (IPv4) and make sure the password has no special characters");
     } finally { await pool.end(); }
