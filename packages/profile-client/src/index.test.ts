@@ -31,6 +31,14 @@ describe("profile client", () => {
     await p.completeOnboarding(payload);
     expect(JSON.parse(body).displayName).toBe("Kay");
   });
+  it("explains validation failures that carry no message", async () => {
+    const p = client(async () => new Response(JSON.stringify({ error: "validation", fields: { interests: "Array must contain at least 3 element(s)" } }), { status: 400 }));
+    await expect(p.completeOnboarding({} as never)).rejects.toThrow(/Interests \(pick 3 to 12\)/);
+  });
+  it("mentions the status for server errors without a message", async () => {
+    const p = client(async () => new Response(JSON.stringify({ error: "internal_error" }), { status: 500 }));
+    await expect(p.updateProfile({})).rejects.toThrow(/server error 500/);
+  });
   it("returns structured validation errors", async () => {
     const p = client(async () => new Response(JSON.stringify({ error: "validation", fields: { displayName: "Required" } }), { status: 400 }));
     await expect(p.updateProfile({})).rejects.toMatchObject({ code: "validation", status: 400, fields: { displayName: "Required" } });

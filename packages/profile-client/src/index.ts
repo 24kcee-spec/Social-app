@@ -14,6 +14,24 @@ export interface ProfileClientConfig {
   fetchImpl?: typeof fetch;
 }
 
+const FIELD_LABELS: Record<string, string> = {
+  displayName: "Display name",
+  bio: "Bio",
+  socialStyles: "Social style (pick at least 1)",
+  interests: "Interests (pick 3 to 12)",
+  answers: "Prompt answers (answer 1 to 3)",
+  privacy: "Privacy settings",
+};
+
+/** Turns an API failure with no message into something the person can act on. */
+export function describeFailure(status: number, fields?: Record<string, string>): string {
+  if (status === 401) return "Your session has ended. Please sign in again.";
+  const entries = Object.entries(fields ?? {});
+  if (entries.length > 0) return `Please fix: ${entries.map(([k, v]) => `${FIELD_LABELS[k] ?? k} - ${v}`).join("; ")}`;
+  if (status >= 500) return `We could not save that (server error ${status}). Please try again.`;
+  return "We could not save that yet. Please try again.";
+}
+
 type ProfileRequestInit = { method?: string; body?: unknown };
 
 export function createProfileClient(config: ProfileClientConfig) {
@@ -36,7 +54,7 @@ export function createProfileClient(config: ProfileClientConfig) {
     let payload: { error?: string; message?: string; fields?: Record<string, string> } = {};
     try { payload = (await response.json()) as typeof payload; } catch { /* generic */ }
     const code = payload.error ?? (response.status === 401 ? "unauthorized" : "request_failed");
-    const message = payload.message ?? (response.status === 401 ? "Your session has ended. Please sign in again." : "We could not save that yet. Please try again.");
+    const message = payload.message ?? describeFailure(response.status, payload.fields);
     throw new ProfileApiError(response.status, code, message, payload.fields ?? {});
   }
 
