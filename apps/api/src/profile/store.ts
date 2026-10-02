@@ -113,6 +113,7 @@ export function createProfileStore(db: SqlRunner) {
            insert into profiles (user_id,display_name,bio,social_styles,discoverable,message_permission,story_visibility,activity_visibility,onboarding_completed,updated_at)
            values ($1,$2,$3,$4,$5,$6,$7,$8,true,now())
            on conflict (user_id) do update set display_name=excluded.display_name,bio=excluded.bio,social_styles=excluded.social_styles,discoverable=excluded.discoverable,message_permission=excluded.message_permission,story_visibility=excluded.story_visibility,activity_visibility=excluded.activity_visibility,onboarding_completed=true,updated_at=now()
+           returning user_id
          ),
          deleted_i as (delete from user_interests where user_id=$1),
          inserted_i as (insert into user_interests (user_id,interest_id,strength) select $1,x.id,x.strength from unnest($9::uuid[],$10::smallint[]) as x(id,strength)),
