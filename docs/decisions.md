@@ -47,3 +47,18 @@ Profiles, interests, prompt answers and profile media metadata are written throu
 
 ## D-015 | 2026-10-01 | Profile onboarding uses a small deterministic minimum dataset
 A usable profile requires display name, at least three interests, at least one prompt answer, one social-style preference and explicit privacy settings. Media is optional during onboarding and editable immediately after. Reason: useful within minutes without a 20-minute form. Rejected: requiring a photo before the product provides value.
+
+## D-016 | 2026-10-02 | Discovery is people-only, deterministic and explained (Phase 3)
+Ranking is a weighted overlap computed in code (apps/api/src/discovery/scoring.ts), never ML. Shared interests are the strongest signal (6 + both strengths per interest, cap 60), then shared social styles (5 each, cap 15), same-category interests (2 each, cap 8), shared prompts (4 each, cap 8); small boosts for activity (6/4/2/1 by recency) and new members (3, 14 days). Penalties: repeat impressions (-2 each after the first, cap -10), ignores in 30 days (-20 each, cap -60, hidden at 3), diversity (-3 per already-ranked card in the same dominant category, cap -9). Ties break on recent activity then user id, so the order is repeatable. Every card carries positive reasons in plain language; negative components are visible only to admins. Rejected: collaborative filtering/embeddings (black box, no data yet).
+
+## D-017 | 2026-10-02 | Eligibility lives in one SQL fragment; blocks hard-exclude in both directions
+Discoverable + onboarding complete + status active + not self + no block either way. The feed and the admin explain tool (`GET /admin/discovery/explain`) share it, so "why does A see B" can be answered exactly. user_blocks ships now (minimal) so discovery is safe; the full block/report/moderation flow stays Phase 9. A blocked person is never told.
+
+## D-018 | 2026-10-02 | Discovery events are API-owned and rate limited
+discovery_events (impression/open/ignore/interact) is written only through `POST /discovery/events` (max 50 per request, 300 per minute per viewer). Unknown ids and self are dropped silently so ids cannot be probed. RLS enabled with no client policies on user_blocks and discovery_events.
+
+## D-019 | 2026-10-02 | Other people's photos: thumbnails only, via a narrow Storage policy
+Feed cards show only the 512px thumbnail. docs/supabase-phase3-security.sql adds a SECURITY DEFINER check so a signed-in person can read `*-thumb.jpg` of someone who is discoverable, onboarded, active and not blocked either way. Originals stay owner-only. Cards never include email or phone. Limitation: a thumbnail URL already issued stays valid for its 1-hour life after a block.
+
+## D-020 | 2026-10-02 | Product direction note
+The app is for everyone, not only students. Phase 3 contains nothing campus-specific. Pilot eligibility (D-007) still decides who is let in first; it does not change the product.

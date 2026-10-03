@@ -1,116 +1,75 @@
-# BUILD HANDOVER - Social Connection Platform
+# BUILD HANDOVER - Social Connection Platform (updated 3 Oct 2026)
 
-Paste this whole file into any new Claude session, attach `Social-Connection-Platform-Blueprint-FINAL.pdf`, and say: **"Continue at <Phase/Step>."** Claude must follow the rules below.
+Paste this file into a new Claude session, attach `Social-Connection-Platform-Blueprint-FINAL.pdf`, and say: **"Continue at <step>."**
 
-## 1. Snapshot (update after every delivery)
+## 1. Snapshot
 | Field | Value |
 |---|---|
-| Owner | 24kcee-spec (24kcee@gmail.com), Bulawayo, Windows + PowerShell |
-| Local repo | `C:\Dev\social-platform` |
-| GitHub | `https://github.com/24kcee-spec/Social-app.git` (branch `main`; set to PRIVATE) |
-| Stack | pnpm workspaces, TypeScript, Fastify API, Postgres (Supabase planned), Expo (mobile), Next.js (web), vitest, zod |
-| Done | Phase 0 docs; monorepo; shared packages; API `/health` + `/ready`; migrations 0001 (users/roles) + 0002 (user_sessions); Supabase JWT verification; `/me`, `/me/sessions`, `DELETE /me/sessions/:id`; `requireAuth`/`requireRole`; `pnpm --filter @sp/api run setup-check`; `scripts/smoke-auth.ps1`; CORS allow-list; `@sp/auth-client`; web shell (apps/web, Next.js); mobile shell (apps/mobile, Expo) |
-| Current step | Phase 1 gate: run the live checks in 4.1 (web + phone + API), then start Phase 2 (profile + onboarding) |
-| Tests | `pnpm verify` = typecheck + all tests. Baseline 82 passing (config 7, validation 10, auth-client 15, api 50). Update count each delivery |
-| Pilot | NUST / Bulawayo students, invite-only, 100-300 users |
-| Open decision | D-007 pilot eligibility (university email vs invite code) |
+| Owner | 24kcee-spec (24kcee@gmail.com), Bulawayo, **Windows PowerShell 5.1** |
+| Local repo | `C:\Dev\social-platform` (untracked `.agents/` and `skills-lock.json` are NOT ours - never commit) |
+| GitHub | `https://github.com/24kcee-spec/Social-app.git`, branch `main` (make repo PRIVATE) |
+| Stack | pnpm monorepo, TypeScript, Fastify API, Supabase (Postgres + Auth + Storage), Next.js web, Expo mobile, vitest, zod |
+| Done | Phase 0 docs; Phase 1 auth (live gate passed); Phase 2 profiles/onboarding/media (done and tested; Android testing deferred); Phase 3 code (people discovery API + web + mobile) via `Deliver-Phase3-Discovery-SOCIAL.ps1` |
+| In progress | Phase 3 LIVE GATE (see section 2) |
+| Test baseline | `pnpm verify` = 187 passing after Phase 3 (config 7, validation 20, auth-client 16, profile-client 17, api 127) |
+| Next | Finish Phase 3 live gate, then Phase 4 (low-pressure interaction) |
 
-Files to read first in the repo: `docs/decisions.md`, `docs/product-definition.md`, `docs/handover.md`, this file.
+## 2. Immediate next steps (in order)
+1. `cd C:\Dev\social-platform; git log --oneline -3` must show `phase3`. If not, run `.\Deliver-Phase3-Discovery-SOCIAL.ps1 -GitHubRemote "https://github.com/24kcee-spec/Social-app.git"` from Downloads.
+2. `pnpm --filter @sp/api run migrate` (applies 0004). Run `docs/supabase-phase3-security.sql` in the Supabase SQL Editor (safe to re-run). `pnpm --filter @sp/api run setup-check` = All checks passed.
+3. Restart API and web. Use two accounts that finished onboarding (one discoverable). Check: each sees the other with reasons; "Not now" demotes; Block hides both ways; photos show.
+4. Admin check (optional): grant yourself the admin role in `user_roles`, call `GET /admin/discovery/explain?viewerId=..&candidateId=..`.
+5. Then Phase 4.
 
-## 2. Rules (non-negotiable)
+## 3. Rules (non-negotiable)
 **Claude must:**
-1. Build in blueprint order. Do not skip phases. Do not build P2 features (AI, streaming, monetisation, multi-provider music) before the pilot shows repeat use.
-2. Output complete copy-paste PowerShell. No placeholders for the user to fill in. One paste = one outcome.
-3. Deliver code as ONE `.ps1` delivery script per phase, same pattern as `Deliver-P0P1-Foundation-SOCIAL.ps1`: files embedded as base64 with SHA-256 check, backup + rollback on failure, preflight (git, node >= 22.13, pnpm, git identity), `pnpm install`, **gate = `pnpm verify` with an exact expected test count**, scoped `git add` of listed paths only, commit, push (never force).
-4. Strip ANSI colour codes before parsing test output (vitest colours broke the counter once).
-5. Test everything it can in its own sandbox before delivering (typecheck, tests, running the script in a clean folder). State plainly what it could NOT test (Windows PowerShell 5.1, real Supabase, real devices).
-6. Never ask the user to paste secrets (service-role key, passwords, DB password) in chat. Keys go in `.env` only.
-7. Be short. No filler, no re-explaining finished work.
-8. Never mix in unrelated projects (Fazak, Twelve C, solar). Do not touch them.
-9. Every feature meets Definition of Done: happy path, loading/empty/error states, permission tests, analytics event if it matters, no secrets/PII in logs, tested before merge.
-10. Update `docs/decisions.md` and `docs/handover.md` inside each delivery.
+1. Inspect the real repo first (ask the user for `git archive --format=zip -o "$HOME\Desktop\social-app-snapshot.zip" HEAD`). Never build on guesses.
+2. Build in blueprint order; no later-phase scope (no AI, messaging, stories, music, monetisation early).
+3. Give complete copy-paste PowerShell (no placeholders). Deliver code as one `.ps1` per step: base64 files + SHA-256 check, backup/rollback, preflight, `pnpm install`, **gate = `pnpm verify` with exact test count**, scoped `git add`, commit, push (never force).
+4. **Windows PowerShell 5.1 safe:** never use `2>$null`, `--error-unmatch`, or `2>&1` on native commands under `$ErrorActionPreference='Stop'` (stderr becomes a fatal error). Wrap native calls with `$ErrorActionPreference='Continue'` and map output with `"$_"`. Strip ANSI colour codes before counting tests.
+5. Test everything possible in the sandbox (typecheck, tests, run the script on a copy of the real repo) and say plainly what was NOT tested (PS 5.1, live Supabase, real devices).
+6. Never ask for secrets (DB password, secret key). `.env` only; publishable key is the only key in clients.
+7. Be short. Update `docs/decisions.md` + `docs/handover.md` in each delivery.
+8. Never touch unrelated projects (Fazak, Twelve C).
 
-**Product rules (from blueprint):** useful before viral; low-pressure for shy users; explain every recommendation; one identity across Android/iOS/web; privacy first (no precise public location); fast on low-end phones; every phase ends with a pass/fail gate; first algorithm is deterministic weighted overlap, never a black box; music = references/metadata only, respect provider terms; do not monetise before usage data; keep core safety and network effect free.
+**Product rules:** useful before viral; low-pressure for shy users; every recommendation explained; one identity across Android/iOS/web; privacy first (no precise public location); deterministic scoring first (no black box, no ML); free core, never paywall safety.
 
-## 3. Delivery protocol (every phase)
-**Claude side:** build -> test in sandbox -> generate `Deliver-<PhaseN>-<Name>.ps1` -> state tested/untested -> give the run block.
-
-**User side - run block (replace the file name only if Claude says so):**
+## 4. Delivery run block (user side)
 ```powershell
-git config --global user.name "24kcee-spec"
-git config --global user.email "24kcee@gmail.com"
+cd C:\Dev\social-platform
+git status --short
 Set-ExecutionPolicy -Scope Process Bypass -Force
 cd $HOME\Downloads
-.\Deliver-<PhaseN>-<Name>.ps1 -GitHubRemote "https://github.com/24kcee-spec/Social-app.git"
+.\Deliver-<Name>.ps1 -GitHubRemote "https://github.com/24kcee-spec/Social-app.git"
 ```
-Success = `PASS: N tests` then `=== SUCCESS ===` and a pushed commit hash.
+Success = `PASS: N tests`, `=== SUCCESS ===`. Without `-GitHubRemote` it commits locally only.
 
-**Manual git add / commit / push (use for any change made by hand, or if the script committed locally only):**
+**Manual git:**
 ```powershell
 cd C:\Dev\social-platform
 pnpm verify
-git status --short
-git add -A
-git commit -m "phaseN: short description"
-$url = "https://github.com/24kcee-spec/Social-app.git"
-if ((git remote) -contains "origin") { git remote set-url origin $url } else { git remote add origin $url }
-git branch -M main
+git add <only your files>
+git commit -m "phaseN: description"
 git push -u origin main
-git log --oneline -1
 ```
-Never `git push --force`. If push says "rejected / fetch first": `git fetch origin; git rebase origin/main; pnpm verify; git push origin main`, or send the red text to Claude.
+Rejected push: `git fetch origin; git rebase origin/main; pnpm verify; git push origin main`. Never `--force`.
 
-**Where to post what in a new session:** this file + blueprint PDF + the failing screenshot or the last red lines of the terminal + the phase you want. Keep chats inside the Claude Project "Social app".
+## 5. Remaining phases (blueprint order)
+- **Phase 3 Discovery + compatibility (people only) - DELIVERED, live gate pending:** minimal `user_blocks` table; candidate filters (exclude blocked/banned/non-discoverable); deterministic weighted score (shared interests strong, style/prompts moderate, recency small boost, repeated ignores reduce, blocks hard-exclude); reason text on every card; freshness + diversity; `discovery_events` (impression/open/ignore/interact); fixture tests with expected order; API `GET /discovery/people`, `POST /discovery/events`; discovery feed on web + mobile. Groups/activities cards wait for Phase 6.
+- **Phase 4 Low-pressure interaction:** connection requests (send/accept/decline/expire), icebreakers from shared interests, question cards, mini-games, conversation assist, low-pressure mode, anti-spam rate limits.
+- **Phase 5 Messaging + notifications:** conversations, realtime (Supabase Realtime), delivery states, media messages, push (FCM/APNs/web) + preferences, reconnect handling. Gate: consistent on Android + iOS + web.
+- **Phase 6 Groups + activities + events:** roles, capacity/RSVP/waitlist, general-area only, event pages/chat/QR, local feed.
+- **Phase 9 Safety (before public pilot):** block/report everywhere, moderation queue, rate limits, verification levels, data deletion, security review, incident playbook.
+- **Sharing + Phase 10 cross-device:** public preview pages, share sheet, deep links, QR, account linking, device matrix.
+- **Pilot:** NUST/Bulawayo invite-only 100-300 users, production launch checklist (blueprint s15), weekly reviews. Turn Supabase "Confirm email" back ON before inviting users.
+- **After pilot signal only:** Phase 7 content, Phase 8 music (one provider, metadata only), Phase 11 analytics then monetisation, Phase 12 scale.
 
-## 4. Remaining work by phase
-
-### 4.1 Phase 1 - live gate check (next, user side)
-Code is DONE and tested (D-008..D-013). Do these once, in order; send Claude any red text:
-1. `.env` filled (DATABASE_URL, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY). Optional: MOBILE_API_URL=http://<PC LAN IP>:4000.
-2. Supabase > Auth > URL Configuration > Redirect URLs: add `http://localhost:3000/reset`.
-3. `pnpm --filter @sp/api run migrate`, then `pnpm --filter @sp/api run setup-check`, then start the API (`pnpm --filter @sp/api dev`) and run `scripts\smoke-auth.ps1`.
-4. Web: `pnpm --filter @sp/web dev` -> http://localhost:3000: create account, sign out, sign in, "Forgot password?" -> email -> new password -> sign in.
-5. Phone: `pnpm --filter @sp/mobile start`, scan the QR in Expo Go: sign in with the SAME account. Web "Your devices" must now list 2 devices; sign the phone out from the web list; the phone must return to the sign-in screen.
-**Gate:** new account registers on web and mobile, signs in on a second device, logs out, resets access, sees only its own data.
-
-### 4.2 Phase 2 - Profile + onboarding (days 8-14)
-Profile/interest/prompt/user_interest tables; profile API (create/read/update); interest catalogue seed; onboarding (minimum data); social-style + privacy controls; media upload with type/size validation + thumbnails (Supabase Storage); profile preview built from shared interests/prompts. **Gate:** useful profile in a few minutes on Android, iOS, web; same data on all.
-
-### 4.3 Phase 3 - Discovery + compatibility (days 15-17)
-Candidate filters (exclude blocked/banned/out-of-settings); feature vectors; deterministic weighted score (shared interests strong, activity intent very strong, style/prompt/community moderate, recency small boost, repeated ignores reduce, blocks hard-exclude); explanation reasons on every card; freshness + diversity rules; discovery cards (people/groups/activities); log impression/open/ignore/interact/join; fixture-based tests with expected order. **Gate:** explainable recommendations; you can inspect why A saw B. No ML yet.
-
-### 4.4 Phase 4 - Low-pressure interaction (days 18-20)
-Connection requests (send/accept/decline/quiet expiry); interest-based icebreakers; question cards; mini-games (this-or-that etc.); conversation assist (user chooses what to send); low-pressure mode; anti-spam rate limits; activation tracking. **Gate:** a shy user discovers someone, gets a reason to interact, sends an intro without inventing the conversation.
-
-### 4.5 Phase 5 - Messaging + notifications (days 21-23)
-Conversations/members/messages tables; realtime (Supabase Realtime); delivery states; image/audio/link messages with validation; replies; careful typing/presence; push (FCM/APNs/web) + preferences; offline queue/reconnect. **Gate:** Android + iOS + web consistent in one chat, no data loss on reconnect.
-
-### 4.6 Phase 6 - Groups + activities + events (days 24-25)
-Groups (public/private/invite), roles, activities with capacity/RSVP/waitlist, general-area location only, event pages, event chat, QR check-in, local feed. **Gate:** create/join an activity, invite, chat, RSVP, share.
-
-### 4.7 Phase 9 (pull forward) - Safety (day 27)
-Block (instant stop of contact + discovery), report (person/message/profile/post/group/activity/event), moderation queue, rate limits, verification levels, precise-location protection, data-deletion flow, security review, incident playbook. **Gate:** block/report in seconds; reports investigable without searching the DB. **Must be done before the public pilot.**
-
-### 4.8 Phase 8 (partial) + Sharing (day 26)
-Public web preview pages + share cards, native share sheet, deep links, QR for profiles/groups/events, share-conversion tracking. Music integration comes later (one provider, metadata only).
-
-### 4.9 Phase 10 - Web + cross-device (day 28)
-Account linking to one internal user id, device session list/revoke, profile/message/media sync, shareable public pages, deep-link into app, cross-platform test matrix. **Gate:** same account consistent on Android, iOS, web.
-
-### 4.10 Pilot (days 29-30) -> Phase 12
-Fix only critical bugs; run production launch checklist (blueprint section 15: 20 checks, backups restored, budget alerts, privacy policy + terms published); invite a controlled NUST group; weekly review of activation, retention, shares, reports, crashes. Expand only after repeat use.
-
-### 4.11 After pilot signal only
-Phase 7 (stories, questions, polls, memory chains), Phase 8 (music), Phase 11 (analytics dashboards, then monetisation: premium convenience features, event/business promotion; never paywall safety or the core network), Phase 12 scale (CDN, queues, backups, support process, Harare).
-
-## 5. Known gotchas (already hit)
-- Git needs `user.name` / `user.email` set or the script aborts (and rolls back cleanly).
-- Running the script without `-GitHubRemote` commits locally only; push with the manual block in section 3.
-- In PowerShell, a failing native command (e.g. `git remote remove origin` with no remote) can stop the whole pasted block. Use the `if ((git remote) -contains "origin")` pattern.
-- vitest colour codes broke the test counter (fixed: ANSI stripped). The in-memory Postgres tests take ~35s on first run; timeouts are 60s.
-- Console may show `Γ£ô` instead of a tick - cosmetic only.
-- Repo was created Public; make it Private (Settings > General > Danger Zone).
-- Supabase free-tier limits must be re-checked before the pilot.
-- Supabase "Confirm email" may be turned OFF during development (default email sending is rate-limited). **Turn it back ON before inviting pilot users.**
-- `pnpm doctor` is a built-in pnpm command; our checker is `pnpm --filter @sp/api run setup-check`. Always use `run` for package scripts.
-- `.env` lives at the repo root, is git-ignored, and holds DATABASE_URL, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY. The secret key is never used by clients.
+## 6. Known gotchas
+- Migrate (0004) BEFORE running `docs/supabase-phase3-security.sql`. Without that SQL, feed photos are blank (Storage policy missing).
+- Pilot eligibility (D-007) is still open; the product itself is for everyone, not students only.
+- Plain `pnpm doctor` is a pnpm builtin; use `pnpm --filter @sp/api run setup-check` and always `run` for scripts.
+- Migrate BEFORE running `docs/supabase-phase2-security.sql`.
+- Validation failures return `{error:"validation", fields}` with no `message`; P2b makes clients display them.
+- Use the Supabase **Session pooler** connection string (IPv4); DB password letters/numbers only.
+- Supabase free tier limits: re-check before the pilot.
+- Console may show `Γ£ô` for tick marks - cosmetic.

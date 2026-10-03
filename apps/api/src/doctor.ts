@@ -27,6 +27,18 @@ if (env) {
       const phase2 = Boolean(row?.profiles && row?.interests && row?.user_interests && row?.prompt_catalog && row?.prompt_answers && row?.profile_media);
       phase1 ? ok("Phase 1 migrations applied (users, user_sessions exist)") : fail("Phase 1 tables missing", "Run: pnpm --filter @sp/api run migrate");
       phase2 ? ok("Phase 2 migrations applied (profile tables exist)") : fail("Phase 2 tables missing", "Run: pnpm --filter @sp/api run migrate");
+      const d = await pool.query("select to_regclass('public.user_blocks') as blocks, to_regclass('public.discovery_events') as events");
+      const phase3 = Boolean(d.rows[0]?.blocks && d.rows[0]?.events);
+      phase3 ? ok("Phase 3 migrations applied (user_blocks, discovery_events exist)") : fail("Phase 3 tables missing", "Run: pnpm --filter @sp/api run migrate");
+      if (phase3) {
+        const rls3 = await pool.query("select relname from pg_class where relnamespace = 'public'::regnamespace and relname in ('user_blocks','discovery_events') and relrowsecurity");
+        rls3.rows.length === 2 ? ok("RLS enabled on Phase 3 tables") : fail("RLS is not enabled on Phase 3 tables", "Run docs/supabase-phase3-security.sql in Supabase SQL Editor");
+        const st = await pool.query("select to_regclass('storage.objects') as objects");
+        if (st.rows[0]?.objects) {
+          const pol = await pool.query("select count(*)::int as count from pg_policies where schemaname='storage' and tablename='objects' and policyname='profile_media_discovery_thumb_select'");
+          Number(pol.rows[0]?.count) === 1 ? ok("Discovery thumbnail Storage policy is installed") : fail("Discovery thumbnail Storage policy missing (people's photos will be blank in the feed)", "Run docs/supabase-phase3-security.sql in Supabase SQL Editor");
+        }
+      }
       if (phase2) {
         const [interestCount, promptCount, rls, storageSchema] = await Promise.all([
           pool.query("select count(*)::int as count from interests where active=true"),

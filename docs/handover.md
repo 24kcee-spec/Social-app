@@ -2,14 +2,15 @@
 
 | Field | Value |
 |---|---|
-| Current phase | Phase 2 - code complete; pending Phase 2 live gate (web + Android/iOS profile/onboarding/media sync) |
+| Current phase | Phase 3 - people discovery delivered (API + web + mobile); pending live gate |
 | Working branch | main |
-| What is complete | Phase 1 auth foundation; Phase 2 profile tables, 50 interests, 10 prompts, profile API/client, onboarding, social-style controls, privacy controls, private profile-media Storage bootstrap, web profile editor/preview, mobile profile editor/preview, profile media upload/delete paths |
-| Tests | `pnpm verify` expected **131 passing**: config 7, validation 17, auth-client 16, profile-client 10, API 81 |
-| Static checks performed here | TypeScript transpile/syntax check: 39/39 TS/TSX files parsed; typecheck passed for `@sp/types`, `@sp/validation`, `@sp/auth-client`, `@sp/profile-client` using the available local package dependencies |
-| Not tested here | Full `pnpm verify` for the whole monorepo, real Supabase/Postgres, real Supabase Storage policies, Windows PowerShell delivery execution, Android/iOS device UI and actual web browser upload flow; the build environment had no usable pnpm registry access and did not contain all app dependencies |
-| Required live setup | Run `docs/supabase-phase2-security.sql` in the Supabase SQL Editor after migration 0003, then run API `migrate` + `setup-check`, web, and mobile gates |
-| Next task | Phase 2 live gate: create/edit the same profile on web and Android/Expo, upload/delete a profile image, confirm data matches and media remains private |
-| Known limitation | Mobile password reset still opens web `/reset` (native deep-link reset is Phase 10). Profile discovery of other users is intentionally not enabled until later discovery/safety phases. |
-| Do not touch | Unrelated projects (Fazak / Twelve C) |
-| Decision changes | D-014 private profile/Storage authorization boundary; D-015 minimum onboarding dataset |
+| What is complete | Phases 0-2 (auth, profiles, onboarding, media); Phase 3: migration 0004 (user_blocks, discovery_events), deterministic scorer, eligibility SQL, `GET /discovery/people`, `POST /discovery/events`, `GET/POST /blocks`, `DELETE /blocks/:userId`, admin `GET /admin/discovery/explain`, shared discovery client, web Discover tab, mobile Discover tab, doctor checks |
+| Tests | `pnpm verify` expected **187 passing**: config 7, validation 20, auth-client 16, profile-client 17, API 127 |
+| Checked here | Typecheck for all packages and apps (web, mobile, API); full test run; `next build` of the web app; DB tests run against real Postgres semantics (PGlite) |
+| Not tested here | Windows PowerShell 5.1 delivery script, real Supabase (RLS, Storage policy, thumbnails), real devices, real browser UI |
+| Required live setup | 1) `pnpm --filter @sp/api run migrate` (applies 0004). 2) Run `docs/supabase-phase3-security.sql` in the Supabase SQL Editor. 3) `pnpm --filter @sp/api run setup-check` = All checks passed. 4) Restart API + web |
+| Phase 3 gate | Two accounts with onboarding done see each other with reasons; Skip lowers/hides; Block hides both ways on web and phone; admin explain shows the score; photos show as thumbnails |
+| Next task | Phase 3 live gate, then Phase 4 (low-pressure interaction: connection requests, icebreakers, question cards) |
+| Known limitations | Android/iOS device testing deferred until a proper setup exists. Groups/activities cards wait for Phase 6. Block/report UI beyond "Block" waits for Phase 9. Thumbnail URLs issued before a block stay valid up to 1 hour |
+| Do not touch | Unrelated projects (Fazak / Twelve C); untracked `.agents/` and `skills-lock.json` |
+| Decision changes | D-016 to D-020 added |

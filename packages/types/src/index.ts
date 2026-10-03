@@ -106,3 +106,56 @@ export interface ReadyResponse {
   status: "ready" | "not_ready";
   checks: Record<string, "ok" | "fail">;
 }
+
+export const DISCOVERY_EVENT_TYPES = ["impression", "open", "ignore", "interact"] as const;
+export type DiscoveryEventType = (typeof DISCOVERY_EVENT_TYPES)[number];
+
+/** Every score component has a stable code so tests, admin tooling and the UI agree on what happened. */
+export const DISCOVERY_REASON_CODES = [
+  "shared_interests",
+  "shared_styles",
+  "shared_prompts",
+  "related_interests",
+  "recently_active",
+  "new_member",
+  "repeat_fatigue",
+  "ignored_before",
+  "diversity",
+  "fallback",
+] as const;
+export type DiscoveryReasonCode = (typeof DISCOVERY_REASON_CODES)[number];
+
+export interface DiscoveryReason {
+  code: DiscoveryReasonCode;
+  /** Plain-language sentence shown on the card. Only positive reasons are shown to people; all are visible to admins. */
+  text: string;
+  /** Signed points this component added to (or removed from) the score. */
+  points: number;
+}
+
+export interface DiscoveryCard {
+  userId: string;
+  displayName: string;
+  bio: string;
+  socialStyles: SocialStyle[];
+  messagePermission: MessagePermission;
+  interests: Interest[];
+  sharedInterests: Interest[];
+  prompts: PromptAnswer[];
+  /** Thumbnail only; originals are never exposed through discovery. */
+  thumbnailPath: string | null;
+  score: number;
+  /** Positive reasons only, strongest first. Never empty. */
+  reasons: DiscoveryReason[];
+}
+
+export interface DiscoveryFeed {
+  people: DiscoveryCard[];
+  hasMore: boolean;
+}
+
+export interface BlockedUser {
+  userId: string;
+  displayName: string;
+  blockedAt: string;
+}

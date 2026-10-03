@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CONTENT_VISIBILITIES, INTEREST_STRENGTHS, MESSAGE_PERMISSIONS, PROFILE_MEDIA_KINDS, SOCIAL_STYLES, USER_ROLES } from "@sp/types";
+import { CONTENT_VISIBILITIES, DISCOVERY_EVENT_TYPES, INTEREST_STRENGTHS, MESSAGE_PERMISSIONS, PROFILE_MEDIA_KINDS, SOCIAL_STYLES, USER_ROLES } from "@sp/types";
 
 /** Emails are normalised to lower case so uniqueness is case-insensitive (the DB enforces the same rule). */
 export const emailSchema = z.string().trim().toLowerCase().email().max(254);
@@ -100,3 +100,23 @@ export type SignUpFormInput = z.infer<typeof signUpFormSchema>;
 
 export const passwordResetRequestSchema = z.object({ email: emailSchema });
 export const newPasswordSchema = z.object({ password: passwordSchema });
+
+export const discoveryEventTypeSchema = z.enum(DISCOVERY_EVENT_TYPES);
+
+/** Query strings arrive as text; coerce, clamp and reject junk. */
+export const discoveryQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  offset: z.coerce.number().int().min(0).max(200).default(0),
+});
+export type DiscoveryQueryInput = z.infer<typeof discoveryQuerySchema>;
+
+export const discoveryEventsRequestSchema = z.object({
+  events: z
+    .array(z.object({ candidateId: z.string().uuid(), type: discoveryEventTypeSchema }))
+    .min(1)
+    .max(50),
+});
+export type DiscoveryEventsRequest = z.infer<typeof discoveryEventsRequestSchema>;
+
+export const blockRequestSchema = z.object({ userId: z.string().uuid() });
+export type BlockRequest = z.infer<typeof blockRequestSchema>;

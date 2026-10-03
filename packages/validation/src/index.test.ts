@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { interestSelectionsRequestSchema, onboardingSchema, profileMediaRegistrationSchema, profileUpdateSchema, promptAnswersRequestSchema } from "./index";
+import { blockRequestSchema, discoveryEventsRequestSchema, discoveryQuerySchema, interestSelectionsRequestSchema, onboardingSchema, profileMediaRegistrationSchema, profileUpdateSchema, promptAnswersRequestSchema } from "./index";
 
 describe("validation", () => {
   it("accepts standard email", async () => { const { emailSchema } = await import("./index"); expect(emailSchema.parse(" A@Example.com ")).toBe("a@example.com"); });
@@ -19,4 +19,27 @@ describe("validation", () => {
   it("accepts all supported visibility values", () => { expect(profileUpdateSchema.parse({ privacy: { discoverable: false, messagePermission: "nobody", storyVisibility: "private", activityVisibility: "public" } }).privacy?.discoverable).toBe(false); });
   it("rejects onboarding without a social style", () => { expect(() => onboardingSchema.parse({ displayName: "Kay", bio: "", socialStyles: [], privacy: { discoverable: true, messagePermission: "everyone", storyVisibility: "connections", activityVisibility: "public" }, interests: [{ interestId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }, { interestId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" }, { interestId: "cccccccc-cccc-4ccc-8ccc-cccccccccccc" }], answers: [{ promptId: "p1", answer: "Something I enjoy" }] })).toThrow(); });
   it("rejects blank prompt answers", () => { expect(() => promptAnswersRequestSchema.parse({ answers: [{ promptId: "p1", answer: " " }] })).toThrow(); });
+});
+
+describe("discovery schemas", () => {
+  it("coerces and defaults paging, and rejects out-of-range values", () => {
+    expect(discoveryQuerySchema.parse({})).toEqual({ limit: 20, offset: 0 });
+    expect(discoveryQuerySchema.parse({ limit: "5", offset: "10" })).toEqual({ limit: 5, offset: 10 });
+    expect(discoveryQuerySchema.safeParse({ limit: "51" }).success).toBe(false);
+    expect(discoveryQuerySchema.safeParse({ limit: "0" }).success).toBe(false);
+    expect(discoveryQuerySchema.safeParse({ offset: "201" }).success).toBe(false);
+    expect(discoveryQuerySchema.safeParse({ limit: "x" }).success).toBe(false);
+  });
+  it("accepts 1-50 well-formed events and rejects unknown types and bad ids", () => {
+    const id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    expect(discoveryEventsRequestSchema.safeParse({ events: [{ candidateId: id, type: "ignore" }] }).success).toBe(true);
+    expect(discoveryEventsRequestSchema.safeParse({ events: [] }).success).toBe(false);
+    expect(discoveryEventsRequestSchema.safeParse({ events: [{ candidateId: id, type: "like" }] }).success).toBe(false);
+    expect(discoveryEventsRequestSchema.safeParse({ events: [{ candidateId: "1", type: "open" }] }).success).toBe(false);
+    expect(discoveryEventsRequestSchema.safeParse({ events: Array.from({ length: 51 }, () => ({ candidateId: id, type: "open" })) }).success).toBe(false);
+  });
+  it("requires a uuid to block", () => {
+    expect(blockRequestSchema.safeParse({ userId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }).success).toBe(true);
+    expect(blockRequestSchema.safeParse({ userId: "me" }).success).toBe(false);
+  });
 });

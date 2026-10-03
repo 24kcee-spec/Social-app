@@ -23,7 +23,7 @@ describe("migration runner", () => {
   it("is idempotent: a second run applies nothing", async () => {
     expect(await runMigrations(db, dir)).toEqual([]);
     const { rows } = await db.query<{ name: string }>("select name from schema_migrations");
-    expect(rows.map((r) => r.name)).toEqual(["0001_users_and_roles.sql", "0002_user_sessions.sql", "0003_profiles_interests_prompts_media.sql"]);
+    expect(rows.map((r) => r.name)).toEqual(["0001_users_and_roles.sql", "0002_user_sessions.sql", "0003_profiles_interests_prompts_media.sql", "0004_discovery_and_blocks.sql"]);
   });
 });
 
@@ -156,5 +156,27 @@ describe("Phase 2 profile tables", () => {
     expect((await db.query("select * from user_interests where user_id=$1", [id])).rows).toHaveLength(0);
     expect((await db.query("select * from prompt_answers where user_id=$1", [id])).rows).toHaveLength(0);
     expect((await db.query("select * from profile_media where user_id=$1", [id])).rows).toHaveLength(0);
+  });
+});
+
+describe("discovery tables", () => {
+  it("rejects self-blocks and duplicate blocks, and cascades with the user", async () => {
+    const a = (await insertUser("a@example.com", null)).rows[0] as { id: string };
+    const b = (await insertUser("b@example.com", null)).rows[0] as { id: string };
+    await expect(db.query("insert into user_blocks (blocker_id, blocked_id) values ($1, $1)", [a.id])).rejects.toThrow();
+    await db.query("insert into user_blocks (blocker_id, blocked_id) values ($1, $2)", [a.id, b.id]);
+    await expect(db.query("insert into user_blocks (blocker_id, blocked_id) values ($1, $2)", [a.id, b.id])).rejects.toThrow();
+    await db.query("delete from users where id = $1", [b.id]);
+    expect((await db.query("select * from user_blocks")).rows).toHaveLength(0);
+  });
+
+  it("only accepts known event types, never self-events, and cascades with the user", async () => {
+    const a = (await insertUser("a@example.com", null)).rows[0] as { id: string };
+    const b = (await insertUser("b@example.com", null)).rows[0] as { id: string };
+    await db.query("insert into discovery_events (viewer_id, candidate_id, event_type) values ($1, $2, 'impression')", [a.id, b.id]);
+    await expect(db.query("insert into discovery_events (viewer_id, candidate_id, event_type) values ($1, $2, 'like')", [a.id, b.id])).rejects.toThrow();
+    await expect(db.query("insert into discovery_events (viewer_id, candidate_id, event_type) values ($1, $1, 'open')", [a.id])).rejects.toThrow();
+    await db.query("delete from users where id = $1", [a.id]);
+    expect((await db.query("select * from discovery_events")).rows).toHaveLength(0);
   });
 });

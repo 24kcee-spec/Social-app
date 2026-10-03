@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { ActivityIndicator, Image, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { auth, config, errorMessage, isConfigured } from "./src/auth";
+import { Discover } from "./src/Discover";
 import { deleteProfileImage, getProfileClient, getSignedMediaUrl, pickAndUploadProfileImage } from "./src/profile";
 import type { ProfileClient } from "@sp/profile-client";
 
@@ -51,12 +52,12 @@ function AuthForm() {
 function TextButton({ label, onPress }: { label: string; onPress: () => void }) { return <Pressable accessibilityRole="button" onPress={onPress} style={s.link}><Text style={s.linkText}>{label}</Text></Pressable>; }
 
 function ProfileHome({ me }: { me: Me }) {
-  const client = useMemo<ProfileClient>(() => getProfileClient(), []); const [profile, setProfile] = useState<Profile | null>(null); const [interests, setInterests] = useState<Interest[]>([]); const [prompts, setPrompts] = useState<PromptDefinition[]>([]); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null);
+  const client = useMemo<ProfileClient>(() => getProfileClient(), []); const [profile, setProfile] = useState<Profile | null>(null); const [interests, setInterests] = useState<Interest[]>([]); const [prompts, setPrompts] = useState<PromptDefinition[]>([]); const [loading, setLoading] = useState(true); const [error, setError] = useState<string | null>(null); const [tab, setTab] = useState<"discover" | "profile">("discover");
   const load = useCallback(async () => { setLoading(true); setError(null); try { const [p,i,pr] = await Promise.all([client.getProfile(),client.listInterests(),client.listPrompts()]); setProfile(p); setInterests(i); setPrompts(pr); } catch(err){setError(errorMessage(err));} finally{setLoading(false);} },[client]);
   useEffect(()=>{void load();},[load]);
   if (loading) return <Card><ActivityIndicator /><Text style={s.muted}>Loading your profile…</Text></Card>;
   if (!profile) return <Card><Text style={s.err}>{error ?? "Profile unavailable."}</Text><Button label="Retry" onPress={()=>void load()} /></Card>;
-  return <Card><View style={s.topbar}><View><Text style={s.eyebrow}>YOUR SPACE</Text><Text style={s.h1}>{profile.onboardingCompleted ? `Welcome, ${profile.displayName}` : "Let's build your profile"}</Text><Text style={s.muted}>{me.email ?? me.phone}</Text></View><Button label="Sign out" secondary onPress={()=>void auth.signOut().catch(err=>setError(errorMessage(err)))} /></View>{error && <Text style={s.err}>{error}</Text>}{!profile.onboardingCompleted ? <Onboarding profile={profile} interests={interests} prompts={prompts} client={client} onDone={setProfile} /> : <Editor profile={profile} interests={interests} prompts={prompts} client={client} onSaved={setProfile} />}</Card>;
+  return <Card><View style={s.topbar}><View><Text style={s.eyebrow}>YOUR SPACE</Text><Text style={s.h1}>{profile.onboardingCompleted ? `Welcome, ${profile.displayName}` : "Let's build your profile"}</Text><Text style={s.muted}>{me.email ?? me.phone}</Text></View><Button label="Sign out" secondary onPress={()=>void auth.signOut().catch(err=>setError(errorMessage(err)))} /></View>{error && <Text style={s.err}>{error}</Text>}{profile.onboardingCompleted && <View style={s.row}><TextButton label={tab === "discover" ? "● Discover" : "Discover"} onPress={() => setTab("discover")} /><TextButton label={tab === "profile" ? "● Your profile" : "Your profile"} onPress={() => setTab("profile")} /></View>}{!profile.onboardingCompleted ? <Onboarding profile={profile} interests={interests} prompts={prompts} client={client} onDone={setProfile} /> : tab === "discover" ? <Discover /> : <Editor profile={profile} interests={interests} prompts={prompts} client={client} onSaved={setProfile} />}</Card>;
 }
 
 function Onboarding({ profile, interests, prompts, client, onDone }: { profile: Profile; interests: Interest[]; prompts: PromptDefinition[]; client: ProfileClient; onDone: (p: Profile)=>void }) {

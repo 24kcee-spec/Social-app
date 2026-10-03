@@ -54,3 +54,25 @@ button.chip.selected { background:var(--accent-soft); color:var(--accent); borde
 .preview-prompt { margin-top:15px; border-top:1px solid var(--line); padding-top:12px; }
 .footer-note { text-align:center; padding:24px 10px; font-size:.8rem; }
 @media (max-width:760px) { main.wide{max-width:620px}.grid{grid-template-columns:1fr}.grid > .card:first-child{grid-column:auto}.media-grid{grid-template-columns:repeat(2,1fr)} }
+.tabs { display:flex; gap:6px; margin-bottom:18px; border-bottom:1px solid var(--line); }
+button.tab { margin:0; border-radius:10px 10px 0 0; background:transparent; color:var(--muted); padding:.65rem 1rem; border-bottom:3px solid transparent; }
+button.tab.active { color:var(--accent); border-bottom-color:var(--accent); background:var(--accent-soft); }
+.notice-row { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
+.feed-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:18px; }
+.person { display:flex; flex-direction:column; gap:10px; }
+.person-head { display:flex; gap:14px; align-items:center; }
+.person-head h2 { margin:0 0 6px; }
+.avatar { width:72px; height:72px; border-radius:50%; object-fit:cover; flex:none; background:var(--accent-soft); }
+.avatar.placeholder { display:grid; place-items:center; font-size:1.8rem; font-weight:800; color:var(--accent); }
+.reasons { margin:0; padding:0; list-style:none; display:grid; gap:4px; }
+.reasons li { background:var(--accent-soft); color:var(--accent); border-radius:10px; padding:.4rem .65rem; font-size:.88rem; font-weight:600; }
+.bio { color:#344054; margin:.2rem 0; }
+.tag.soft { background:#f2f4f7; color:#475467; }
+.card-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:auto; padding-top:6px; }
+.card-actions button { margin:0; }
+button.link.danger { color:var(--err); margin:0 0 0 auto; }
+.empty { text-align:center; padding:40px 22px; }
+.center { display:flex; justify-content:center; margin:18px 0; }
+.skeleton { min-height:220px; background:linear-gradient(90deg,#f2f4f7,#fafbfc,#f2f4f7); background-size:200% 100%; animation:shimmer 1.4s infinite; }
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+@media (max-width:760px) { .notice-row{flex-direction:column;align-items:flex-start} }
