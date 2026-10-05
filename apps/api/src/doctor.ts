@@ -39,6 +39,17 @@ if (env) {
         const fn = await pool.query("select prosrc from pg_proc where proname = 'can_view_discovery_thumbnail' and pronamespace = 'public'::regnamespace");
         if (fn.rows[0]) String(fn.rows[0].prosrc).includes("connection_requests") ? ok("Thumbnail policy knows about connections (Phase 4 version)") : fail("Thumbnail policy is the Phase 3 version (connected people may see blank photos)", "Run docs/supabase-phase4-security.sql in Supabase SQL Editor");
       }
+      const p5 = await pool.query("select to_regclass('public.conversations') as c, to_regclass('public.conversation_members') as m, to_regclass('public.messages') as msg, to_regclass('public.notification_settings') as n, to_regclass('public.device_push_tokens') as t");
+      const phase5 = Boolean(p5.rows[0]?.c && p5.rows[0]?.m && p5.rows[0]?.msg && p5.rows[0]?.n && p5.rows[0]?.t);
+      phase5 ? ok("Phase 5 migrations applied (conversations, messages, notification_settings exist)") : fail("Phase 5 tables missing", "Run: pnpm --filter @sp/api run migrate");
+      if (phase5) {
+        const rls5 = await pool.query("select relname from pg_class where relnamespace = 'public'::regnamespace and relname in ('conversations','conversation_members','messages','notification_settings','device_push_tokens','schema_migrations') and relrowsecurity");
+        rls5.rows.length === 6 ? ok("RLS enabled on Phase 5 tables and schema_migrations") : fail("RLS is not enabled on all Phase 5 tables (or schema_migrations is still open)", "Run docs/supabase-phase5-security.sql in Supabase SQL Editor");
+        const pol5 = await pool.query("select count(*)::int as count from pg_policies where schemaname='public' and tablename='messages' and policyname='messages_member_select'");
+        Number(pol5.rows[0]?.count) === 1 ? ok("Message read policy is member-scoped") : fail("Message member read policy missing (Realtime will stream nothing)", "Run docs/supabase-phase5-security.sql in Supabase SQL Editor");
+        const pub = await pool.query("select count(*)::int as count from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'messages'");
+        Number(pub.rows[0]?.count) === 1 ? ok("Messages are in the supabase_realtime publication") : fail("Messages are not published to Realtime (apps fall back to 20s polling)", "Run docs/supabase-phase5-security.sql in Supabase SQL Editor");
+      }
       if (phase3) {
         const rls3 = await pool.query("select relname from pg_class where relnamespace = 'public'::regnamespace and relname in ('user_blocks','discovery_events') and relrowsecurity");
         rls3.rows.length === 2 ? ok("RLS enabled on Phase 3 tables") : fail("RLS is not enabled on Phase 3 tables", "Run docs/supabase-phase3-security.sql in Supabase SQL Editor");
