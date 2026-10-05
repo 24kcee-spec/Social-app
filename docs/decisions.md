@@ -77,3 +77,12 @@ Max 10 requests per sender per 24 hours, max 20 pending outgoing, one pending re
 
 ## D-025 | 2026-10-03 | Activation measured from the database
 Activation = onboarded member who sent a first request within 48 hours of signing up (activation_milestones: first_request_sent, first_connection). Admin-only `GET /admin/activation/summary?sinceDays=30` returns the funnel and rate. Connected people leave the discovery feed; people with an open request show a relation badge. Sending a request records a discovery `interact` event.
+
+## D-026 | 2026-10-05 | Message pagination cursor is composite (created_at, id)
+The first Phase 5 cursor was created_at-only: two messages written in the same millisecond could be skipped or shown twice when paging. MessagePage now returns an opaque nextCursor (`<timestamptz>~<id>`) and listMessages compares `(created_at, id)` tuples. The raw Postgres timestamp text (microsecond precision) goes into the cursor because a JS Date round-trip would truncate to milliseconds and re-introduce ties. Bare created_at cursors from early clients are still accepted.
+
+## D-027 | 2026-10-05 | Realtime is a member-scoped stream plus API resync, never the source of truth
+supabase_realtime publishes messages and conversation_members; member-only SELECT policies (via the SECURITY DEFINER is_conversation_member, which avoids RLS self-recursion on conversation_members) let Realtime evaluate RLS as the subscribing user, so a stream only ever reaches the two members. Writes stay API-only. The client helper (packages/profile-client/src/realtime.ts) dedupes by id, resubscribes with backoff after TIMED_OUT/CHANNEL_ERROR/CLOSED, and calls onResync after every (re)subscribe so the UI refetches the latest page from the API - a dropped socket can never silently lose a message. Multi-tab needs no coordination: every tab receives every event and merges idempotently.
+
+## D-028 | 2026-10-05 | Push delivery is a pluggable sender behind a notifier, off until credentials
+sendMessage fires onMessageSent only for genuinely new inserts (idempotent client_tag replays never re-notify). The notifier checks notification_settings.messages and registered device_push_tokens, then calls a PushSender. The wired sender is a noop; dropping in FCM/APNs/WebPush is a one-line change in apps/api/src/server.ts. Push failures are logged and swallowed: delivery problems must never fail a send. The same hardening run enabled RLS on public.schema_migrations (was the only open table).
