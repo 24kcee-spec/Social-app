@@ -12,6 +12,7 @@ import { registerConnections } from "./connections/plugin";
 import { createDiscoveryStore } from "./discovery/store";
 import { registerDiscovery } from "./discovery/plugin";
 import { createMessagingStore } from "./messaging/store";
+import { createMessageNotifier, noopPushSender } from "./messaging/notify";
 import { registerMessaging } from "./messaging/plugin";
 import { loadDotEnv } from "./env";
 
@@ -36,7 +37,10 @@ if (pool && env.SUPABASE_URL) {
   registerProfile(app, { requireAuth, store: createProfileStore(db) });
   registerDiscovery(app, { requireAuth, requireRole, store: createDiscoveryStore(db) });
   registerConnections(app, { requireAuth, requireRole, store: createConnectionsStore(db) });
-  registerMessaging(app, { requireAuth, store: createMessagingStore(db) });
+  // Push delivery: noopPushSender until real FCM/APNs credentials are wired (pre-pilot step).
+  // The notifier still enforces notification_settings and device tokens, so going live is a one-line swap.
+  const notifier = createMessageNotifier(db, noopPushSender, (msg, err) => app.log.warn({ err }, msg));
+  registerMessaging(app, { requireAuth, store: createMessagingStore(db, undefined, { onMessageSent: notifier.messageSent }) });
 } else {
   app.log.warn("DATABASE_URL and/or SUPABASE_URL not set: auth routes (/me, /me/sessions) are NOT registered");
 }

@@ -13,13 +13,27 @@ export class MessagingError extends Error {
 
 export const MESSAGE_LIMITS = { perMinute: 20, perDay: 400, pageSize: 50, pageMax: 100 } as const;
 
+/** Fired only for genuinely new messages (never for idempotent replays of the same client_tag). */
+export interface MessageSentEvent {
+  conversationId: string;
+  senderId: string;
+  recipientId: string;
+  messageId: string;
+  body: string;
+}
+export interface MessagingHooks {
+  onMessageSent?: (event: MessageSentEvent) => Promise<unknown>;
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const text = (v: unknown): string => String(v);
 const iso = (v: unknown): string => new Date(v as string | Date).toISOString();
 const ordered = (a: string, b: string): [string, string] => (a < b ? [a, b] : [b, a]);
 
 const PAIR_BLOCKED = `exists (select 1 from user_blocks b where (b.blocker_id = $1 and b.blocked_id = $2) or (b.blocker_id = $2 and b.blocked_id = $1))`;
 
-export function createMessagingStore(db: SqlRunner, clock: () => Date = () => new Date()) {
+export function createMessagingStore(db: SqlRunner, clock: () => Date = () => new Date(), hooks: MessagingHooks = {}) {
   async function memberOf(conversationId: string, userId: string): Promise<boolean> {
     return (await db.query(`select 1 from conversation_members where conversation_id = $1 and user_id = $2`, [conversationId, userId])).rows.length > 0;
   }
@@ -98,7 +112,11 @@ export function createMessagingStore(db: SqlRunner, clock: () => Date = () => ne
     }));
   }
 
-  /** Newest page first internally, returned oldest-first. Cursor: created_at of the oldest message you have. */
+  /**
+   * Newest page first internally, returned oldest-first.
+   * Cursor is the composite (created_at, id) from MessagePage.nextCursor, so messages sharing the exact
+   * same created_at are never skipped or duplicated. A bare created_at (legacy clients) still works.
+   */
   async function listMessages(me: string, conversationId: string, opts: { limit: number; before?: string }): Promise<MessagePage> {
     await requireMember(conversationId, me);
     const pair = await directPair(conversationId);
@@ -111,13 +129,33 @@ export function createMessagingStore(db: SqlRunner, clock: () => Date = () => ne
     const limit = Math.min(Math.max(1, opts.limit), MESSAGE_LIMITS.pageMax);
     const params: unknown[] = [conversationId, limit + 1];
     let cursor = "";
-    if (opts.before) { cursor = `and m.created_at < $3::timestamptz`; params.push(opts.before); }
+    if (opts.before) {
+      const sep = opts.before.lastIndexOf("~");
+      const hasId = sep > 0 && UUID_RE.test(opts.before.slice(sep + 1));
+      const at = hasId ? opts.before.slice(0, sep) : opts.before;
+      if (hasId) {
+        cursor = `and (m.created_at, m.id) < ($3::timestamptz, $4::uuid)`;
+        params.push(at, opts.before.slice(sep + 1));
+      } else {
+        cursor = `and m.created_at < $3::timestamptz`;
+        params.push(at);
+      }
+    }
     const { rows } = await db.query<Record<string, unknown>>(
-      `select m.id::text, m.conversation_id::text, m.sender_id::text, m.body, m.client_tag::text, m.created_at
+      `select m.id::text, m.conversation_id::text, m.sender_id::text, m.body, m.client_tag::text, m.created_at,
+              m.created_at::text as created_at_raw
          from messages m where m.conversation_id = $1 ${cursor} order by m.created_at desc, m.id desc limit $2`,
       params);
     const hasMore = rows.length > limit;
-    return { messages: rows.slice(0, limit).reverse().map((r) => messageView(r, otherReadAt)), hasMore };
+    const page = rows.slice(0, limit).reverse();
+    // created_at_raw keeps full Postgres microsecond precision; a JS Date round-trip would truncate to
+    // milliseconds and could skip same-millisecond messages on the next page.
+    const oldest = page[0];
+    return {
+      messages: page.map((r) => messageView(r, otherReadAt)),
+      hasMore,
+      nextCursor: hasMore && oldest ? `${text(oldest.created_at_raw)}~${text(oldest.id)}` : null,
+    };
   }
 
   /** Sends a text message. Retries with the same clientTag return the stored message instead of a duplicate. */
@@ -150,6 +188,10 @@ export function createMessagingStore(db: SqlRunner, clock: () => Date = () => ne
       await db.query(`insert into activation_milestones (user_id, milestone, reached_at) values ($1, 'first_message', $2::timestamptz) on conflict do nothing`, [me, now.toISOString()]);
       // Sending implies you have read everything so far.
       await db.query(`update conversation_members set last_read_at = greatest(last_read_at, $3::timestamptz) where conversation_id = $1 and user_id = $2`, [conversationId, me, now.toISOString()]);
+      if (hooks.onMessageSent) {
+        // Delivery (push) must never fail a send: notifier errors are swallowed here.
+        await hooks.onMessageSent({ conversationId, senderId: me, recipientId: otherId, messageId: text(row.id), body }).catch(() => undefined);
+      }
     }
     const { rows: readRow } = await db.query<{ last_read_at: Date }>(`select last_read_at from conversation_members where conversation_id = $1 and user_id = $2`, [conversationId, otherId]);
     return messageView(row, readRow[0] ? new Date(readRow[0].last_read_at) : new Date(0));
