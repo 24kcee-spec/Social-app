@@ -110,11 +110,50 @@ describe("messages", () => {
     const page1 = await store().listMessages(ID.B, conv, { limit: 2 });
     expect(page1.messages.map((m) => m.body)).toEqual(["m3", "m4"]);
     expect(page1.hasMore).toBe(true);
-    const page2 = await store().listMessages(ID.B, conv, { limit: 2, before: page1.messages[0]!.createdAt });
+    expect(page1.nextCursor).toMatch(/^.*~[0-9a-f-]{36}$/);
+    const page2 = await store().listMessages(ID.B, conv, { limit: 2, before: page1.nextCursor! });
     expect(page2.messages.map((m) => m.body)).toEqual(["m1", "m2"]);
-    const page3 = await store().listMessages(ID.B, conv, { limit: 2, before: page2.messages[0]!.createdAt });
+    const page3 = await store().listMessages(ID.B, conv, { limit: 2, before: page2.nextCursor! });
     expect(page3.messages.map((m) => m.body)).toEqual(["m0"]);
     expect(page3.hasMore).toBe(false);
+    expect(page3.nextCursor).toBeNull();
+    // Legacy created_at-only cursors from early Phase 5 clients still work.
+    const legacy = await store().listMessages(ID.B, conv, { limit: 2, before: page1.messages[0]!.createdAt });
+    expect(legacy.messages.map((m) => m.body)).toEqual(["m1", "m2"]);
+  });
+
+  it("never skips or duplicates messages that share the exact same created_at", async () => {
+    const conv = await open();
+    // Insert directly: five messages, one timestamp. (Sends via the store always get distinct times.)
+    const sameTime = "2026-10-12T11:00:00.123456+00";
+    for (let i = 0; i < 5; i++) {
+      await db.query(`insert into messages (conversation_id, sender_id, kind, body, client_tag, created_at) values ($1, $2, 'text', $3, $4::uuid, $5::timestamptz)`, [conv, ID.A, `tie ${i}`, TAG(60 + i), sameTime]);
+    }
+    const seen: string[] = [];
+    let before: string | undefined;
+    for (let page = 0; page < 10; page++) {
+      const result = await store().listMessages(ID.B, conv, { limit: 2, ...(before ? { before } : {}) });
+      seen.push(...result.messages.map((m) => m.body));
+      if (!result.hasMore) break;
+      expect(result.nextCursor).toBeTruthy();
+      before = result.nextCursor!;
+    }
+    expect(seen.sort()).toEqual(["tie 0", "tie 1", "tie 2", "tie 3", "tie 4"]);
+  });
+
+  it("fires onMessageSent for a new message but not for an idempotent retry, and a failing hook never fails the send", async () => {
+    const conv = await open();
+    const events: string[] = [];
+    const hooked = createMessagingStore(db, () => NOW, {
+      onMessageSent: async (e) => { events.push(`${e.senderId}->${e.recipientId}:${e.body}`); },
+    });
+    await hooked.sendMessage(ID.A, conv, "ping", TAG(70));
+    await hooked.sendMessage(ID.A, conv, "ping", TAG(70)); // idempotent replay: no second notification
+    expect(events).toEqual([`${ID.A}->${ID.B}:ping`]);
+
+    const failing = createMessagingStore(db, () => NOW, { onMessageSent: async () => { throw new Error("push down"); } });
+    const sent = await failing.sendMessage(ID.A, conv, "still delivered", TAG(71));
+    expect(sent.body).toBe("still delivered");
   });
 
   it("counts unread only for messages from the other person since your watermark", async () => {
