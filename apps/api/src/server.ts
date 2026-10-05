@@ -11,6 +11,8 @@ import { createConnectionsStore } from "./connections/store";
 import { registerConnections } from "./connections/plugin";
 import { createDiscoveryStore } from "./discovery/store";
 import { registerDiscovery } from "./discovery/plugin";
+import { createMessagingStore } from "./messaging/store";
+import { registerMessaging } from "./messaging/plugin";
 import { loadDotEnv } from "./env";
 
 loadDotEnv();
@@ -34,6 +36,7 @@ if (pool && env.SUPABASE_URL) {
   registerProfile(app, { requireAuth, store: createProfileStore(db) });
   registerDiscovery(app, { requireAuth, requireRole, store: createDiscoveryStore(db) });
   registerConnections(app, { requireAuth, requireRole, store: createConnectionsStore(db) });
+  registerMessaging(app, { requireAuth, store: createMessagingStore(db) });
 } else {
   app.log.warn("DATABASE_URL and/or SUPABASE_URL not set: auth routes (/me, /me/sessions) are NOT registered");
 }
