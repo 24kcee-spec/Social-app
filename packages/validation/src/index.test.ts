@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activationQuerySchema, interactionSettingsSchema, introSchema, requestBoxSchema, sendRequestSchema, blockRequestSchema, discoveryEventsRequestSchema, discoveryQuerySchema, interestSelectionsRequestSchema, onboardingSchema, profileMediaRegistrationSchema, profileUpdateSchema, promptAnswersRequestSchema } from "./index";
+import { activationQuerySchema, interactionSettingsSchema, introSchema, messageListQuerySchema, requestBoxSchema, sendRequestSchema, blockRequestSchema, discoveryEventsRequestSchema, discoveryQuerySchema, interestSelectionsRequestSchema, onboardingSchema, profileMediaRegistrationSchema, profileUpdateSchema, promptAnswersRequestSchema } from "./index";
 
 describe("validation", () => {
   it("accepts standard email", async () => { const { emailSchema } = await import("./index"); expect(emailSchema.parse(" A@Example.com ")).toBe("a@example.com"); });
@@ -66,5 +66,13 @@ describe("connection schemas", () => {
     expect(interactionSettingsSchema.safeParse({ lowPressureMode: "yes" }).success).toBe(false);
     expect(activationQuerySchema.parse({})).toEqual({ sinceDays: 30 });
     expect(activationQuerySchema.safeParse({ sinceDays: "0" }).success).toBe(false);
+  });
+  it("accepts composite and legacy message cursors, rejects junk", () => {
+    expect(messageListQuerySchema.parse({})).toEqual({ limit: 50 });
+    expect(messageListQuerySchema.safeParse({ before: "2026-10-12 12:00:00.123456+00~a1000000-0000-4000-8000-000000000000" }).success).toBe(true);
+    expect(messageListQuerySchema.safeParse({ before: "2026-10-12T12:00:00.000Z" }).success).toBe(true); // legacy created_at-only
+    expect(messageListQuerySchema.safeParse({ before: "yesterday" }).success).toBe(false);
+    expect(messageListQuerySchema.safeParse({ before: "2026-10-12 12:00:00+00~not-a-uuid" }).success).toBe(false);
+    expect(messageListQuerySchema.safeParse({ before: "~a1000000-0000-4000-8000-000000000000" }).success).toBe(false);
   });
 });
