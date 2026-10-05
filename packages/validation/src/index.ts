@@ -151,9 +151,21 @@ export const sendMessageSchema = z.object({
 });
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;
 
+const CURSOR_TS_RE = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}(:\d{2})?)?$/;
+const CURSOR_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/**
+ * Opaque message-page cursor: `<timestamptz>~<message id>` as issued in MessagePage.nextCursor.
+ * A bare timestamptz (no `~id`) is accepted for backward compatibility with early Phase 5 clients.
+ */
+export const messageCursorSchema = z.string().max(200).refine((v) => {
+  const i = v.lastIndexOf("~");
+  const [ts, id] = i === -1 ? [v, undefined] : [v.slice(0, i), v.slice(i + 1)];
+  return CURSOR_TS_RE.test(ts) && (id === undefined || CURSOR_ID_RE.test(id));
+}, "Invalid cursor");
+
 export const messageListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
-  before: z.string().datetime({ offset: true }).optional(),
+  before: messageCursorSchema.optional(),
 });
 export type MessageListQuery = z.infer<typeof messageListQuerySchema>;
 

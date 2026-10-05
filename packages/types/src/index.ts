@@ -236,10 +236,27 @@ export interface MessageView {
   read: boolean;
 }
 
-/** Oldest-first within the page; load older messages with before = messages[0].createdAt. */
+/** Oldest-first within the page; load older messages with before = nextCursor. */
 export interface MessagePage {
   messages: MessageView[];
   hasMore: boolean;
+  /**
+   * Opaque cursor (created_at + id) for fetching the next-older page: pass it back as `before`.
+   * Composite so messages sharing the same created_at are never skipped or duplicated.
+   * Null when hasMore is false. Do not construct it by hand.
+   */
+  nextCursor: string | null;
+}
+
+/** A message as pushed by Supabase Realtime (postgres_changes on public.messages). */
+export interface RealtimeMessage {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  kind: MessageKind;
+  body: string;
+  clientTag: string;
+  createdAt: string;
 }
 
 export interface NotificationSettings {
