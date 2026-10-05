@@ -30,6 +30,15 @@ if (env) {
       const d = await pool.query("select to_regclass('public.user_blocks') as blocks, to_regclass('public.discovery_events') as events");
       const phase3 = Boolean(d.rows[0]?.blocks && d.rows[0]?.events);
       phase3 ? ok("Phase 3 migrations applied (user_blocks, discovery_events exist)") : fail("Phase 3 tables missing", "Run: pnpm --filter @sp/api run migrate");
+      const p4 = await pool.query("select to_regclass('public.connection_requests') as r, to_regclass('public.connections') as c, to_regclass('public.activation_milestones') as a");
+      const phase4 = Boolean(p4.rows[0]?.r && p4.rows[0]?.c && p4.rows[0]?.a);
+      phase4 ? ok("Phase 4 migrations applied (connection_requests, connections exist)") : fail("Phase 4 tables missing", "Run: pnpm --filter @sp/api run migrate");
+      if (phase4) {
+        const rls4 = await pool.query("select relname from pg_class where relnamespace = 'public'::regnamespace and relname in ('question_cards','this_or_that_catalog','interaction_settings','connection_requests','connections','activation_milestones') and relrowsecurity");
+        rls4.rows.length === 6 ? ok("RLS enabled on Phase 4 tables") : fail("RLS is not enabled on all Phase 4 tables", "Run docs/supabase-phase4-security.sql in Supabase SQL Editor");
+        const fn = await pool.query("select prosrc from pg_proc where proname = 'can_view_discovery_thumbnail' and pronamespace = 'public'::regnamespace");
+        if (fn.rows[0]) String(fn.rows[0].prosrc).includes("connection_requests") ? ok("Thumbnail policy knows about connections (Phase 4 version)") : fail("Thumbnail policy is the Phase 3 version (connected people may see blank photos)", "Run docs/supabase-phase4-security.sql in Supabase SQL Editor");
+      }
       if (phase3) {
         const rls3 = await pool.query("select relname from pg_class where relnamespace = 'public'::regnamespace and relname in ('user_blocks','discovery_events') and relrowsecurity");
         rls3.rows.length === 2 ? ok("RLS enabled on Phase 3 tables") : fail("RLS is not enabled on Phase 3 tables", "Run docs/supabase-phase3-security.sql in Supabase SQL Editor");

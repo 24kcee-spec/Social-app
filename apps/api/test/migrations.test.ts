@@ -23,7 +23,7 @@ describe("migration runner", () => {
   it("is idempotent: a second run applies nothing", async () => {
     expect(await runMigrations(db, dir)).toEqual([]);
     const { rows } = await db.query<{ name: string }>("select name from schema_migrations");
-    expect(rows.map((r) => r.name)).toEqual(["0001_users_and_roles.sql", "0002_user_sessions.sql", "0003_profiles_interests_prompts_media.sql", "0004_discovery_and_blocks.sql"]);
+    expect(rows.map((r) => r.name)).toEqual(["0001_users_and_roles.sql", "0002_user_sessions.sql", "0003_profiles_interests_prompts_media.sql", "0004_discovery_and_blocks.sql", "0005_connections_and_starters.sql"]);
   });
 });
 
@@ -178,5 +178,44 @@ describe("discovery tables", () => {
     await expect(db.query("insert into discovery_events (viewer_id, candidate_id, event_type) values ($1, $1, 'open')", [a.id])).rejects.toThrow();
     await db.query("delete from users where id = $1", [a.id]);
     expect((await db.query("select * from discovery_events")).rows).toHaveLength(0);
+  });
+});
+
+describe("connection tables", () => {
+  const mk = async (email: string) => ((await insertUser(email, null)).rows[0] as { id: string }).id;
+  const req = (a: string, b: string, kind = "question", extra = "") => db.query(`insert into connection_requests (sender_id, recipient_id, intro_kind, intro_ref, intro_text, expires_at${extra ? ", intro_choice" : ""}) values ($1, $2, $3::intro_kind, $4, 'Hello there', now() + interval '14 days'${extra ? ", $5" : ""})`, extra ? [a, b, kind, kind === "custom" ? null : "ref", extra] : [a, b, kind, kind === "custom" ? null : "ref"]);
+
+  it("allows only one pending request per pair, in either direction, but history after it is answered", async () => {
+    const a = await mk("a@example.com"); const b = await mk("b@example.com");
+    await req(a, b);
+    await expect(req(a, b)).rejects.toThrow();
+    await expect(req(b, a)).rejects.toThrow();
+    await db.query("update connection_requests set status = 'declined'");
+    await req(a, b);
+  });
+  it("rejects self requests and malformed intros", async () => {
+    const a = await mk("a@example.com"); const b = await mk("b@example.com");
+    await expect(req(a, a)).rejects.toThrow();
+    await expect(req(a, b, "this_or_that")).rejects.toThrow();
+    await expect(req(a, b, "question", "a")).rejects.toThrow();
+    await expect(req(a, b, "custom", "a")).rejects.toThrow();
+    await req(a, b, "this_or_that", "b");
+    await expect(db.query("update connection_requests set intro_text = ' '")).rejects.toThrow();
+  });
+  it("stores each connection once, in a fixed order, and cascades with the user", async () => {
+    const a = await mk("a@example.com"); const b = await mk("b@example.com");
+    const [lo, hi] = a < b ? [a, b] : [b, a];
+    await expect(db.query("insert into connections (user_a, user_b) values ($1, $2)", [hi, lo])).rejects.toThrow();
+    await db.query("insert into connections (user_a, user_b) values ($1, $2)", [lo, hi]);
+    await expect(db.query("insert into connections (user_a, user_b) values ($1, $2)", [lo, hi])).rejects.toThrow();
+    await db.query("delete from users where id = $1", [a]);
+    expect((await db.query("select * from connections")).rows).toHaveLength(0);
+  });
+  it("seeds the starter catalogs and knows only real milestones", async () => {
+    expect(Number(((await db.query("select count(*) as n from question_cards")).rows[0] as { n: string }).n)).toBe(16);
+    expect(Number(((await db.query("select count(*) as n from this_or_that_catalog")).rows[0] as { n: string }).n)).toBe(14);
+    const a = await mk("a@example.com");
+    await db.query("insert into activation_milestones (user_id, milestone) values ($1, 'first_request_sent')", [a]);
+    await expect(db.query("insert into activation_milestones (user_id, milestone) values ($1, 'went_viral')", [a])).rejects.toThrow();
   });
 });

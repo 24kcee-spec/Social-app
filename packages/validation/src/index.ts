@@ -120,3 +120,22 @@ export type DiscoveryEventsRequest = z.infer<typeof discoveryEventsRequestSchema
 
 export const blockRequestSchema = z.object({ userId: z.string().uuid() });
 export type BlockRequest = z.infer<typeof blockRequestSchema>;
+
+/** The intro is chosen, never typed, unless "custom" (a short note, refused for people in low-pressure mode). */
+export const introSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("icebreaker"), ref: z.string().uuid() }),
+  z.object({ kind: z.literal("question"), ref: z.string().min(1).max(60) }),
+  z.object({ kind: z.literal("this_or_that"), ref: z.string().min(1).max(60), choice: z.enum(["a", "b"]) }),
+  z.object({ kind: z.literal("custom"), text: z.string().trim().min(2).max(240) }),
+]);
+export type IntroInput = z.infer<typeof introSchema>;
+
+export const sendRequestSchema = z.object({ recipientId: z.string().uuid(), intro: introSchema });
+export type SendRequestInput = z.infer<typeof sendRequestSchema>;
+
+export const requestBoxSchema = z.object({ box: z.enum(["incoming", "outgoing"]).default("incoming") });
+
+export const interactionSettingsSchema = z.object({ lowPressureMode: z.boolean() });
+export type InteractionSettingsInput = z.infer<typeof interactionSettingsSchema>;
+
+export const activationQuerySchema = z.object({ sinceDays: z.coerce.number().int().min(1).max(365).default(30) });

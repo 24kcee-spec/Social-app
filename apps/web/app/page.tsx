@@ -6,6 +6,7 @@ import { AuthClientError, type DeviceSession, type Me } from "@sp/auth-client";
 import { type ProfileClient } from "@sp/profile-client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { errorMessage, getAuth, isConfigured } from "../lib/auth";
+import { Connections } from "./connections";
 import { Discover } from "./discover";
 import { deleteProfileImage, getProfileClient, getSignedMediaUrl, uploadProfileImage } from "../lib/profile";
 
@@ -100,7 +101,8 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [tab, setTab] = useState<"discover" | "profile">("discover");
+  const [tab, setTab] = useState<"discover" | "connections" | "profile">("discover");
+  const [pendingIn, setPendingIn] = useState(0);
   const client = useMemo<ProfileClient>(() => getProfileClient(), []);
 
   const loadProfile = useCallback(async () => {
@@ -117,8 +119,8 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
   return <div>
     <div className="topbar"><div><div className="eyebrow">YOUR SPACE</div><h1>{profile?.onboardingCompleted ? `Welcome, ${profile.displayName}` : "Let's build your profile"}</h1><p className="muted">{me.email ?? me.phone}</p></div><button className="secondary compact" onClick={() => void signOut()}>Sign out</button></div>
     {error && <div className="notice err" role="alert">{error}<button className="link" onClick={() => void loadProfile()}>Retry</button></div>}
-    {profile?.onboardingCompleted && <div className="tabs" role="tablist"><button role="tab" aria-selected={tab === "discover"} className={tab === "discover" ? "tab active" : "tab"} onClick={() => setTab("discover")}>Discover</button><button role="tab" aria-selected={tab === "profile"} className={tab === "profile" ? "tab active" : "tab"} onClick={() => setTab("profile")}>Your profile</button></div>}
-    {loading ? <div className="card"><p className="muted">Loading your profile…</p></div> : profile && !profile.onboardingCompleted ? <Onboarding profile={profile} interests={interests} prompts={prompts} client={client} onDone={setProfile} /> : profile ? (tab === "discover" ? <Discover /> : <ProfileEditor profile={profile} interests={interests} prompts={prompts} client={client} onSaved={setProfile} />) : null}
+    {profile?.onboardingCompleted && <div className="tabs" role="tablist"><button role="tab" aria-selected={tab === "discover"} className={tab === "discover" ? "tab active" : "tab"} onClick={() => setTab("discover")}>Discover</button><button role="tab" aria-selected={tab === "connections"} className={tab === "connections" ? "tab active" : "tab"} onClick={() => setTab("connections")}>Connections{pendingIn > 0 && <span className="tag">{pendingIn}</span>}</button><button role="tab" aria-selected={tab === "profile"} className={tab === "profile" ? "tab active" : "tab"} onClick={() => setTab("profile")}>Your profile</button></div>}
+    {loading ? <div className="card"><p className="muted">Loading your profile…</p></div> : profile && !profile.onboardingCompleted ? <Onboarding profile={profile} interests={interests} prompts={prompts} client={client} onDone={setProfile} /> : profile ? (tab === "discover" ? <Discover /> : tab === "connections" ? <Connections onCount={setPendingIn} /> : <ProfileEditor profile={profile} interests={interests} prompts={prompts} client={client} onSaved={setProfile} />) : null}
     <Devices sessions={sessions} revoke={revoke} />
     <p className="muted footer-note">You choose whether you are discoverable in Your profile → Privacy. Blocked people never see you and you never see them.</p>
   </div>;

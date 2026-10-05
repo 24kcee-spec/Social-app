@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { blockRequestSchema, discoveryEventsRequestSchema, discoveryQuerySchema, interestSelectionsRequestSchema, onboardingSchema, profileMediaRegistrationSchema, profileUpdateSchema, promptAnswersRequestSchema } from "./index";
+import { activationQuerySchema, interactionSettingsSchema, introSchema, requestBoxSchema, sendRequestSchema, blockRequestSchema, discoveryEventsRequestSchema, discoveryQuerySchema, interestSelectionsRequestSchema, onboardingSchema, profileMediaRegistrationSchema, profileUpdateSchema, promptAnswersRequestSchema } from "./index";
 
 describe("validation", () => {
   it("accepts standard email", async () => { const { emailSchema } = await import("./index"); expect(emailSchema.parse(" A@Example.com ")).toBe("a@example.com"); });
@@ -41,5 +41,30 @@ describe("discovery schemas", () => {
   it("requires a uuid to block", () => {
     expect(blockRequestSchema.safeParse({ userId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa" }).success).toBe(true);
     expect(blockRequestSchema.safeParse({ userId: "me" }).success).toBe(false);
+  });
+});
+
+describe("connection schemas", () => {
+  const id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  it("accepts each structured intro and a trimmed custom note", () => {
+    expect(introSchema.safeParse({ kind: "icebreaker", ref: id }).success).toBe(true);
+    expect(introSchema.safeParse({ kind: "question", ref: "q_energy" }).success).toBe(true);
+    expect(introSchema.safeParse({ kind: "this_or_that", ref: "t_coffee_tea", choice: "a" }).success).toBe(true);
+    expect(introSchema.parse({ kind: "custom", text: "  Hello!  " })).toEqual({ kind: "custom", text: "Hello!" });
+  });
+  it("rejects incomplete or oversized intros", () => {
+    expect(introSchema.safeParse({ kind: "this_or_that", ref: "t" }).success).toBe(false);
+    expect(introSchema.safeParse({ kind: "icebreaker", ref: "x" }).success).toBe(false);
+    expect(introSchema.safeParse({ kind: "custom", text: "a" }).success).toBe(false);
+    expect(introSchema.safeParse({ kind: "custom", text: "a".repeat(241) }).success).toBe(false);
+    expect(sendRequestSchema.safeParse({ recipientId: "x", intro: { kind: "question", ref: "q" } }).success).toBe(false);
+  });
+  it("defaults and validates the inbox box, settings and activation window", () => {
+    expect(requestBoxSchema.parse({})).toEqual({ box: "incoming" });
+    expect(requestBoxSchema.safeParse({ box: "x" }).success).toBe(false);
+    expect(interactionSettingsSchema.safeParse({ lowPressureMode: true }).success).toBe(true);
+    expect(interactionSettingsSchema.safeParse({ lowPressureMode: "yes" }).success).toBe(false);
+    expect(activationQuerySchema.parse({})).toEqual({ sinceDays: 30 });
+    expect(activationQuerySchema.safeParse({ sinceDays: "0" }).success).toBe(false);
   });
 });

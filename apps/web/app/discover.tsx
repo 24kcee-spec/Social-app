@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { errorMessage } from "../lib/auth";
 import { getDiscoveryClient } from "../lib/discovery";
 import { getSignedMediaUrl } from "../lib/profile";
+import { SayHi } from "./say-hi";
 
 const STYLE_LABELS: Record<SocialStyle, string> = { small_group: "Small groups", one_to_one: "One-to-one", text_first: "Text-first", voice_first: "Voice-first", low_pressure: "Low pressure" };
 const PAGE = 12;
@@ -20,6 +21,7 @@ export function Discover() {
   const [photos, setPhotos] = useState<Record<string, string>>({});
   const [open, setOpen] = useState<string | null>(null);
   const [blocks, setBlocks] = useState<BlockedUser[] | null>(null);
+  const [greeting, setGreeting] = useState<string | null>(null);
   const seen = useRef<Set<string>>(new Set());
 
   const loadPhotos = useCallback(async (cards: DiscoveryCard[]) => {
@@ -90,7 +92,11 @@ export function Discover() {
         {card.bio && <p className="bio">{card.bio}</p>}
         <div className="tag-row">{card.interests.slice(0, open === card.userId ? 12 : 5).map((i) => <span className={card.sharedInterests.some((s) => s.id === i.id) ? "tag" : "tag soft"} key={i.id}>{i.name}</span>)}</div>
         {open === card.userId && card.prompts.map((p) => <div className="preview-prompt" key={p.promptId}><strong>{p.prompt}</strong><p>{p.answer}</p></div>)}
+        {greeting === card.userId && <SayHi card={card} onClose={() => setGreeting(null)} onSent={(message) => { setGreeting(null); setNotice(message); void load(); }} />}
+        {card.relation === "pending_in" && <p className="muted"><strong>{card.displayName} said hi to you.</strong> See Connections to reply.</p>}
+        {card.relation === "pending_out" && <p className="muted">You said hi. No pressure, they can reply any time.</p>}
         <div className="card-actions">
+          {card.relation === "none" && (card.messagePermission === "nobody" ? <span className="muted">Not accepting new connections</span> : <button className="compact" onClick={() => setGreeting(greeting === card.userId ? null : card.userId)}>Say hi</button>)}
           <button className="secondary compact" onClick={() => toggle(card)} aria-expanded={open === card.userId}>{open === card.userId ? "Show less" : "View profile"}</button>
           <button className="secondary compact" onClick={() => skip(card)}>Not now</button>
           <button className="link danger" onClick={() => void block(card)}>Block</button>

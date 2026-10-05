@@ -62,3 +62,18 @@ Feed cards show only the 512px thumbnail. docs/supabase-phase3-security.sql adds
 
 ## D-020 | 2026-10-02 | Product direction note
 The app is for everyone, not only students. Phase 3 contains nothing campus-specific. Pilot eligibility (D-007) still decides who is let in first; it does not change the product.
+
+## D-021 | 2026-10-03 | Saying hi is a choice from a menu, rendered by the server (Phase 4)
+A connection request carries a structured intro: an interest icebreaker (only for an interest both people have), a question card, a this-or-that pick, or a short custom note (2-240 chars). The server renders the final sentence from the catalog (migration 0005 seeds 16 question cards and 14 this-or-that games), so the client cannot supply text for structured intros. Suggestions are deterministic per pair (FNV-1a pick). Messaging itself is Phase 5; accepting only creates the connection.
+
+## D-022 | 2026-10-03 | Declines are private; requests expire quietly
+Requests expire after 14 days (computed lazily, no scheduler). A sender sees only pending / accepted / "no reply": declined and expired read the same, and a sender cannot retry the same person for 30 days. If B already said hi to A, A saying hi back connects them at once. Blocking removes the connection and withdraws open requests.
+
+## D-023 | 2026-10-03 | Low-pressure mode = structured openers only, no obligation to answer
+Stored in interaction_settings (own table, so Phase 2 profile types are untouched). People in the mode refuse custom free text (`custom_not_allowed`); the UI hides the free-text box for them. People with message permission "nobody" cannot be sent requests.
+
+## D-024 | 2026-10-03 | Anti-spam limits
+Max 10 requests per sender per 24 hours, max 20 pending outgoing, one pending request per pair (database-enforced in either direction), 30-day retry cooldown after a decline/expiry. Recipients that are not visible to the sender (private, not onboarded, blocked, unknown) all look like "not found".
+
+## D-025 | 2026-10-03 | Activation measured from the database
+Activation = onboarded member who sent a first request within 48 hours of signing up (activation_milestones: first_request_sent, first_connection). Admin-only `GET /admin/activation/summary?sinceDays=30` returns the funnel and rate. Connected people leave the discovery feed; people with an open request show a relation badge. Sending a request records a discovery `interact` event.

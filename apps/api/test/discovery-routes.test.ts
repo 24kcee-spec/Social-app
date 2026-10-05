@@ -8,7 +8,7 @@ import { OnboardingRequiredError, RateLimitedError, SelfActionError, UnknownUser
 const ME = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const OTHER = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 
-const card: DiscoveryCard = { userId: OTHER, displayName: "Bea", bio: "Hi", socialStyles: ["low_pressure"], messagePermission: "everyone", interests: [], sharedInterests: [], prompts: [], thumbnailPath: null, score: 12, reasons: [{ code: "shared_interests", text: "You both like Football", points: 12 }] };
+const card: DiscoveryCard = { userId: OTHER, displayName: "Bea", bio: "Hi", socialStyles: ["low_pressure"], messagePermission: "everyone", interests: [], sharedInterests: [], prompts: [], thumbnailPath: null, relation: "none", score: 12, reasons: [{ code: "shared_interests", text: "You both like Football", points: 12 }] };
 
 function makeStore(over: Partial<DiscoveryStore> = {}): DiscoveryStore {
   return {

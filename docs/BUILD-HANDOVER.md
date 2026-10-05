@@ -1,4 +1,4 @@
-# BUILD HANDOVER - Social Connection Platform (updated 3 Oct 2026)
+# BUILD HANDOVER - Social Connection Platform (updated 3 Oct 2026, after Phase 4)
 
 Paste this file into a new Claude session, attach `Social-Connection-Platform-Blueprint-FINAL.pdf`, and say: **"Continue at <step>."**
 
@@ -9,17 +9,17 @@ Paste this file into a new Claude session, attach `Social-Connection-Platform-Bl
 | Local repo | `C:\Dev\social-platform` (untracked `.agents/` and `skills-lock.json` are NOT ours - never commit) |
 | GitHub | `https://github.com/24kcee-spec/Social-app.git`, branch `main` (make repo PRIVATE) |
 | Stack | pnpm monorepo, TypeScript, Fastify API, Supabase (Postgres + Auth + Storage), Next.js web, Expo mobile, vitest, zod |
-| Done | Phase 0 docs; Phase 1 auth (live gate passed); Phase 2 profiles/onboarding/media (done and tested; Android testing deferred); Phase 3 code (people discovery API + web + mobile) via `Deliver-Phase3-Discovery-SOCIAL.ps1` |
-| In progress | Phase 3 LIVE GATE (see section 2) |
-| Test baseline | `pnpm verify` = 187 passing after Phase 3 (config 7, validation 20, auth-client 16, profile-client 17, api 127) |
-| Next | Finish Phase 3 live gate, then Phase 4 (low-pressure interaction) |
+| Done | Phases 0-2 (auth, profiles, onboarding, media; Android testing deferred); Phase 3 people discovery (live gate passed); Phase 4 low-pressure interaction code via `Deliver-Phase4-Interaction-SOCIAL.ps1` |
+| In progress | Phase 4 LIVE GATE (see section 2) |
+| Test baseline | `pnpm verify` = 235 passing after Phase 4 (config 7, validation 23, auth-client 16, profile-client 21, api 168) |
+| Next | Finish Phase 4 live gate, then Phase 5 (messaging + notifications) |
 
 ## 2. Immediate next steps (in order)
-1. `cd C:\Dev\social-platform; git log --oneline -3` must show `phase3`. If not, run `.\Deliver-Phase3-Discovery-SOCIAL.ps1 -GitHubRemote "https://github.com/24kcee-spec/Social-app.git"` from Downloads.
-2. `pnpm --filter @sp/api run migrate` (applies 0004). Run `docs/supabase-phase3-security.sql` in the Supabase SQL Editor (safe to re-run). `pnpm --filter @sp/api run setup-check` = All checks passed.
-3. Restart API and web. Use two accounts that finished onboarding (one discoverable). Check: each sees the other with reasons; "Not now" demotes; Block hides both ways; photos show.
-4. Admin check (optional): grant yourself the admin role in `user_roles`, call `GET /admin/discovery/explain?viewerId=..&candidateId=..`.
-5. Then Phase 4.
+1. `cd C:\Dev\social-platform; git log --oneline -3` must show `phase4`. If not, run `.\Deliver-Phase4-Interaction-SOCIAL.ps1 -GitHubRemote "https://github.com/24kcee-spec/Social-app.git"` from Downloads.
+2. `pnpm --filter @sp/api run migrate` (applies 0005). Run `docs/supabase-phase4-security.sql` in the Supabase SQL Editor (safe to re-run). `pnpm --filter @sp/api run setup-check` = All checks passed.
+3. Restart API and web. With two finished accounts: A taps Say hi on B and picks an opener; B opens Connections and taps Connect; both appear in each other's Connections; B turns on Low-pressure mode and A can no longer write free text; Block removes the connection.
+4. Optional admin check: give yourself the admin role in `user_roles`, call `GET /admin/activation/summary`.
+5. Then Phase 5.
 
 ## 3. Rules (non-negotiable)
 **Claude must:**
@@ -56,7 +56,7 @@ Rejected push: `git fetch origin; git rebase origin/main; pnpm verify; git push 
 
 ## 5. Remaining phases (blueprint order)
 - **Phase 3 Discovery + compatibility (people only) - DELIVERED, live gate pending:** minimal `user_blocks` table; candidate filters (exclude blocked/banned/non-discoverable); deterministic weighted score (shared interests strong, style/prompts moderate, recency small boost, repeated ignores reduce, blocks hard-exclude); reason text on every card; freshness + diversity; `discovery_events` (impression/open/ignore/interact); fixture tests with expected order; API `GET /discovery/people`, `POST /discovery/events`; discovery feed on web + mobile. Groups/activities cards wait for Phase 6.
-- **Phase 4 Low-pressure interaction:** connection requests (send/accept/decline/expire), icebreakers from shared interests, question cards, mini-games, conversation assist, low-pressure mode, anti-spam rate limits.
+- **Phase 4 Low-pressure interaction - DELIVERED, live gate pending:** connection requests (send/accept/decline/expire), icebreakers from shared interests, question cards, mini-games, conversation assist, low-pressure mode, anti-spam rate limits.
 - **Phase 5 Messaging + notifications:** conversations, realtime (Supabase Realtime), delivery states, media messages, push (FCM/APNs/web) + preferences, reconnect handling. Gate: consistent on Android + iOS + web.
 - **Phase 6 Groups + activities + events:** roles, capacity/RSVP/waitlist, general-area only, event pages/chat/QR, local feed.
 - **Phase 9 Safety (before public pilot):** block/report everywhere, moderation queue, rate limits, verification levels, data deletion, security review, incident playbook.
@@ -65,6 +65,7 @@ Rejected push: `git fetch origin; git rebase origin/main; pnpm verify; git push 
 - **After pilot signal only:** Phase 7 content, Phase 8 music (one provider, metadata only), Phase 11 analytics then monetisation, Phase 12 scale.
 
 ## 6. Known gotchas
+- Migrate (0005) BEFORE running `docs/supabase-phase4-security.sql` (it replaces the Phase 3 thumbnail function; run the phase 3 file first if you have not).
 - Migrate (0004) BEFORE running `docs/supabase-phase3-security.sql`. Without that SQL, feed photos are blank (Storage policy missing).
 - Pilot eligibility (D-007) is still open; the product itself is for everyone, not students only.
 - Plain `pnpm doctor` is a pnpm builtin; use `pnpm --filter @sp/api run setup-check` and always `run` for scripts.

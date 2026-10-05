@@ -133,6 +133,8 @@ export interface DiscoveryReason {
   points: number;
 }
 
+export type DiscoveryRelation = "none" | "pending_out" | "pending_in";
+
 export interface DiscoveryCard {
   userId: string;
   displayName: string;
@@ -144,6 +146,8 @@ export interface DiscoveryCard {
   prompts: PromptAnswer[];
   /** Thumbnail only; originals are never exposed through discovery. */
   thumbnailPath: string | null;
+  /** Where this person stands with the viewer. Connected people are not shown in discovery. */
+  relation: DiscoveryRelation;
   score: number;
   /** Positive reasons only, strongest first. Never empty. */
   reasons: DiscoveryReason[];
@@ -158,4 +162,62 @@ export interface BlockedUser {
   userId: string;
   displayName: string;
   blockedAt: string;
+}
+
+// ---- Phase 4: low-pressure interaction ----
+export const INTRO_KINDS = ["icebreaker", "question", "this_or_that", "custom"] as const;
+export type IntroKind = (typeof INTRO_KINDS)[number];
+
+/** What a sender sees. Declined and expired both read as "no_reply" so nobody is told they were turned down. */
+export type RequestStatus = "pending" | "accepted" | "no_reply";
+
+export interface PersonSummary {
+  userId: string;
+  displayName: string;
+  bio: string;
+  thumbnailPath: string | null;
+}
+
+export interface ConnectionRequestView {
+  id: string;
+  other: PersonSummary;
+  intro: { kind: IntroKind; text: string };
+  status: RequestStatus;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface ConnectionView {
+  other: PersonSummary;
+  connectedAt: string;
+}
+
+export interface StarterSet {
+  icebreakers: { ref: string; text: string; interestName: string }[];
+  questions: { ref: string; text: string }[];
+  games: { ref: string; optionA: string; optionB: string }[];
+  /** False when the person is in low-pressure mode: only the structured starters above can be sent. */
+  allowCustom: boolean;
+}
+
+export interface InteractionSettings {
+  lowPressureMode: boolean;
+}
+
+export interface SendRequestResult {
+  /** "connected" means they had already said hi to you, so the two requests became a connection. */
+  status: "pending" | "connected";
+  requestId: string;
+}
+
+export interface ActivationSummary {
+  sinceDays: number;
+  signedUp: number;
+  onboarded: number;
+  sentFirstRequest: number;
+  connected: number;
+  /** Onboarded people who sent a first request within 48 hours of signing up. */
+  activatedWithin48h: number;
+  /** activatedWithin48h / onboarded, or null when nobody has onboarded yet. */
+  activationRate: number | null;
 }

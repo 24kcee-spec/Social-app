@@ -7,6 +7,8 @@ import { createTokenVerifier } from "./auth/verify";
 import { makePool } from "./db";
 import { createProfileStore } from "./profile/store";
 import { registerProfile } from "./profile/plugin";
+import { createConnectionsStore } from "./connections/store";
+import { registerConnections } from "./connections/plugin";
 import { createDiscoveryStore } from "./discovery/store";
 import { registerDiscovery } from "./discovery/plugin";
 import { loadDotEnv } from "./env";
@@ -31,6 +33,7 @@ if (pool && env.SUPABASE_URL) {
   const { requireAuth, requireRole } = registerAuth(app, { verify, store });
   registerProfile(app, { requireAuth, store: createProfileStore(db) });
   registerDiscovery(app, { requireAuth, requireRole, store: createDiscoveryStore(db) });
+  registerConnections(app, { requireAuth, requireRole, store: createConnectionsStore(db) });
 } else {
   app.log.warn("DATABASE_URL and/or SUPABASE_URL not set: auth routes (/me, /me/sessions) are NOT registered");
 }

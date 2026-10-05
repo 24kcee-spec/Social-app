@@ -4,6 +4,7 @@ import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text, View } fr
 import { errorMessage } from "./auth";
 import { getDiscoveryClient } from "./discovery";
 import { getSignedMediaUrl } from "./profile";
+import { SayHi } from "./SayHi";
 
 const STYLE_LABELS: Record<SocialStyle, string> = { small_group: "Small groups", one_to_one: "One-to-one", text_first: "Text-first", voice_first: "Voice-first", low_pressure: "Low pressure" };
 const PAGE = 12;
@@ -23,6 +24,7 @@ export function Discover() {
   const [photos, setPhotos] = useState<Record<string, string>>({});
   const [open, setOpen] = useState<string | null>(null);
   const [blocks, setBlocks] = useState<BlockedUser[] | null>(null);
+  const [greeting, setGreeting] = useState<string | null>(null);
   const seen = useRef<Set<string>>(new Set());
 
   const loadPhotos = useCallback(async (cards: DiscoveryCard[]) => {
@@ -85,7 +87,10 @@ export function Discover() {
         {!!card.bio && <Text style={d.bio}>{card.bio}</Text>}
         <View style={d.tags}>{card.interests.slice(0, open === card.userId ? 12 : 5).map((i) => { const shared = card.sharedInterests.some((x) => x.id === i.id); return <View key={i.id} style={[d.tag, shared && d.tagShared]}><Text style={shared ? d.tagSharedText : d.tagText}>{i.name}</Text></View>; })}</View>
         {open === card.userId && card.prompts.map((p) => <View key={p.promptId} style={d.prompt}><Text style={d.promptTitle}>{p.prompt}</Text><Text style={d.bio}>{p.answer}</Text></View>)}
-        <View style={d.actions}><Btn label={open === card.userId ? "Show less" : "View profile"} onPress={() => toggle(card)} /><Btn label="Not now" onPress={() => skip(card)} /><Btn label="Block" danger onPress={() => confirmBlock(card)} /></View>
+        {greeting === card.userId && <SayHi card={card} onClose={() => setGreeting(null)} onSent={(message) => { setGreeting(null); setNotice(message); void load(); }} />}
+        {card.relation === "pending_in" && <Text style={d.muted}>{card.displayName} said hi to you. See Connections to reply.</Text>}
+        {card.relation === "pending_out" && <Text style={d.muted}>You said hi. No pressure, they can reply any time.</Text>}
+        <View style={d.actions}>{card.relation === "none" && (card.messagePermission === "nobody" ? <Text style={d.muted}>Not accepting new connections</Text> : <Btn label="Say hi" onPress={() => setGreeting(greeting === card.userId ? null : card.userId)} />)}<Btn label={open === card.userId ? "Show less" : "View profile"} onPress={() => toggle(card)} /><Btn label="Not now" onPress={() => skip(card)} /><Btn label="Block" danger onPress={() => confirmBlock(card)} /></View>
       </View>)}
     {!loading && hasMore && <Btn label={loadingMore ? "Loading…" : "Show more people"} onPress={() => void more()} disabled={loadingMore} />}
     <Btn label={blocks ? "Hide blocked people" : "Blocked people"} onPress={() => void (blocks ? setBlocks(null) : showBlocks())} />

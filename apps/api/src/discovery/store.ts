@@ -1,4 +1,4 @@
-import type { BlockedUser, DiscoveryCard, DiscoveryEventType, DiscoveryFeed, DiscoveryReason, InterestStrength, MessagePermission, SocialStyle } from "@sp/types";
+import type { BlockedUser, DiscoveryCard, DiscoveryRelation, DiscoveryEventType, DiscoveryFeed, DiscoveryReason, InterestStrength, MessagePermission, SocialStyle } from "@sp/types";
 import type { SqlRunner } from "../migrate";
 import { rankCandidates, scoreCandidate, visibleReasons, type ScoredCandidate, type ScoringHistory, type ScoringPerson } from "./scoring";
 
@@ -15,7 +15,8 @@ const asDate = (v: unknown): Date => new Date(v as string | Date);
 
 /** Eligibility is one SQL fragment so the feed and the admin "why" tool can never disagree. $1 = viewer id. */
 const ELIGIBLE = `p.discoverable = true and p.onboarding_completed = true and u.status = 'active' and p.user_id <> $1
-  and not exists (select 1 from user_blocks b where (b.blocker_id = $1 and b.blocked_id = p.user_id) or (b.blocker_id = p.user_id and b.blocked_id = $1))`;
+  and not exists (select 1 from user_blocks b where (b.blocker_id = $1 and b.blocked_id = p.user_id) or (b.blocker_id = p.user_id and b.blocked_id = $1))
+  and not exists (select 1 from connections c where (c.user_a = $1 and c.user_b = p.user_id) or (c.user_b = $1 and c.user_a = p.user_id))`;
 
 interface LoadedPerson {
   person: ScoringPerson;
@@ -94,6 +95,16 @@ export function createDiscoveryStore(db: SqlRunner, clock: () => Date = () => ne
     return out;
   }
 
+  async function loadRelations(viewerId: string, ids: string[], now: Date): Promise<Map<string, DiscoveryRelation>> {
+    const out = new Map<string, DiscoveryRelation>();
+    if (ids.length === 0) return out;
+    const { rows } = await db.query<Record<string, unknown>>(
+      `select case when sender_id = $1 then recipient_id::text else sender_id::text end as other, (sender_id = $1) as outgoing from connection_requests
+        where status = 'pending' and expires_at > $3::timestamptz and ((sender_id = $1 and recipient_id = any($2::uuid[])) or (recipient_id = $1 and sender_id = any($2::uuid[])))`, [viewerId, ids, now.toISOString()]);
+    for (const r of rows) out.set(text(r.other), r.outgoing ? "pending_out" : "pending_in");
+    return out;
+  }
+
   async function requireOnboarded(viewerId: string): Promise<LoadedPerson> {
     const flag = await db.query<{ onboarding_completed: boolean }>(`select onboarding_completed from profiles where user_id = $1`, [viewerId]);
     if (!flag.rows[0]?.onboarding_completed) throw new OnboardingRequiredError("Finish your profile to see people");
@@ -115,12 +126,12 @@ export function createDiscoveryStore(db: SqlRunner, clock: () => Date = () => ne
     return [...new Set([...shared.rows.map((r) => r.id), ...recent.rows.map((r) => r.id)])];
   }
 
-  function toCard(loaded: LoadedPerson, ranked: { score: number; components: DiscoveryReason[]; sharedInterests: { id: string }[] }): DiscoveryCard {
+  function toCard(loaded: LoadedPerson, relation: DiscoveryRelation, ranked: { score: number; components: DiscoveryReason[]; sharedInterests: { id: string }[] }): DiscoveryCard {
     const sharedIds = new Set(ranked.sharedInterests.map((s) => s.id));
     const interests = loaded.interestRows.map((i) => ({ id: i.id, name: i.name, category: i.category, slug: i.slug, sortOrder: i.sortOrder, strength: i.strength }));
     return {
       userId: loaded.person.userId, displayName: loaded.displayName, bio: loaded.bio, socialStyles: loaded.person.socialStyles, messagePermission: loaded.messagePermission,
-      interests, sharedInterests: interests.filter((i) => sharedIds.has(i.id)), prompts: loaded.prompts.slice(0, 3), thumbnailPath: loaded.thumbnailPath,
+      interests, sharedInterests: interests.filter((i) => sharedIds.has(i.id)), prompts: loaded.prompts.slice(0, 3), thumbnailPath: loaded.thumbnailPath, relation,
       score: ranked.score, reasons: visibleReasons(ranked.components),
     };
   }
@@ -145,7 +156,8 @@ export function createDiscoveryStore(db: SqlRunner, clock: () => Date = () => ne
       const end = Math.min(offset + limit, POOL.maxPageEnd - 1);
       const { people, ranked } = await rankedFeed(viewerId, end + 1);
       const page = ranked.slice(offset, end);
-      return { people: page.map((r) => toCard(people.get(r.userId)!, r)), hasMore: ranked.length > end && end < POOL.maxPageEnd - 1 };
+      const relations = await loadRelations(viewerId, page.map((r) => r.userId), clock());
+      return { people: page.map((r) => toCard(people.get(r.userId)!, relations.get(r.userId) ?? "none", r)), hasMore: ranked.length > end && end < POOL.maxPageEnd - 1 };
     },
 
     /** Records impressions/opens/ignores/interacts. Unknown ids and self are dropped silently (no user-existence oracle). Returns how many were stored. */
@@ -165,6 +177,9 @@ export function createDiscoveryStore(db: SqlRunner, clock: () => Date = () => ne
       const exists = await db.query(`select 1 from users where id = $1`, [blockedId]);
       if (exists.rows.length === 0) throw new UnknownUserError("User not found");
       await db.query(`insert into user_blocks (blocker_id, blocked_id) values ($1, $2) on conflict do nothing`, [blockerId, blockedId]);
+      // Blocking ends any relationship: connection removed, open requests withdrawn, nothing left to answer.
+      await db.query(`delete from connections where (user_a = $1 and user_b = $2) or (user_a = $2 and user_b = $1)`, [blockerId, blockedId]);
+      await db.query(`update connection_requests set status = 'withdrawn', responded_at = now() where status = 'pending' and ((sender_id = $1 and recipient_id = $2) or (sender_id = $2 and recipient_id = $1))`, [blockerId, blockedId]);
     },
 
     async unblock(blockerId: string, blockedId: string): Promise<void> {
@@ -185,7 +200,8 @@ export function createDiscoveryStore(db: SqlRunner, clock: () => Date = () => ne
       const checks = await db.query<Record<string, unknown>>(
         `select p.discoverable, p.onboarding_completed, u.status::text as status,
                 exists (select 1 from user_blocks b where b.blocker_id = $1 and b.blocked_id = $2) as viewer_blocked,
-                exists (select 1 from user_blocks b where b.blocker_id = $2 and b.blocked_id = $1) as candidate_blocked
+                exists (select 1 from user_blocks b where b.blocker_id = $2 and b.blocked_id = $1) as candidate_blocked,
+                exists (select 1 from connections c where (c.user_a = $1 and c.user_b = $2) or (c.user_a = $2 and c.user_b = $1)) as already_connected
            from profiles p join users u on u.id = p.user_id where p.user_id = $2`, [viewerId, candidateId]);
       const row = checks.rows[0];
       const why: string[] = [];
@@ -197,6 +213,7 @@ export function createDiscoveryStore(db: SqlRunner, clock: () => Date = () => ne
         if (row.status !== "active") why.push(`candidate_status_${text(row.status)}`);
         if (row.viewer_blocked) why.push("viewer_blocked_candidate");
         if (row.candidate_blocked) why.push("candidate_blocked_viewer");
+        if (row.already_connected) why.push("already_connected");
       }
       const viewerFlag = await db.query<{ onboarding_completed: boolean }>(`select onboarding_completed from profiles where user_id = $1`, [viewerId]);
       if (!viewerFlag.rows[0]?.onboarding_completed) why.push("viewer_onboarding_incomplete");
