@@ -85,3 +85,4 @@ export function createProfileClient(config: ProfileClientConfig) {
 export type ProfileClient = ReturnType<typeof createProfileClient>;
 export { createDiscoveryClient, type DiscoveryClient } from "./discovery";
 export { createConnectionsClient, type ConnectionsClient } from "./connections";
+export { createMessagingClient, newClientTag, type MessagingClient } from "./messaging";
