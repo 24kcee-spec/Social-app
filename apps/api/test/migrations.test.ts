@@ -23,7 +23,7 @@ describe("migration runner", () => {
   it("is idempotent: a second run applies nothing", async () => {
     expect(await runMigrations(db, dir)).toEqual([]);
     const { rows } = await db.query<{ name: string }>("select name from schema_migrations");
-    expect(rows.map((r) => r.name)).toEqual(["0001_users_and_roles.sql", "0002_user_sessions.sql", "0003_profiles_interests_prompts_media.sql", "0004_discovery_and_blocks.sql", "0005_connections_and_starters.sql"]);
+    expect(rows.map((r) => r.name)).toEqual(["0001_users_and_roles.sql", "0002_user_sessions.sql", "0003_profiles_interests_prompts_media.sql", "0004_discovery_and_blocks.sql", "0005_connections_and_starters.sql", "0006_messaging.sql"]);
   });
 });
 
