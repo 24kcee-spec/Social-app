@@ -210,6 +210,63 @@ export interface SendRequestResult {
   requestId: string;
 }
 
+// ---- Phase 5: messaging + notifications ----
+export const MESSAGE_KINDS = ["text"] as const;
+export type MessageKind = (typeof MESSAGE_KINDS)[number];
+
+export interface ConversationView {
+  id: string;
+  other: PersonSummary;
+  lastMessage: { senderId: string; body: string; createdAt: string } | null;
+  /** Messages from the other person newer than your read watermark. */
+  unreadCount: number;
+  createdAt: string;
+}
+
+export interface MessageView {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  kind: MessageKind;
+  body: string;
+  createdAt: string;
+  /** Echoed back so a client can reconcile optimistic sends after a reconnect. */
+  clientTag: string;
+  /** True once the other person has read this far. Only meaningful on your own messages. */
+  read: boolean;
+}
+
+/** Oldest-first within the page; load older messages with before = nextCursor. */
+export interface MessagePage {
+  messages: MessageView[];
+  hasMore: boolean;
+  /**
+   * Opaque cursor (created_at + id) for fetching the next-older page: pass it back as `before`.
+   * Composite so messages sharing the same created_at are never skipped or duplicated.
+   * Null when hasMore is false. Do not construct it by hand.
+   */
+  nextCursor: string | null;
+}
+
+/** A message as pushed by Supabase Realtime (postgres_changes on public.messages). */
+export interface RealtimeMessage {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  kind: MessageKind;
+  body: string;
+  clientTag: string;
+  createdAt: string;
+}
+
+export interface NotificationSettings {
+  messages: boolean;
+  connectionRequests: boolean;
+}
+
+export const PUSH_PLATFORMS = ["android", "ios", "web"] as const;
+export type PushPlatform = (typeof PUSH_PLATFORMS)[number];
+
 export interface ActivationSummary {
   sinceDays: number;
   signedUp: number;

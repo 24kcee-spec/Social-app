@@ -86,3 +86,23 @@ button.starter:hover:not(:disabled) { border-color:var(--accent); background:var
 blockquote.intro { margin:6px 0; padding:10px 14px; border-left:4px solid var(--accent); background:var(--accent-soft); border-radius:0 10px 10px 0; font-weight:600; color:#152033; }
 label.check { display:flex; gap:12px; align-items:flex-start; cursor:pointer; }
 label.check input { width:auto; margin-top:4px; }
+
+/* Phase 5: messaging */
+button.card.conv-item { display:block; width:100%; text-align:left; background:var(--card); color:inherit; font:inherit; font-weight:400; padding:16px 20px; cursor:pointer; }
+button.card.conv-item:hover { border-color:var(--accent); }
+.conv-body { flex:1; min-width:0; }
+.conv-body h3 { margin:0; }
+.conv-preview { margin:4px 0 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.chat { display:flex; flex-direction:column; gap:8px; max-height:55vh; overflow-y:auto; }
+.bubble-row { display:flex; }
+.bubble-row.mine { justify-content:flex-end; }
+.bubble { max-width:75%; padding:10px 14px; border-radius:16px; background:var(--accent-soft); }
+.bubble-row.mine .bubble { background:var(--accent); color:#fff; }
+.bubble p { margin:0; white-space:pre-wrap; overflow-wrap:anywhere; }
+.bubble.pending { opacity:.65; }
+.bubble.failed { outline:2px solid var(--err); }
+.bubble-meta { display:block; font-size:.72rem; opacity:.75; margin-top:4px; }
+.bubble-meta .link { color:inherit; text-decoration:underline; margin:0; }
+.composer { display:flex; gap:8px; margin-top:10px; }
+.composer input { flex:1; }
+.composer button { margin:0; }
