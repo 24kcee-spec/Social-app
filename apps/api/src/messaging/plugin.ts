@@ -4,7 +4,7 @@ import { MessagingError, type MessagingStore } from "./store";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const STATUS: Record<MessagingError["code"], number> = {
-  not_found: 404, not_member: 404, not_connected: 403, onboarding_required: 403, rate_limited: 429, daily_limit: 429,
+  not_found: 404, not_member: 404, not_connected: 403, onboarding_required: 403, rate_limited: 429, daily_limit: 429, messages_off: 403, account_inactive: 403,
 };
 
 function validationPayload(result: { error: { issues: { path: (string | number)[]; message: string }[] } }) {

@@ -17,7 +17,7 @@ function Person({ person, url, sub }: { person: PersonSummary; url?: string; sub
   </View>;
 }
 
-export function Connections({ onCount }: { onCount?: (pending: number) => void }) {
+export function Connections({ onCount, onMessage }: { onCount?: (pending: number) => void; onMessage?: (userId: string) => void }) {
   const client = getConnectionsClient();
   const [incoming, setIncoming] = useState<ConnectionRequestView[]>([]);
   const [outgoing, setOutgoing] = useState<ConnectionRequestView[]>([]);
@@ -58,7 +58,7 @@ export function Connections({ onCount }: { onCount?: (pending: number) => void }
           <View style={c.row}><Btn label="Connect" onPress={() => void act(() => client.accept(r.id), `You are now connected with ${r.other.displayName}.`)} /><Btn label="Not now" onPress={() => void act(() => client.decline(r.id), "Done. They will not be told.")} /></View></View>)}
       <Text style={c.h2}>Your connections</Text>
       {connections.length === 0 ? <View style={c.card}><Text style={c.muted}>No connections yet. Say hi to someone in Discover. Pick an opener and you are done.</Text></View>
-        : connections.map((x) => <View style={c.card} key={x.other.userId}><Person person={x.other} url={photos[x.other.userId]} /><View style={c.row}><Btn label="Remove" danger onPress={() => remove(x)} /></View></View>)}
+        : connections.map((x) => <View style={c.card} key={x.other.userId}><Person person={x.other} url={photos[x.other.userId]} /><View style={c.row}>{onMessage && <Btn label="Message" onPress={() => onMessage(x.other.userId)} />}<Btn label="Remove" danger onPress={() => remove(x)} /></View></View>)}
       {outgoing.length > 0 && <><Text style={c.h2}>Your hellos</Text>{outgoing.map((r) => <View style={c.card} key={r.id}><Person person={r.other} url={photos[r.other.userId]} sub={STATUS_TEXT[r.status]} /><Text style={c.intro}>{r.intro.text}</Text>{r.status === "pending" && <View style={c.row}><Btn label="Withdraw" onPress={() => void act(() => client.withdraw(r.id), "Hello withdrawn.")} /></View>}</View>)}</>}
     </>}
   </View>;

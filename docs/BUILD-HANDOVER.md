@@ -10,8 +10,8 @@ Paste this file into a new Claude session, attach `Social-Connection-Platform-Bl
 | GitHub | `https://github.com/24kcee-spec/Social-app.git`, branch `main` (make repo PRIVATE) |
 | Stack | pnpm monorepo, TypeScript, Fastify API, Supabase (Postgres + Auth + Storage + Realtime), Next.js web, Expo mobile, vitest, zod |
 | Done | Phases 0-2 (auth, profiles, onboarding, media; Android testing deferred); Phase 3 people discovery; Phase 4 low-pressure interaction; Phase 5 messaging + notifications (API, realtime, web UI, live on Supabase) |
-| In progress | Phase 5 LIVE GATE on web (see section 2); mobile messaging screens not built yet |
-| Test baseline | `pnpm verify` = 272 passing after Phase 5 (config 7, validation 24, auth-client 16, profile-client 30, api 195) |
+| In progress | Phase 5 LIVE GATE on web and mobile (see section 2); mobile screens exist but are untested on devices |
+| Test baseline | `pnpm verify` = 294 passing after Phase 5 (config 7, validation 24, auth-client 16, profile-client 38, api 209) |
 | Next | Phase 5 live gate, then mobile messaging UI, then pre-pilot push credentials |
 
 ## 2. Immediate next steps (in order)

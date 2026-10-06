@@ -8,6 +8,8 @@ const FRIENDLY: Record<string, string> = {
   not_connected: "You can message people you are connected with. If the connection was removed, this chat is read-only.",
   rate_limited: "Easy there - a short pause, then you can send more.",
   daily_limit: "That is a lot of messages for one day. Try again tomorrow.",
+  messages_off: "This person is not accepting messages right now.",
+  account_inactive: "Your account cannot send messages right now.",
 };
 
 /** A fresh tag per composed message. Retrying a send with the same tag is safe (never duplicates). */

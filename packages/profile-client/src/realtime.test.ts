@@ -9,12 +9,17 @@ type StatusCb = (status: string, err?: Error) => void;
 /** A fake Supabase channel: tests push payloads and status changes through it by hand. */
 class FakeChannel implements RealtimeChannelLike {
   payloadCb: PayloadCb | null = null;
+  readCb: PayloadCb | null = null;
   statusCb: StatusCb | null = null;
   filter: Record<string, unknown> | null = null;
   unsubscribed = false;
   on(_type: "postgres_changes", filter: Record<string, unknown>, cb: PayloadCb) {
-    this.filter = filter;
-    this.payloadCb = cb;
+    if (filter.table === "conversation_members") {
+      this.readCb = cb;
+    } else {
+      this.filter = filter;
+      this.payloadCb = cb;
+    }
     return this;
   }
   subscribe(cb?: StatusCb) {
@@ -26,6 +31,9 @@ class FakeChannel implements RealtimeChannelLike {
   }
   emit(row: Record<string, unknown>) {
     this.payloadCb?.({ new: row });
+  }
+  emitRead(row: Record<string, unknown>) {
+    this.readCb?.({ new: row });
   }
   status(s: string) {
     this.statusCb?.(s);
@@ -111,5 +119,19 @@ describe("subscribeToConversationMessages", () => {
     ch.emit(row("m9", "late"));
     expect(messages).toHaveLength(0);
     expect(statuses[statuses.length - 1]).toBe("closed");
+  });
+
+  it("reports the other person's read watermark live, only for this conversation, and ignores junk", () => {
+    const receipts: { userId: string; lastReadAt: string }[] = [];
+    const channels: FakeChannel[] = [];
+    subscribeToConversationMessages(() => { const ch = new FakeChannel(); channels.push(ch); return ch; }, {
+      conversationId: CONV, onMessage: () => {}, onRead: (r) => receipts.push(r),
+    });
+    const ch = channels[0]!;
+    ch.emitRead({ conversation_id: CONV, user_id: "u2", last_read_at: "2026-10-12 12:05:00+00" });
+    ch.emitRead({ conversation_id: "c9999999-0000-4000-8000-000000000000", user_id: "u2", last_read_at: "2026-10-12 12:06:00+00" });
+    ch.emitRead({ conversation_id: CONV, user_id: "u2", last_read_at: "not a date" });
+    ch.emitRead({ conversation_id: CONV, last_read_at: "2026-10-12 12:07:00+00" });
+    expect(receipts).toEqual([{ userId: "u2", lastReadAt: "2026-10-12T12:05:00.000Z" }]);
   });
 });

@@ -27,16 +27,25 @@ function recorder() {
 }
 
 describe("message notifier", () => {
-  it("sends to every registered device with the sender's name and a body preview", async () => {
+  it("sends to every registered device with a generic payload that leaks nothing private", async () => {
     await db.query(`insert into device_push_tokens (user_id, platform, token) values ($1, 'android', 'token-android-1'), ($1, 'web', 'token-web-23456')`, [ID.B]);
     const { calls, sender } = recorder();
     const notifier = createMessageNotifier(db, sender);
-    expect(await notifier.messageSent(EVENT)).toEqual({ sent: 2 });
+    expect(await notifier.messageSent({ ...EVENT, body: "my secret plan" })).toEqual({ sent: 2 });
     expect(calls).toHaveLength(1);
     expect(calls[0]!.tokens.map((t) => t.platform).sort()).toEqual(["android", "web"]);
-    expect(calls[0]!.payload.title).toBe("Ann");
-    expect(calls[0]!.payload.body).toBe("Hi Ben!");
+    expect(calls[0]!.payload.title).toBe("New message");
+    expect(calls[0]!.payload.body).toBe("Open the app to read it");
+    expect(JSON.stringify(calls[0]!.payload)).not.toMatch(/secret|Ann/);
     expect(calls[0]!.payload.data).toEqual({ type: "message", conversationId: EVENT.conversationId, messageId: EVENT.messageId });
+  });
+
+  it("stays silent when sender and recipient have blocked each other", async () => {
+    await db.query(`insert into device_push_tokens (user_id, platform, token) values ($1, 'android', 'token-android-1')`, [ID.B]);
+    await db.query(`insert into user_blocks (blocker_id, blocked_id) values ($1, $2)`, [ID.B, ID.A]);
+    const { calls, sender } = recorder();
+    expect(await createMessageNotifier(db, sender).messageSent(EVENT)).toEqual({ sent: 0 });
+    expect(calls).toHaveLength(0);
   });
 
   it("does not interrupt someone who switched message notifications off", async () => {
@@ -51,14 +60,6 @@ describe("message notifier", () => {
     const { calls, sender } = recorder();
     expect(await createMessageNotifier(db, sender).messageSent(EVENT)).toEqual({ sent: 0 });
     expect(calls).toHaveLength(0);
-  });
-
-  it("truncates long bodies in the preview", async () => {
-    await db.query(`insert into device_push_tokens (user_id, platform, token) values ($1, 'web', 'token-web-23456')`, [ID.B]);
-    const { calls, sender } = recorder();
-    await createMessageNotifier(db, sender).messageSent({ ...EVENT, body: "x".repeat(500) });
-    expect(calls[0]!.payload.body).toHaveLength(120);
-    expect(calls[0]!.payload.body.endsWith("…")).toBe(true);
   });
 
   it("reports a sender failure without throwing", async () => {

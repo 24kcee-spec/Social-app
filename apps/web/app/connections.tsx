@@ -11,7 +11,7 @@ function Avatar({ person, url }: { person: PersonSummary; url?: string }) {
 }
 const STATUS_TEXT = { pending: "Waiting. They can reply any time in the next two weeks.", accepted: "Connected", no_reply: "No reply yet. That is okay, people reply on their own time." } as const;
 
-export function Connections({ onCount }: { onCount?: (pending: number) => void }) {
+export function Connections({ onCount, onMessage }: { onCount?: (pending: number) => void; onMessage?: (userId: string) => void }) {
   const client = getConnectionsClient();
   const [incoming, setIncoming] = useState<ConnectionRequestView[]>([]);
   const [outgoing, setOutgoing] = useState<ConnectionRequestView[]>([]);
@@ -62,7 +62,7 @@ export function Connections({ onCount }: { onCount?: (pending: number) => void }
       {connections.length === 0 ? <div className="card"><p className="muted">No connections yet. Say hi to someone in Discover. Pick an opener and you are done.</p></div>
         : connections.map((c) => <div className="card request" key={c.other.userId}>
           <div className="person-head"><Avatar person={c.other} url={photos[c.other.userId]} /><div><h3>{c.other.displayName}</h3><p className="muted">{c.other.bio}</p></div></div>
-          <div className="card-actions"><button className="link danger" onClick={() => { if (window.confirm(`Remove ${c.other.displayName} from your connections?`)) void act(() => client.removeConnection(c.other.userId), "Connection removed."); }}>Remove</button></div>
+          <div className="card-actions">{onMessage && <button onClick={() => onMessage(c.other.userId)}>Message</button>}<button className="link danger" onClick={() => { if (window.confirm(`Remove ${c.other.displayName} from your connections?`)) void act(() => client.removeConnection(c.other.userId), "Connection removed."); }}>Remove</button></div>
         </div>)}
       {outgoing.length > 0 && <><h2>Your hellos</h2>{outgoing.map((r) => <div className="card request" key={r.id}>
         <div className="person-head"><Avatar person={r.other} url={photos[r.other.userId]} /><div><h3>{r.other.displayName}</h3><p className="muted">{STATUS_TEXT[r.status]}</p></div></div>

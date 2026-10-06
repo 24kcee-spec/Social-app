@@ -1,20 +1,20 @@
 "use client";
 
-import type { ConversationView, MessageView, NotificationSettings } from "@sp/types";
-import { newClientTag } from "@sp/profile-client";
+import type { ConversationView, NotificationSettings } from "@sp/types";
+import { applyReadWatermark, mergeMessages, newClientTag, type ThreadMessage } from "@sp/profile-client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { errorMessage } from "../lib/auth";
 import { getMessagingClient, subscribeToConversation } from "../lib/messaging";
 import { getSignedMediaUrl } from "../lib/profile";
 
-type Bubble = MessageView & { pending?: boolean; failed?: boolean };
+type Bubble = ThreadMessage;
 
 function Avatar({ name, url }: { name: string; url?: string }) {
   return url ? <img className="avatar small" src={url} alt={`${name}'s profile`} /> : <div className="avatar small placeholder" aria-hidden="true">{name.slice(0, 1).toUpperCase()}</div>;
 }
 
 /** Conversation list + thread. Realtime keeps the open thread live; a resync after every reconnect closes any gap. */
-export function Messages({ onUnread }: { onUnread?: (total: number) => void }) {
+export function Messages({ onUnread, openWithUserId, onOpened }: { onUnread?: (total: number) => void; openWithUserId?: string | null; onOpened?: () => void }) {
   const client = getMessagingClient();
   const [conversations, setConversations] = useState<ConversationView[]>([]);
   const [photos, setPhotos] = useState<Record<string, string>>({});
@@ -37,6 +37,24 @@ export function Messages({ onUnread }: { onUnread?: (total: number) => void }) {
     finally { setLoading(false); }
   }, [client, onUnread]);
   useEffect(() => { void load(); }, [load]);
+
+  // "Message" on a connection: open (or reuse) the direct conversation, then show the thread.
+  const onOpenedRef = useRef(onOpened);
+  onOpenedRef.current = onOpened;
+  useEffect(() => {
+    if (!openWithUserId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const conversation = await client.openConversation(openWithUserId);
+        if (cancelled) return;
+        setConversations((list) => (list.some((c) => c.id === conversation.id) ? list : [conversation, ...list]));
+        setOpenId(conversation.id);
+      } catch (err) { if (!cancelled) setError(errorMessage(err)); }
+      finally { if (!cancelled) onOpenedRef.current?.(); }
+    })();
+    return () => { cancelled = true; };
+  }, [openWithUserId, client]);
 
   async function toggleSetting(key: keyof NotificationSettings, value: boolean) {
     if (!settings) return;
@@ -80,19 +98,8 @@ function Thread({ conversation, photo, onBack }: { conversation: ConversationVie
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
-  /** Merge by id, oldest first; server copies win over optimistic bubbles with the same clientTag. */
-  const merge = useCallback((incoming: Bubble[]) => {
-    setMessages((current) => {
-      const byId = new Map<string, Bubble>();
-      for (const m of current) byId.set(m.id, m);
-      for (const m of incoming) {
-        const optimistic = [...byId.values()].find((b) => b.pending && b.clientTag === m.clientTag);
-        if (optimistic) byId.delete(optimistic.id);
-        byId.set(m.id, m);
-      }
-      return [...byId.values()].sort((a, b) => a.createdAt === b.createdAt ? a.id.localeCompare(b.id) : a.createdAt.localeCompare(b.createdAt));
-    });
-  }, []);
+  /** Shared, tested merge: dedupe by id, optimistic bubbles replaced by clientTag, deterministic order. */
+  const merge = useCallback((incoming: Bubble[]) => { setMessages((current) => mergeMessages(current, incoming)); }, []);
 
   const refetchLatest = useCallback(async () => {
     try {
@@ -116,6 +123,7 @@ function Thread({ conversation, photo, onBack }: { conversation: ConversationVie
         void client.markRead(conversation.id);
       },
       onStatus: setStatus,
+      onRead: (r) => { if (r.userId === conversation.other.userId) setMessages((current) => applyReadWatermark(current, conversation.other.userId, r.lastReadAt)); },
       onResync: () => void refetchLatest(),
     });
     return () => sub.close();

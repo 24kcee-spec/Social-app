@@ -4,7 +4,7 @@ import type { SqlRunner } from "../migrate";
 /** Every failure is a typed error so routes map them to a status without string matching. */
 export class MessagingError extends Error {
   constructor(
-    public readonly code: "not_found" | "not_member" | "not_connected" | "onboarding_required" | "rate_limited" | "daily_limit",
+    public readonly code: "not_found" | "not_member" | "not_connected" | "onboarding_required" | "rate_limited" | "daily_limit" | "messages_off" | "account_inactive",
     message: string,
   ) {
     super(message);
@@ -33,7 +33,27 @@ const ordered = (a: string, b: string): [string, string] => (a < b ? [a, b] : [b
 
 const PAIR_BLOCKED = `exists (select 1 from user_blocks b where (b.blocker_id = $1 and b.blocked_id = $2) or (b.blocker_id = $2 and b.blocked_id = $1))`;
 
+/**
+ * Serialises sends per sender inside this process so the rate-limit check and the insert cannot
+ * interleave (30 parallel sends used to all pass a 20/minute limit). One API instance is covered fully;
+ * with several instances the limit can overshoot slightly, which is acceptable for an anti-spam limit.
+ */
+const sendLocks = new Map<string, Promise<unknown>>();
+function serialisedPerSender<T>(userId: string, work: () => Promise<T>): Promise<T> {
+  const previous = sendLocks.get(userId) ?? Promise.resolve();
+  const run = previous.then(work, work);
+  const tail = run.catch(() => undefined);
+  sendLocks.set(userId, tail);
+  void tail.then(() => { if (sendLocks.get(userId) === tail) sendLocks.delete(userId); });
+  return run;
+}
+
+
 export function createMessagingStore(db: SqlRunner, clock: () => Date = () => new Date(), hooks: MessagingHooks = {}) {
+  async function pairBlocked(a: string, b: string): Promise<boolean> {
+    return (await db.query(`select 1 where ${PAIR_BLOCKED}`, [a, b])).rows.length > 0;
+  }
+
   async function memberOf(conversationId: string, userId: string): Promise<boolean> {
     return (await db.query(`select 1 from conversation_members where conversation_id = $1 and user_id = $2`, [conversationId, userId])).rows.length > 0;
   }
@@ -41,6 +61,9 @@ export function createMessagingStore(db: SqlRunner, clock: () => Date = () => ne
   async function requireMember(conversationId: string, userId: string) {
     // A conversation the user is not in looks like "not found", so ids cannot be probed.
     if (!(await memberOf(conversationId, userId))) throw new MessagingError("not_member", "Conversation not found");
+    // Blocking hides the whole chat from both people, in both directions (same rule as discovery).
+    const pair = await directPair(conversationId);
+    if (pair && (await pairBlocked(pair[0], pair[1]))) throw new MessagingError("not_member", "Conversation not found");
   }
 
   async function connectedPair(a: string, b: string): Promise<boolean> {
@@ -101,6 +124,7 @@ export function createMessagingStore(db: SqlRunner, clock: () => Date = () => ne
          join conversation_members om on om.conversation_id = c.id and om.user_id <> $1
          join profiles o on o.user_id = om.user_id
          left join lateral (select sender_id, body, created_at from messages m where m.conversation_id = c.id order by m.created_at desc, m.id desc limit 1) lm on true
+        where not exists (select 1 from user_blocks b where (b.blocker_id = $1 and b.blocked_id = o.user_id) or (b.blocker_id = o.user_id and b.blocked_id = $1))
         order by coalesce(lm.created_at, c.created_at) desc`,
       [me]);
     return rows.map((r) => ({
@@ -159,13 +183,26 @@ export function createMessagingStore(db: SqlRunner, clock: () => Date = () => ne
   }
 
   /** Sends a text message. Retries with the same clientTag return the stored message instead of a duplicate. */
-  async function sendMessage(me: string, conversationId: string, body: string, clientTag: string): Promise<MessageView> {
+  function sendMessage(me: string, conversationId: string, body: string, clientTag: string): Promise<MessageView> {
+    return serialisedPerSender(me, () => sendMessageUnlocked(me, conversationId, body, clientTag));
+  }
+
+  async function sendMessageUnlocked(me: string, conversationId: string, body: string, clientTag: string): Promise<MessageView> {
     await requireMember(conversationId, me);
     const pair = await directPair(conversationId);
     if (!pair) throw new MessagingError("not_found", "Conversation not found");
     const otherId = pair[0] === me ? pair[1] : pair[0];
     // The chat freezes when the connection is removed: history stays readable, new messages stop.
     if (!(await connectedPair(me, otherId))) throw new MessagingError("not_connected", "You two are no longer connected, so this chat is read-only");
+    // Both people must be active accounts, and the recipient must still accept messages.
+    const { rows: people } = await db.query<{ user_id: string; status: string; message_permission: string | null }>(
+      `select u.id::text as user_id, u.status::text as status, p.message_permission::text as message_permission
+         from users u left join profiles p on p.user_id = u.id where u.id in ($1, $2)`, [me, otherId]);
+    const mine = people.find((r) => text(r.user_id) === me);
+    const theirs = people.find((r) => text(r.user_id) === otherId);
+    if (!mine || mine.status !== "active") throw new MessagingError("account_inactive", "Your account cannot send messages right now");
+    if (!theirs || theirs.status !== "active") throw new MessagingError("not_connected", "This person is not available");
+    if (theirs.message_permission === "nobody") throw new MessagingError("messages_off", "This person is not accepting messages right now");
 
     const now = clock();
     const { rows: minute } = await db.query<{ n: number }>(`select count(*)::int as n from messages where conversation_id = $1 and sender_id = $2 and created_at > $3::timestamptz`, [conversationId, me, new Date(now.getTime() - 60_000).toISOString()]);
@@ -217,6 +254,9 @@ export function createMessagingStore(db: SqlRunner, clock: () => Date = () => ne
   }
 
   async function registerPushToken(me: string, platform: PushPlatform, token: string): Promise<void> {
+    // A physical device belongs to whoever signed in last: drop the token from any other account so
+    // a shared phone never delivers one person's notifications to the next person.
+    await db.query(`delete from device_push_tokens where token = $1 and user_id <> $2`, [token, me]);
     await db.query(
       `insert into device_push_tokens (user_id, platform, token, updated_at) values ($1, $2, $3, $4::timestamptz)
        on conflict (user_id, token) do update set platform = excluded.platform, updated_at = excluded.updated_at`,

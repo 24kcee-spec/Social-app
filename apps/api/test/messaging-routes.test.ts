@@ -103,7 +103,7 @@ describe("messaging routes", () => {
   });
 
   it("maps every domain error to the right status", async () => {
-    const cases: [MessagingError["code"], number][] = [["not_found", 404], ["not_member", 404], ["not_connected", 403], ["onboarding_required", 403], ["rate_limited", 429], ["daily_limit", 429]];
+    const cases: [MessagingError["code"], number][] = [["not_found", 404], ["not_member", 404], ["not_connected", 403], ["onboarding_required", 403], ["rate_limited", 429], ["daily_limit", 429], ["messages_off", 403], ["account_inactive", 403]];
     for (const [code, status] of cases) {
       const { app } = makeApp(makeStore({ sendMessage: vi.fn(async () => { throw new MessagingError(code, "msg"); }) }));
       const res = await app.inject({ method: "POST", url: `/conversations/${CONV}/messages`, headers: h, payload: { body: "hi", clientTag: TAG } });

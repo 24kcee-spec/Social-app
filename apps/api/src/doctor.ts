@@ -47,8 +47,10 @@ if (env) {
         rls5.rows.length === 6 ? ok("RLS enabled on Phase 5 tables and schema_migrations") : fail("RLS is not enabled on all Phase 5 tables (or schema_migrations is still open)", "Run docs/supabase-phase5-security.sql in Supabase SQL Editor");
         const pol5 = await pool.query("select count(*)::int as count from pg_policies where schemaname='public' and tablename='messages' and policyname='messages_member_select'");
         Number(pol5.rows[0]?.count) === 1 ? ok("Message read policy is member-scoped") : fail("Message member read policy missing (Realtime will stream nothing)", "Run docs/supabase-phase5-security.sql in Supabase SQL Editor");
+        const vis = await pool.query("select to_regprocedure('public.is_conversation_visible(uuid)') as f");
+        vis.rows[0]?.f ? ok("Message policies are block-aware (Phase 5b)") : fail("Message policies are not block-aware: a blocked person could keep receiving realtime messages", "Run docs/supabase-phase5b-security.sql in Supabase SQL Editor");
         const pub = await pool.query("select count(*)::int as count from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'messages'");
-        Number(pub.rows[0]?.count) === 1 ? ok("Messages are in the supabase_realtime publication") : fail("Messages are not published to Realtime (apps fall back to 20s polling)", "Run docs/supabase-phase5-security.sql in Supabase SQL Editor");
+        Number(pub.rows[0]?.count) === 1 ? ok("Messages are in the supabase_realtime publication") : fail("Messages are not published to Realtime (live updates will not arrive until the page is refreshed)", "Run docs/supabase-phase5-security.sql in Supabase SQL Editor");
       }
       if (phase3) {
         const rls3 = await pool.query("select relname from pg_class where relnamespace = 'public'::regnamespace and relname in ('user_blocks','discovery_events') and relrowsecurity");

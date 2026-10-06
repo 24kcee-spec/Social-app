@@ -15,6 +15,12 @@ export interface RealtimeChannelLike {
 }
 export type RealtimeChannelFactory = (name: string) => RealtimeChannelLike;
 
+/** The other person's read watermark moved (conversation_members UPDATE). */
+export interface ReadReceipt {
+  userId: string;
+  lastReadAt: string;
+}
+
 export type RealtimeStatus = "connecting" | "live" | "reconnecting" | "closed";
 
 export interface ConversationSubscriptionOptions {
@@ -22,6 +28,8 @@ export interface ConversationSubscriptionOptions {
   /** Newest message from the other person (or yourself, echoed back) — deduplicated by id. */
   onMessage: (message: RealtimeMessage) => void;
   onStatus?: (status: RealtimeStatus) => void;
+  /** Live read receipts: fires when either member's read watermark moves. Optional. */
+  onRead?: (receipt: ReadReceipt) => void;
   /**
    * Called after every (re)subscribe. Fetch the latest page from the API here: Realtime can drop
    * messages while the socket is down, so the stream alone is never the source of truth.
@@ -93,6 +101,14 @@ export function subscribeToConversationMessages(
         if (!msg || seen.has(msg.id)) return;
         remember(msg.id);
         opts.onMessage(msg);
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "conversation_members", filter: `conversation_id=eq.${opts.conversationId}` }, (payload) => {
+        if (closed || !opts.onRead) return;
+        const raw = payload.new;
+        if (String(raw.conversation_id ?? "") !== opts.conversationId) return;
+        const at = new Date(String(raw.last_read_at ?? ""));
+        if (!raw.user_id || Number.isNaN(at.getTime())) return;
+        opts.onRead({ userId: String(raw.user_id), lastReadAt: at.toISOString() });
       })
       .subscribe((s) => {
         if (closed) return;
