@@ -278,3 +278,38 @@ export interface ActivationSummary {
   /** activatedWithin48h / onboarded, or null when nobody has onboarded yet. */
   activationRate: number | null;
 }
+
+
+// ---- Phase 6: groups + activities + events ----
+export const GROUP_MEMBER_ROLES = ["owner","moderator","member"] as const;
+export type GroupMemberRole = (typeof GROUP_MEMBER_ROLES)[number];
+export const RSVP_STATUSES = ["going","waitlisted","cancelled"] as const;
+export type RsvpStatus = (typeof RSVP_STATUSES)[number];
+
+export interface Activity {
+  id: string;
+  name: string;
+  description: string;
+}
+export interface GroupSummary {
+  id: string;
+  name: string;
+  description: string;
+  generalArea: string;
+  capacity: number;
+  memberCount: number;
+  joined: boolean;
+  ownerId?: string;
+}
+export interface CommunityEvent {
+  id: string;
+  groupId: string;
+  title: string;
+  description: string;
+  generalArea: string;
+  startsAt: string;
+  endsAt: string;
+  capacity: number;
+  going: number;
+  attending: boolean;
+}
