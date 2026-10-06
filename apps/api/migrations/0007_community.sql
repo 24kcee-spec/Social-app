@@ -53,6 +53,17 @@ create table event_rsvps (
  primary key(event_id,user_id)
 );
 create index event_rsvps_event_status_idx on event_rsvps(event_id,status,created_at);
+
+create table event_messages (
+ id uuid primary key default gen_random_uuid(),
+ event_id uuid not null references events(id) on delete cascade,
+ sender_id uuid not null references users(id) on delete cascade,
+ body text not null check (char_length(trim(body)) between 1 and 2000),
+ client_tag uuid not null,
+ created_at timestamptz not null default now()
+);
+create unique index event_messages_client_tag_idx on event_messages(event_id,sender_id,client_tag);
+create index event_messages_event_idx on event_messages(event_id,created_at,id);
 alter table groups enable row level security;
 alter table group_members enable row level security;
 alter table activities enable row level security;
