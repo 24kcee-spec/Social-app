@@ -207,3 +207,6 @@ export const eventListQuerySchema = z.object({
   generalArea: z.string().trim().min(2).max(120).optional(),
 });
 export type EventListQueryInput = z.infer<typeof eventListQuerySchema>;
+
+export const eventMessageSchema = z.object({ body: z.string().trim().min(1).max(2000), clientTag: z.string().uuid() });
+export type EventMessageInput = z.infer<typeof eventMessageSchema>;
