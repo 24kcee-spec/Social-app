@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { createGroupSchema, createEventSchema, eventListQuerySchema } from "@sp/validation";
+import { createGroupSchema, createEventSchema, eventListQuerySchema, eventMessageSchema } from "@sp/validation";
 import type { CommunityStore } from "./store";
 import { CommunityError } from "./store";
 type Guard=(req:FastifyRequest,reply:FastifyReply)=>Promise<unknown>;
@@ -18,4 +18,6 @@ export function registerCommunity(app:FastifyInstance,deps:{store:CommunityStore
  app.get<{Params:{id:string}}>("/events/:id",pre,wrap(async(req,reply,me)=>{if(!UUID.test(req.params.id))return reply.code(400).send({error:"bad_request"});return reply.send({event:await deps.store.getEvent(me,req.params.id)});}));
  app.post<{Params:{id:string}}>("/events/:id/rsvp",pre,wrap(async(req,reply,me)=>{if(!UUID.test(req.params.id))return reply.code(400).send({error:"bad_request"});return reply.send(await deps.store.rsvp(me,req.params.id));}));
  app.delete<{Params:{id:string}}>("/events/:id/rsvp",pre,wrap(async(req,reply,me)=>{if(!UUID.test(req.params.id))return reply.code(400).send({error:"bad_request"});await deps.store.cancelRsvp(me,req.params.id);return reply.code(204).send();}));
+ app.get<{Params:{id:string}}>("/events/:id/messages",pre,wrap(async(req,reply,me)=>{if(!UUID.test(req.params.id))return reply.code(400).send({error:"bad_request"});return reply.send({messages:await deps.store.listEventMessages(me,req.params.id)});}));
+ app.post<{Params:{id:string};Body:unknown}>("/events/:id/messages",pre,wrap(async(req,reply,me)=>{if(!UUID.test(req.params.id))return reply.code(400).send({error:"bad_request"});const p=eventMessageSchema.safeParse(req.body);if(!p.success)return reply.code(400).send({error:"validation"});return reply.code(201).send({message:await deps.store.sendEventMessage(me,req.params.id,p.data.body,p.data.clientTag)});}));
 }
