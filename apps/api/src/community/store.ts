@@ -63,7 +63,19 @@ export function createCommunityStore(db: SqlRunner, clock=()=>new Date()) {
       await db.query("insert into event_rsvps(event_id,user_id,status,updated_at) values($1,$2,$3,$4) on conflict(event_id,user_id) do update set status=excluded.status,updated_at=excluded.updated_at",[id,userId,status,clock().toISOString()]);
       return {status};
     },
-    async cancelRsvp(userId:string,id:string) { await db.query("update event_rsvps set status='cancelled',updated_at=$3 where event_id=$1 and user_id=$2",[id,userId,clock().toISOString()]); }
+    async cancelRsvp(userId:string,id:string) { await db.query("update event_rsvps set status='cancelled',updated_at=$3 where event_id=$1 and user_id=$2",[id,userId,clock().toISOString()]); },
+    async listEventMessages(userId:string,eventId:string) {
+      const allowed=await db.query("select 1 from event_rsvps where event_id=$1 and user_id=$2 and status='going'",[eventId,userId]);
+      if(!allowed.rows[0]) throw new CommunityError("forbidden","RSVP to the event before opening its chat");
+      const r=await db.query<Record<string,unknown>>("select id::text,sender_id::text,body,client_tag::text,created_at from event_messages where event_id=$1 order by created_at,id limit 100",[eventId]);
+      return r.rows.map(x=>({id:text(x.id),eventId, senderId:text(x.sender_id),body:text(x.body),clientTag:text(x.client_tag),createdAt:iso(x.created_at)}));
+    },
+    async sendEventMessage(userId:string,eventId:string,body:string,clientTag:string) {
+      const allowed=await db.query("select 1 from event_rsvps where event_id=$1 and user_id=$2 and status='going'",[eventId,userId]);
+      if(!allowed.rows[0]) throw new CommunityError("forbidden","RSVP to the event before sending messages");
+      const r=await db.query<Record<string,unknown>>("insert into event_messages(event_id,sender_id,body,client_tag) values($1,$2,$3,$4) on conflict(event_id,sender_id,client_tag) do update set body=event_messages.body returning id::text,sender_id::text,body,client_tag::text,created_at",[eventId,userId,body.trim(),clientTag]);
+      const x=r.rows[0]!; return {id:text(x.id),eventId,senderId:text(x.sender_id),body:text(x.body),clientTag:text(x.client_tag),createdAt:iso(x.created_at)};
+    }
   };
 }
 export type CommunityStore=ReturnType<typeof createCommunityStore>;
