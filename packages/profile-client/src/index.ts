@@ -85,6 +85,7 @@ export function createProfileClient(config: ProfileClientConfig) {
 export type ProfileClient = ReturnType<typeof createProfileClient>;
 export { createDiscoveryClient, type DiscoveryClient } from "./discovery";
 export { createConnectionsClient, type ConnectionsClient } from "./connections";
+export { createCommunityClient, type CommunityClient, type CreateEventBody, type CreateGroupBody } from "./community";
 export { createMessagingClient, newClientTag, type MessagingClient } from "./messaging";
-export { mergeMessages, applyReadWatermark, type ThreadMessage } from "./thread";
+export { mergeMessages, mergeEventMessages, applyReadWatermark, type ThreadMessage, type EventThreadMessage } from "./thread";
 export { subscribeToConversationMessages, type ConversationSubscription, type ConversationSubscriptionOptions, type RealtimeChannelFactory, type RealtimeChannelLike, type RealtimeStatus, type ReadReceipt } from "./realtime";

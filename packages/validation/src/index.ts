@@ -205,6 +205,15 @@ export type CreateEventInput = z.infer<typeof createEventSchema>;
 
 export const eventListQuerySchema = z.object({
   generalArea: z.string().trim().min(2).max(120).optional(),
+  groupId: z.string().uuid().optional(),
+});
+export const groupListQuerySchema = z.object({
+  generalArea: z.string().trim().min(2).max(120).optional(),
+  activityId: z.string().uuid().optional(),
+});
+export const eventMessageListQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  before: z.string().min(10).max(80).optional(),
 });
 export type EventListQueryInput = z.infer<typeof eventListQuerySchema>;
 

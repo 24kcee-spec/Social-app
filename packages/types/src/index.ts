@@ -299,8 +299,13 @@ export interface GroupSummary {
   capacity: number;
   memberCount: number;
   joined: boolean;
+  /** The viewer's role in the group, or null when they have not joined. */
+  role: GroupMemberRole | null;
   ownerId?: string;
+  /** Activity names (Study, Football...). */
+  activities: string[];
 }
+export interface GroupMember { userId: string; displayName: string; role: GroupMemberRole }
 export interface CommunityEvent {
   id: string;
   groupId: string;
@@ -312,4 +317,10 @@ export interface CommunityEvent {
   capacity: number;
   going: number;
   attending: boolean;
+  groupName: string;
+  /** The viewer's RSVP: going, waitlisted, or null (not attending / cancelled). */
+  myStatus: "going" | "waitlisted" | null;
 }
+export interface EventAttendee { userId: string; displayName: string }
+export interface EventMessage { id: string; eventId: string; senderId: string; senderName: string; body: string; clientTag: string; createdAt: string }
+export interface EventMessagePage { messages: EventMessage[]; hasMore: boolean; nextCursor: string | null }

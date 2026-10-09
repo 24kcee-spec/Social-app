@@ -10,9 +10,9 @@ Paste this file into a new Claude session, attach `Social-Connection-Platform-Bl
 | GitHub | `https://github.com/24kcee-spec/Social-app.git`, branch `main` (make repo PRIVATE) |
 | Stack | pnpm monorepo, TypeScript, Fastify API, Supabase (Postgres + Auth + Storage + Realtime), Next.js web, Expo mobile, vitest, zod |
 | Done | Phases 0-2 (auth, profiles, onboarding, media; Android testing deferred); Phase 3 people discovery; Phase 4 low-pressure interaction; Phase 5 messaging + notifications (API, realtime, web UI, live on Supabase) |
-| In progress | Phase 6 community branch: groups, activities, events, RSVP/waitlist and event chat API. UI + live Supabase gate remain before merge |
-| Test baseline | `pnpm verify` = 294 passing after Phase 5 (config 7, validation 24, auth-client 16, profile-client 38, api 209) |
-| Next | Run Phase 6 migration/API tests, build web/mobile group/event screens, apply Supabase RLS/realtime policy review, then merge only after the Phase 6 gate passes |
+| In progress | Phase 6 LIVE GATE: apply migration 0008 on Supabase, then two-account group/event/RSVP/chat test on web and phone. Phase 5 live gate still open |
+| Test baseline | `pnpm verify` = 329 passing after Phase 6 (config 7, validation 24, auth-client 16, profile-client 45, api 237) |
+| Next | Run migrate + setup-check, pass the Phase 5 and Phase 6 live gates, then Phase 7 only after both gates pass. Open decisions: media messages, real push credentials |
 
 ## 2. Immediate next steps (in order)
 1. `cd C:\Dev\social-platform; git pull; git log --oneline -3` must show the Phase 5 merge on main.
@@ -57,7 +57,7 @@ Rejected push: `git fetch origin; git rebase origin/main; pnpm verify; git push 
 - **Phase 3 Discovery + compatibility (people only) - DELIVERED, live gate pending:** minimal `user_blocks` table; candidate filters (exclude blocked/banned/non-discoverable); deterministic weighted score (shared interests strong, style/prompts moderate, recency small boost, repeated ignores reduce, blocks hard-exclude); reason text on every card; freshness + diversity; `discovery_events` (impression/open/ignore/interact); fixture tests with expected order; API `GET /discovery/people`, `POST /discovery/events`; discovery feed on web + mobile. Groups/activities cards wait for Phase 6.
 - **Phase 4 Low-pressure interaction - DELIVERED, live gate pending:** connection requests (send/accept/decline/expire), icebreakers from shared interests, question cards, mini-games, conversation assist, low-pressure mode, anti-spam rate limits.
 - **Phase 5 Messaging + notifications - DELIVERED (web) + LIVE on Supabase:** conversations, realtime (member-scoped Supabase Realtime + reconnect/resync), read receipts via watermark, unread badges, composite pagination cursor, notification preferences + dispatch layer (push sender is a noop until pre-pilot credentials), Messages tab on web. Still open: media messages, mobile screens, real push delivery. Gate: consistent on Android + iOS + web.
-- **Phase 6 Groups + activities + events:** backend delivered on `phase6-community`: group roles/capacity/join-leave, seeded activities, event pages/data, RSVP + waitlist, general-area fields, and attendee-only event chat. Remaining before merge: web/mobile UI, QR/share presentation, Supabase RLS/realtime review, full `pnpm verify` on Windows.
+- **Phase 6 Groups + activities + events - DELIVERED, live gate pending:** groups (roles, capacity, join/leave, delete), seeded activities, events (future-dated, host/moderator only), RSVP + waitlist with automatic promotion, attendee-only event chat (paged, rate-limited, block-aware, idempotent), attendee and member lists, web + mobile screens. Migration 0008 hardens 0007 (RLS on event_messages, one owner per group, indexes, milestones). Deferred: realtime event chat (polled), QR/share, moderator tools and reports (Phase 9).
 - **Phase 9 Safety (before public pilot):** block/report everywhere, moderation queue, rate limits, verification levels, data deletion, security review, incident playbook.
 - **Sharing + Phase 10 cross-device:** public preview pages, share sheet, deep links, QR, account linking, device matrix.
 - **Pilot:** NUST/Bulawayo invite-only 100-300 users, production launch checklist (blueprint s15), weekly reviews. Turn Supabase "Confirm email" back ON before inviting users.

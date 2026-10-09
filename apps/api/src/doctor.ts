@@ -52,6 +52,11 @@ if (env) {
         const pub = await pool.query("select count(*)::int as count from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'messages'");
         Number(pub.rows[0]?.count) === 1 ? ok("Messages are in the supabase_realtime publication") : fail("Messages are not published to Realtime (live updates will not arrive until the page is refreshed)", "Run docs/supabase-phase5-security.sql in Supabase SQL Editor");
       }
+      const phase6 = (await pool.query("select to_regclass('public.event_messages') as t")).rows[0]?.t;
+      if (phase6) {
+        const rls6 = await pool.query("select relname from pg_class where relnamespace = 'public'::regnamespace and relname in ('groups','group_members','activities','group_activities','events','event_rsvps','event_messages') and relrowsecurity");
+        rls6.rows.length === 7 ? ok("RLS enabled on all Phase 6 community tables") : fail("RLS is not enabled on all Phase 6 tables (event_messages would be readable with the public key)", "Run: pnpm --filter @sp/api run migrate   (applies 0008_community_hardening.sql)");
+      }
       if (phase3) {
         const rls3 = await pool.query("select relname from pg_class where relnamespace = 'public'::regnamespace and relname in ('user_blocks','discovery_events') and relrowsecurity");
         rls3.rows.length === 2 ? ok("RLS enabled on Phase 3 tables") : fail("RLS is not enabled on Phase 3 tables", "Run docs/supabase-phase3-security.sql in Supabase SQL Editor");
