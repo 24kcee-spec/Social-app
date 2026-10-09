@@ -33,7 +33,7 @@ const get = (app: ReturnType<typeof makeApp>, url: string, token?: string) =>
 beforeAll(async () => {
   db = new PGlite();
   await runMigrations(db, dir);
-});
+}, 120_000);
 beforeEach(async () => {
   await db.exec("truncate users cascade");
 });

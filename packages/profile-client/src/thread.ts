@@ -1,4 +1,4 @@
-import type { MessageView } from "@sp/types";
+import type { EventMessage, MessageView } from "@sp/types";
 
 /** A message as shown in a thread: server messages plus local optimistic bubbles. */
 export type ThreadMessage = MessageView & { pending?: boolean; failed?: boolean };
@@ -39,4 +39,23 @@ export function applyReadWatermark(messages: ThreadMessage[], otherUserId: strin
     return { ...m, read: true };
   });
   return changed ? next : messages;
+}
+
+/** An event-chat message as shown in a thread: server messages plus local optimistic bubbles. */
+export type EventThreadMessage = EventMessage & { pending?: boolean; failed?: boolean };
+
+/**
+ * Same guarantees as mergeMessages for the event chat (which is polled, not streamed): dedupe by id,
+ * a server copy replaces the local pending/failed bubble with the same clientTag, stable (createdAt, id) order.
+ */
+export function mergeEventMessages(current: EventThreadMessage[], incoming: EventThreadMessage[]): EventThreadMessage[] {
+  const byId = new Map<string, EventThreadMessage>();
+  for (const m of current) byId.set(m.id, m);
+  for (const m of incoming) {
+    for (const [key, existing] of byId) {
+      if (existing.id !== m.id && (existing.pending || existing.failed) && existing.clientTag === m.clientTag) byId.delete(key);
+    }
+    byId.set(m.id, m);
+  }
+  return [...byId.values()].sort((a, b) => (a.createdAt !== b.createdAt ? (a.createdAt < b.createdAt ? -1 : 1) : a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 }

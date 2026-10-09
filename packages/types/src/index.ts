@@ -278,3 +278,49 @@ export interface ActivationSummary {
   /** activatedWithin48h / onboarded, or null when nobody has onboarded yet. */
   activationRate: number | null;
 }
+
+
+// ---- Phase 6: groups + activities + events ----
+export const GROUP_MEMBER_ROLES = ["owner","moderator","member"] as const;
+export type GroupMemberRole = (typeof GROUP_MEMBER_ROLES)[number];
+export const RSVP_STATUSES = ["going","waitlisted","cancelled"] as const;
+export type RsvpStatus = (typeof RSVP_STATUSES)[number];
+
+export interface Activity {
+  id: string;
+  name: string;
+  description: string;
+}
+export interface GroupSummary {
+  id: string;
+  name: string;
+  description: string;
+  generalArea: string;
+  capacity: number;
+  memberCount: number;
+  joined: boolean;
+  /** The viewer's role in the group, or null when they have not joined. */
+  role: GroupMemberRole | null;
+  ownerId?: string;
+  /** Activity names (Study, Football...). */
+  activities: string[];
+}
+export interface GroupMember { userId: string; displayName: string; role: GroupMemberRole }
+export interface CommunityEvent {
+  id: string;
+  groupId: string;
+  title: string;
+  description: string;
+  generalArea: string;
+  startsAt: string;
+  endsAt: string;
+  capacity: number;
+  going: number;
+  attending: boolean;
+  groupName: string;
+  /** The viewer's RSVP: going, waitlisted, or null (not attending / cancelled). */
+  myStatus: "going" | "waitlisted" | null;
+}
+export interface EventAttendee { userId: string; displayName: string }
+export interface EventMessage { id: string; eventId: string; senderId: string; senderName: string; body: string; clientTag: string; createdAt: string }
+export interface EventMessagePage { messages: EventMessage[]; hasMore: boolean; nextCursor: string | null }

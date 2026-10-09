@@ -61,3 +61,20 @@ describe("applyReadWatermark", () => {
     expect(applyReadWatermark(list, THEM, "garbage")).toBe(list);
   });
 });
+
+import { mergeEventMessages, type EventThreadMessage } from "./thread";
+const ev = (id: string, createdAt: string, extra: Partial<EventThreadMessage> = {}): EventThreadMessage => ({ id, eventId: "e1", senderId: "u1", senderName: "Ann", body: id, clientTag: "t-" + id, createdAt, ...extra });
+
+describe("mergeEventMessages", () => {
+  it("dedupes polled pages, orders deterministically and swaps optimistic bubbles for the server copy", () => {
+    const t = "2026-10-12T10:00:00.000Z";
+    const pending = ev("local-x", t, { clientTag: "x", pending: true });
+    const merged = mergeEventMessages([pending], [ev("b", t), ev("a", t), ev("srv-x", "2026-10-12T10:00:01.000Z", { clientTag: "x" })]);
+    expect(merged.map((m) => m.id)).toEqual(["a", "b", "srv-x"]);
+    expect(mergeEventMessages(merged, [ev("a", t), ev("b", t)])).toHaveLength(3);
+  });
+  it("keeps a failed bubble until the server confirms that exact message", () => {
+    const failed = ev("local-y", "2026-10-12T10:00:00.000Z", { clientTag: "y", failed: true });
+    expect(mergeEventMessages([failed], [ev("other", "2026-10-12T10:00:02.000Z")]).map((m) => m.id)).toEqual(["local-y", "other"]);
+  });
+});

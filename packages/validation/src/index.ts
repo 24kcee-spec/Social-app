@@ -180,3 +180,42 @@ export const pushTokenSchema = z.object({
   token: z.string().trim().min(8).max(500),
 });
 export type PushTokenInput = z.infer<typeof pushTokenSchema>;
+
+
+// ---- Phase 6: groups + activities + events ----
+export const createGroupSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  description: z.string().trim().max(500).default(""),
+  generalArea: z.string().trim().min(2).max(120),
+  capacity: z.coerce.number().int().min(2).max(500).default(30),
+  activityIds: z.array(z.string().uuid()).max(10).default([]),
+});
+export type CreateGroupInput = z.infer<typeof createGroupSchema>;
+
+export const createEventSchema = z.object({
+  groupId: z.string().uuid(),
+  title: z.string().trim().min(2).max(120),
+  description: z.string().trim().max(1000).default(""),
+  generalArea: z.string().trim().min(2).max(120),
+  startsAt: z.string().datetime({ offset: true }),
+  endsAt: z.string().datetime({ offset: true }),
+  capacity: z.coerce.number().int().min(1).max(500),
+});
+export type CreateEventInput = z.infer<typeof createEventSchema>;
+
+export const eventListQuerySchema = z.object({
+  generalArea: z.string().trim().min(2).max(120).optional(),
+  groupId: z.string().uuid().optional(),
+});
+export const groupListQuerySchema = z.object({
+  generalArea: z.string().trim().min(2).max(120).optional(),
+  activityId: z.string().uuid().optional(),
+});
+export const eventMessageListQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  before: z.string().min(10).max(80).optional(),
+});
+export type EventListQueryInput = z.infer<typeof eventListQuerySchema>;
+
+export const eventMessageSchema = z.object({ body: z.string().trim().min(1).max(2000), clientTag: z.string().uuid() });
+export type EventMessageInput = z.infer<typeof eventMessageSchema>;

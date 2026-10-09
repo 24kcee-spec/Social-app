@@ -15,6 +15,8 @@ import { createMessagingStore } from "./messaging/store";
 import { createMessageNotifier, noopPushSender } from "./messaging/notify";
 import { registerMessaging } from "./messaging/plugin";
 import { loadDotEnv } from "./env";
+import { createCommunityStore } from "./community/store";
+import { registerCommunity } from "./community/plugin";
 
 loadDotEnv();
 const env = loadApiEnv(process.env);
@@ -41,6 +43,7 @@ if (pool && env.SUPABASE_URL) {
   // The notifier still enforces notification_settings and device tokens, so going live is a one-line swap.
   const notifier = createMessageNotifier(db, noopPushSender, (msg, err) => app.log.warn({ err }, msg));
   registerMessaging(app, { requireAuth, store: createMessagingStore(db, undefined, { onMessageSent: notifier.messageSent }) });
+  registerCommunity(app, { requireAuth, store: createCommunityStore(db) });
 } else {
   app.log.warn("DATABASE_URL and/or SUPABASE_URL not set: auth routes (/me, /me/sessions) are NOT registered");
 }
