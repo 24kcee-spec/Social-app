@@ -1,4 +1,4 @@
-import type { Activity, CommunityEvent, EventAttendee, GroupMember, GroupSummary } from "@sp/types";
+﻿import type { Activity, CommunityEvent, EventAttendee, GroupMember, GroupSummary } from "@sp/types";
 import { mergeEventMessages, newClientTag, type EventThreadMessage } from "@sp/profile-client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
@@ -51,7 +51,7 @@ export function Community() {
   return <View>
     <View style={s.card}>
       <Field label="Area" value={area} onChange={setArea} placeholder="e.g. Bulawayo (empty = everywhere)" />
-      <View style={s.row}><Btn label={view === "events" ? "● Events" : "Events"} onPress={() => setView("events")} /><Btn label={view === "groups" ? "● Groups" : "Groups"} onPress={() => setView("groups")} /></View>
+      <View style={s.row}><Btn label={view === "events" ? "â— Events" : "Events"} onPress={() => setView("events")} /><Btn label={view === "groups" ? "â— Groups" : "Groups"} onPress={() => setView("groups")} /></View>
       <View style={s.row}><Btn label="New group" onPress={() => setCreating(creating === "group" ? null : "group")} />{myGroups.length > 0 && <Btn label="New event" onPress={() => setCreating(creating === "event" ? null : "event")} />}</View>
     </View>
     {error && <Text style={s.err} accessibilityRole="alert">{error}</Text>}
@@ -61,17 +61,17 @@ export function Community() {
       ? (events.length === 0 ? <View style={s.card}><Text style={s.muted}>No upcoming events here yet. Join a group, or ask an organiser to plan one.</Text></View>
         : events.map((e) => <View style={s.card} key={e.id}>
           <Text style={s.h3}>{e.title}</Text>
-          <Text style={s.muted}>{e.groupName} · {e.generalArea} · {fmt(e.startsAt)}</Text>
-          <Text style={s.text}>{e.going} of {e.capacity} going{e.myStatus === "waitlisted" ? " · you are on the waitlist" : e.myStatus === "going" ? " · you are going" : ""}</Text>
+          <Text style={s.muted}>{e.groupName} Â· {e.generalArea} Â· {fmt(e.startsAt)}</Text>
+          <Text style={s.text}>{e.going} of {e.capacity} going{e.myStatus === "waitlisted" ? " Â· you are on the waitlist" : e.myStatus === "going" ? " Â· you are going" : ""}</Text>
           <View style={s.row}>
             <Btn label="Open" onPress={() => setOpenEventId(e.id)} />
             {e.myStatus ? <Btn label="Cancel RSVP" danger onPress={() => void act(() => client.cancelRsvp(e.id))} /> : <Btn label={e.going >= e.capacity ? "Join waitlist" : "I'm going"} onPress={() => void act(() => client.rsvp(e.id))} />}
           </View>
         </View>))
-      : (groups.length === 0 ? <View style={s.card}><Text style={s.muted}>No groups here yet. Start one with “New group”.</Text></View>
+      : (groups.length === 0 ? <View style={s.card}><Text style={s.muted}>No groups here yet. Start one with â€œNew groupâ€.</Text></View>
         : groups.map((g) => <View style={s.card} key={g.id}>
           <Text style={s.h3}>{g.name}</Text>
-          <Text style={s.muted}>{g.generalArea} · {g.memberCount}/{g.capacity} members{g.activities.length ? ` · ${g.activities.join(", ")}` : ""}</Text>
+          <Text style={s.muted}>{g.generalArea} Â· {g.memberCount}/{g.capacity} members{g.activities.length ? ` Â· ${g.activities.join(", ")}` : ""}</Text>
           {g.description ? <Text style={s.text}>{g.description}</Text> : null}
           <View style={s.row}>
             <Btn label="Open" onPress={() => setOpenGroupId(g.id)} />
@@ -100,8 +100,8 @@ function GroupForm({ activities, onDone }: { activities: Activity[]; onDone: () 
     <Field label="General area (suburb or town, never an address)" value={generalArea} onChange={setGeneralArea} />
     <Field label="Maximum members" value={capacity} onChange={setCapacity} keyboard="numeric" />
     <Text style={s.label}>Activities</Text>
-    <View style={s.row}>{activities.map((a) => <Btn key={a.id} label={(picked.includes(a.id) ? "✓ " : "") + a.name} onPress={() => setPicked((p) => (p.includes(a.id) ? p.filter((x) => x !== a.id) : [...p, a.id]))} />)}</View>
-    <Btn label={busy ? "Creating…" : "Create group"} disabled={busy} onPress={() => void submit()} />
+    <View style={s.row}>{activities.map((a) => <Btn key={a.id} label={(picked.includes(a.id) ? "âœ“ " : "") + a.name} onPress={() => setPicked((p) => (p.includes(a.id) ? p.filter((x) => x !== a.id) : [...p, a.id]))} />)}</View>
+    <Btn label={busy ? "Creatingâ€¦" : "Create group"} disabled={busy} onPress={() => void submit()} />
   </View>;
 }
 
@@ -114,29 +114,66 @@ function parseLocal(v: string): string | null {
 }
 function EventForm({ groups, onDone }: { groups: GroupSummary[]; onDone: () => void }) {
   const client = getCommunityClient();
-  const [groupId, setGroupId] = useState(groups[0]?.id ?? ""); const [title, setTitle] = useState(""); const [description, setDescription] = useState("");
-  const [generalArea, setGeneralArea] = useState(groups[0]?.generalArea ?? ""); const [startsAt, setStartsAt] = useState(""); const [endsAt, setEndsAt] = useState("");
-  const [capacity, setCapacity] = useState("10"); const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null);
+  const [groupId, setGroupId] = useState(groups[0]?.id ?? "");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [generalArea, setGeneralArea] = useState(groups[0]?.generalArea ?? "");
+  const [startsAt, setStartsAt] = useState("");
+  const [endsAt, setEndsAt] = useState("");
+  const [capacity, setCapacity] = useState("15");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Quick Preset Helper
+  function applyPreset(offsetDays: number, startHour: number, durationHours: number = 2) {
+    const d = new Date();
+    d.setDate(d.getDate() + offsetDays);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const ymd = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    setStartsAt(`${ymd} ${pad(startHour)}:00`);
+    setEndsAt(`${ymd} ${pad(startHour + durationHours)}:00`);
+  }
+
   async function submit() {
     const start = parseLocal(startsAt), end = parseLocal(endsAt);
-    if (!start || !end) { setError("Use the format 2026-10-20 18:30 for the start and end."); return; }
+    if (!start || !end) { setError("Use the format YYYY-MM-DD HH:MM or tap a quick preset."); return; }
     setBusy(true); setError(null);
-    try { await client.createEvent({ groupId, title, description, generalArea, startsAt: start, endsAt: end, capacity: Number(capacity) }); onDone(); }
-    catch (err) { setError(errorMessage(err)); } finally { setBusy(false); }
+    try {
+      await client.createEvent({ groupId, title, description, generalArea, startsAt: start, endsAt: end, capacity: Number(capacity) });
+      onDone();
+    } catch (err) { setError(errorMessage(err)); } finally { setBusy(false); }
   }
-  return <View style={s.card}>
-    <Text style={s.h3}>New event</Text>
-    {error && <Text style={s.err} accessibilityRole="alert">{error}</Text>}
-    <Text style={s.label}>Group</Text>
-    <View style={s.row}>{groups.map((g) => <Btn key={g.id} label={(g.id === groupId ? "● " : "") + g.name} onPress={() => { setGroupId(g.id); setGeneralArea(g.generalArea); }} />)}</View>
-    <Field label="Title" value={title} onChange={setTitle} />
-    <Field label="Details" value={description} onChange={setDescription} multiline />
-    <Field label="General area (never an exact address)" value={generalArea} onChange={setGeneralArea} />
-    <Field label="Starts (YYYY-MM-DD HH:MM)" value={startsAt} onChange={setStartsAt} placeholder="2026-10-20 18:30" />
-    <Field label="Ends (YYYY-MM-DD HH:MM)" value={endsAt} onChange={setEndsAt} placeholder="2026-10-20 20:30" />
-    <Field label="Places" value={capacity} onChange={setCapacity} keyboard="numeric" />
-    <Btn label={busy ? "Creating…" : "Create event"} disabled={busy} onPress={() => void submit()} />
-  </View>;
+
+  return (
+    <View style={s.card}>
+      <Text style={s.h3}>New event</Text>
+      {error && <Text style={s.err} accessibilityRole="alert">{error}</Text>}
+      
+      <Text style={s.label}>Group</Text>
+      <View style={s.row}>{groups.map((g) => <Btn key={g.id} label={(g.id === groupId ? "● " : "") + g.name} onPress={() => { setGroupId(g.id); setGeneralArea(g.generalArea); }} />)}</View>
+
+      <Field label="Title" value={title} onChange={setTitle} placeholder="e.g. Study circle, Weekend 5-a-side" />
+      <Field label="Details" value={description} onChange={setDescription} multiline placeholder="What are you doing and what should people bring?" />
+      <Field label="General area (never an exact address)" value={generalArea} onChange={setGeneralArea} />
+
+      <Text style={s.label}>Quick Date Presets</Text>
+      <View style={s.row}>
+        <Btn label="Tonight 18:00" onPress={() => applyPreset(0, 18)} />
+        <Btn label="Tomorrow 17:00" onPress={() => applyPreset(1, 17)} />
+        <Btn label="Saturday 14:00" onPress={() => {
+          const now = new Date();
+          const daysToSat = (6 - now.getDay() + 7) % 7 || 7;
+          applyPreset(daysToSat, 14, 3);
+        }} />
+      </View>
+
+      <Field label="Starts (YYYY-MM-DD HH:MM)" value={startsAt} onChange={setStartsAt} placeholder="2026-10-20 18:00" />
+      <Field label="Ends (YYYY-MM-DD HH:MM)" value={endsAt} onChange={setEndsAt} placeholder="2026-10-20 20:00" />
+      <Field label="Capacity (Spots)" value={capacity} onChange={setCapacity} keyboard="numeric" />
+
+      <Btn label={busy ? "Creating…" : "Create event"} disabled={busy} onPress={() => void submit()} />
+    </View>
+  );
 }
 
 function GroupPage({ group, events, onOpenEvent, onBack, onChanged }: { group: GroupSummary; events: CommunityEvent[]; onOpenEvent: (id: string) => void; onBack: () => void; onChanged: () => Promise<void> }) {
@@ -145,16 +182,16 @@ function GroupPage({ group, events, onOpenEvent, onBack, onChanged }: { group: G
   const [error, setError] = useState<string | null>(null);
   useEffect(() => { if (group.joined) client.listMembers(group.id).then(setMembers).catch((e) => setError(errorMessage(e))); }, [client, group.id, group.joined]);
   function remove() {
-    Alert.alert(`Delete “${group.name}”?`, "All its events go too. This cannot be undone.", [
+    Alert.alert(`Delete â€œ${group.name}â€?`, "All its events go too. This cannot be undone.", [
       { text: "Keep it", style: "cancel" },
       { text: "Delete", style: "destructive", onPress: () => { client.deleteGroup(group.id).then(async () => { await onChanged(); onBack(); }).catch((e) => setError(errorMessage(e))); } },
     ]);
   }
   return <View>
-    <View style={s.top}><View style={{ flex: 1 }}><Text style={s.h2}>{group.name}</Text><Text style={s.muted}>{group.generalArea} · {group.memberCount}/{group.capacity} members</Text></View><Btn label="Back" onPress={onBack} /></View>
+    <View style={s.top}><View style={{ flex: 1 }}><Text style={s.h2}>{group.name}</Text><Text style={s.muted}>{group.generalArea} Â· {group.memberCount}/{group.capacity} members</Text></View><Btn label="Back" onPress={onBack} /></View>
     {error && <Text style={s.err} accessibilityRole="alert">{error}</Text>}
     {group.description ? <View style={s.card}><Text style={s.text}>{group.description}</Text></View> : null}
-    <View style={s.card}><Text style={s.h3}>Upcoming events</Text>{events.length === 0 ? <Text style={s.muted}>Nothing planned yet.</Text> : events.map((e) => <Pressable key={e.id} accessibilityRole="button" onPress={() => onOpenEvent(e.id)}><Text style={s.link}>{e.title} · {fmt(e.startsAt)}</Text></Pressable>)}</View>
+    <View style={s.card}><Text style={s.h3}>Upcoming events</Text>{events.length === 0 ? <Text style={s.muted}>Nothing planned yet.</Text> : events.map((e) => <Pressable key={e.id} accessibilityRole="button" onPress={() => onOpenEvent(e.id)}><Text style={s.link}>{e.title} Â· {fmt(e.startsAt)}</Text></Pressable>)}</View>
     <View style={s.card}><Text style={s.h3}>Members</Text>{!group.joined ? <Text style={s.muted}>Join the group to see who is in it.</Text> : members === null ? <ActivityIndicator /> : members.map((m) => <Text style={s.text} key={m.userId}>{m.displayName}{m.role !== "member" ? `  (${m.role})` : ""}</Text>)}</View>
     {group.role === "owner" && <Btn label="Delete group" danger onPress={remove} />}
   </View>;
@@ -212,21 +249,21 @@ function EventPage({ event, group, onBack, onChanged }: { event: CommunityEvent;
   }
   async function rsvp(join: boolean) { setError(null); try { if (join) await client.rsvp(event.id); else await client.cancelRsvp(event.id); await onChanged(); } catch (err) { setError(errorMessage(err)); } }
   function cancelEvent() {
-    Alert.alert(`Cancel “${event.title}”?`, "Everyone who RSVP'd loses their place.", [
+    Alert.alert(`Cancel â€œ${event.title}â€?`, "Everyone who RSVP'd loses their place.", [
       { text: "Keep it", style: "cancel" },
       { text: "Cancel event", style: "destructive", onPress: () => { client.deleteEvent(event.id).then(async () => { await onChanged(); onBack(); }).catch((e) => setError(errorMessage(e))); } },
     ]);
   }
 
   return <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
-    <View style={s.top}><View style={{ flex: 1 }}><Text style={s.h2}>{event.title}</Text><Text style={s.muted}>{event.groupName} · {event.generalArea}</Text><Text style={s.muted}>{fmt(event.startsAt)} to {fmt(event.endsAt)}</Text></View><Btn label="Back" onPress={onBack} /></View>
+    <View style={s.top}><View style={{ flex: 1 }}><Text style={s.h2}>{event.title}</Text><Text style={s.muted}>{event.groupName} Â· {event.generalArea}</Text><Text style={s.muted}>{fmt(event.startsAt)} to {fmt(event.endsAt)}</Text></View><Btn label="Back" onPress={onBack} /></View>
     {error && <Text style={s.err} accessibilityRole="alert">{error}</Text>}
     <View style={s.card}>
       {event.description ? <Text style={s.text}>{event.description}</Text> : null}
-      <Text style={s.text}>{event.going} of {event.capacity} going{event.myStatus === "waitlisted" ? " · you are on the waitlist" : ""}</Text>
+      <Text style={s.text}>{event.going} of {event.capacity} going{event.myStatus === "waitlisted" ? " Â· you are on the waitlist" : ""}</Text>
       <View style={s.row}>
         {event.myStatus ? <Btn label="Cancel RSVP" danger onPress={() => void rsvp(false)} />
-          : group?.joined === false ? <Text style={s.muted}>Join “{event.groupName}” to RSVP.</Text>
+          : group?.joined === false ? <Text style={s.muted}>Join â€œ{event.groupName}â€ to RSVP.</Text>
           : <Btn label={event.going >= event.capacity ? "Join waitlist" : "I'm going"} onPress={() => void rsvp(true)} />}
         {canManage && <Btn label="Cancel event" danger onPress={cancelEvent} />}
       </View>
@@ -240,13 +277,13 @@ function EventPage({ event, group, onBack, onChanged }: { event: CommunityEvent;
           <View style={[s.bubble, mine ? s.mine : s.theirs, m.pending && { opacity: 0.6 }, m.failed && { backgroundColor: "#b42318" }]}>
             {!mine && <Text style={s.sender}>{m.senderName}</Text>}
             <Text style={mine ? s.mineText : s.theirsText}>{m.body}</Text>
-            <Text style={[s.meta, mine && { color: "#dfe3ff" }]}>{m.pending ? "Sending…" : m.failed ? "Not sent" : new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</Text>
+            <Text style={[s.meta, mine && { color: "#dfe3ff" }]}>{m.pending ? "Sendingâ€¦" : m.failed ? "Not sent" : new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</Text>
             {m.failed && <Pressable accessibilityRole="button" onPress={() => { setMessages((c) => c.filter((x) => x.id !== m.id)); void send(m.body, m.clientTag); }}><Text style={{ color: "#fff", fontWeight: "700" }}>Retry</Text></Pressable>}
           </View>
         </View>; })}
       </ScrollView>
       <View style={s.composer}>
-        <TextInput accessibilityLabel="Message" style={[s.input, { flex: 1, maxHeight: 120 }]} value={draft} onChangeText={setDraft} placeholder="Write to everyone going…" placeholderTextColor="#8a94a6" maxLength={2000} multiline />
+        <TextInput accessibilityLabel="Message" style={[s.input, { flex: 1, maxHeight: 120 }]} value={draft} onChangeText={setDraft} placeholder="Write to everyone goingâ€¦" placeholderTextColor="#8a94a6" maxLength={2000} multiline />
         <Btn label="Send" disabled={sending || !draft.trim()} onPress={submit} />
       </View>
     </> : <View style={s.card}><Text style={s.muted}>{event.myStatus === "waitlisted" ? "You can chat once a place opens up for you." : "RSVP to join the event chat."}</Text></View>}
@@ -267,3 +304,4 @@ const s = StyleSheet.create({
   theirsText: { color: "#152033", fontSize: 15 }, mineText: { color: "#fff", fontSize: 15 }, sender: { fontSize: 12, fontWeight: "700", color: "#4f46e5" }, meta: { fontSize: 11, color: "#667085", marginTop: 2 },
   composer: { flexDirection: "row", gap: 8, marginTop: 10, alignItems: "flex-end" },
 });
+
