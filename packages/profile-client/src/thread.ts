@@ -1,7 +1,15 @@
 import type { EventMessage, MessageView } from "@sp/types";
 
 /** A message as shown in a thread: server messages plus local optimistic bubbles. */
-export type ThreadMessage = MessageView & { pending?: boolean; failed?: boolean };
+export type ThreadMessage = MessageView & {
+  pending?: boolean;
+  failed?: boolean;
+  read?: boolean;
+  mediaUrl?: string;
+  mediaThumbUrl?: string;
+  mediaWidth?: number;
+  mediaHeight?: number;
+};
 
 function compare(a: ThreadMessage, b: ThreadMessage): number {
   if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? -1 : 1;

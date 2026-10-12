@@ -1,4 +1,5 @@
-﻿import type { ConversationView, NotificationSettings } from "@sp/types";
+import * as ImagePicker from "expo-image-picker";
+import type { ConversationView, NotificationSettings } from "@sp/types";
 import { applyReadWatermark, mergeMessages, newClientTag, type ThreadMessage } from "@sp/profile-client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
@@ -153,7 +154,7 @@ function Thread({ conversation, photo, onBack }: { conversation: ConversationVie
   return <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
     <View style={m.topbar}>
       <View style={m.head}><Avatar name={conversation.other.displayName} url={photo} />
-        <View><Text style={m.name}>{conversation.other.displayName}</Text><Text style={m.muted}>{status === "live" ? "Connected" : status === "closed" ? "Offline" : "Reconnectingâ€¦"}</Text></View>
+        <View><Text style={m.name}>{conversation.other.displayName}</Text><Text style={m.muted}>{status === "live" ? "Connected" : status === "closed" ? "Offline" : "Reconnecting…"}</Text></View>
       </View>
       <Pressable accessibilityRole="button" onPress={onBack} style={m.btn}><Text style={m.btnText}>All messages</Text></Pressable>
     </View>
@@ -164,10 +165,11 @@ function Thread({ conversation, photo, onBack }: { conversation: ConversationVie
         const theirs = x.senderId === conversation.other.userId;
         return <View key={x.id} style={[m.bubbleRow, theirs ? m.left : m.right]}>
           <View style={[m.bubble, theirs ? m.theirs : m.mine, x.pending && m.pendingBubble, x.failed && m.failedBubble]}>
-            {Boolean(x.mediaUrl) && <Image source={{ uri: x.mediaThumbUrl || x.mediaUrl! }} style={{ width: 220, height: 160, borderRadius: 10, marginBottom: 6 }} resizeMode="cover" />}`n            <Text style={theirs ? m.theirsText : m.mineText}>{x.body}</Text>
+            {Boolean((x as any).mediaUrl) && <Image source={{ uri: ((x as any).mediaThumbUrl || (x as any).mediaUrl) }} style={{ width: 220, height: 160, borderRadius: 10, marginBottom: 6 }} resizeMode="cover" />}
+            <Text style={theirs ? m.theirsText : m.mineText}>{x.body}</Text>
             <Text style={[m.meta, !theirs && m.metaMine]}>
-              {x.pending ? "Sendingâ€¦" : x.failed ? "Not sent" : new Date(x.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              {!theirs && !x.pending && !x.failed && x.read ? " Â· Read" : ""}
+              {x.pending ? "Sending…" : x.failed ? "Not sent" : new Date(x.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              {!theirs && !x.pending && !x.failed && x.read ? " · Read" : ""}
             </Text>
             {x.failed && <Pressable accessibilityRole="button" onPress={() => { setMessages((c) => c.filter((y) => y.id !== x.id)); setMessages((c) => [...c, { ...x, failed: false, pending: true }]); void send(x.body, x.clientTag); }}><Text style={m.retry}>Retry</Text></Pressable>}
           </View>
@@ -191,9 +193,9 @@ function Thread({ conversation, photo, onBack }: { conversation: ConversationVie
         }}
         style={[m.btn, { paddingHorizontal: 10, justifyContent: "center", alignItems: "center" }]}
       >
-        <Text style={{ fontSize: 18 }}>📷</Text>
+        <Text style={{ fontSize: 18 }}>??</Text>
       </Pressable>
-      <TextInput style={m.input} value={draft} onChangeText={setDraft} placeholder="Write a messageâ€¦" placeholderTextColor="#8a94a6" maxLength={2000} multiline accessibilityLabel="Message" />
+      <TextInput style={m.input} value={draft} onChangeText={setDraft} placeholder="Write a message…" placeholderTextColor="#8a94a6" maxLength={2000} multiline accessibilityLabel="Message" />
       <Pressable accessibilityRole="button" onPress={submit} disabled={sending || !draft.trim()} style={[m.send, (sending || !draft.trim()) && m.disabled]}><Text style={m.sendText}>Send</Text></Pressable>
     </View>
   </KeyboardAvoidingView>;
@@ -219,4 +221,5 @@ const m = StyleSheet.create({
   input: { flex: 1, borderWidth: 1, borderColor: "#dfe5ee", borderRadius: 12, padding: 10, fontSize: 16, color: "#152033", backgroundColor: "#fff", maxHeight: 120 },
   send: { backgroundColor: "#4f46e5", paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12 }, sendText: { color: "#fff", fontWeight: "700", fontSize: 15 }, disabled: { opacity: 0.55 },
 });
+
 
