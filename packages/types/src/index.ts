@@ -380,3 +380,46 @@ export interface ReportSummary {
   id: string;
   status: ReportStatus;
 }
+
+// --- Phase 10: Sharing, Previews & Deep Links ---
+export type ShareTargetType = "group" | "event" | "profile";
+
+export interface GroupSharePreview {
+  id: string;
+  name: string;
+  description: string;
+  generalArea: string;
+  memberCount: number;
+  capacity: number;
+  activities: string[];
+  isPrivate: boolean;
+  shareUrl: string;
+  deepLink: string;
+}
+
+export interface EventSharePreview {
+  id: string;
+  groupId: string;
+  groupName: string;
+  title: string;
+  description: string;
+  generalArea: string;
+  startsAt: string;
+  endsAt: string;
+  capacity: number;
+  attendeeCount: number;
+  spotsLeft: number;
+  isFull: boolean;
+  shareUrl: string;
+  deepLink: string;
+}
+
+export interface ProfileSharePreview {
+  id: string;
+  displayName: string;
+  bio: string | null;
+  interests: string[];
+  verificationLevel: string;
+  shareUrl: string;
+  deepLink: string;
+}

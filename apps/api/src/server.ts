@@ -1,4 +1,4 @@
-import { loadApiEnv } from "@sp/config";
+﻿import { loadApiEnv } from "@sp/config";
 import { buildApp, type ReadinessCheck } from "./app";
 import { registerAuth } from "./auth/plugin";
 import { resolveCorsOrigins } from "./cors";
@@ -19,6 +19,8 @@ import { createCommunityStore } from "./community/store";
 import { registerCommunity } from "./community/plugin";
 import { createSafetyStore } from "./safety/store";
 import { registerSafety } from "./safety/plugin";
+import { createShareStore } from "./share/store";
+import { registerShare } from "./share/plugin";
 
 loadDotEnv();
 const env = loadApiEnv(process.env);
@@ -47,6 +49,7 @@ if (pool && env.SUPABASE_URL) {
   registerMessaging(app, { requireAuth, store: createMessagingStore(db, undefined, { onMessageSent: notifier.messageSent }) });
   registerCommunity(app, { requireAuth, store: createCommunityStore(db) });
   registerSafety(app, { requireAuth, requireRole, store: createSafetyStore(db) });
+  registerShare(app, { store: createShareStore(db) });
 } else {
   app.log.warn("DATABASE_URL and/or SUPABASE_URL not set: auth routes (/me, /me/sessions) are NOT registered");
 }
@@ -60,3 +63,4 @@ const shutdown = async () => {
 };
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
+
