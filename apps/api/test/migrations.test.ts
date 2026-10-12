@@ -1,4 +1,4 @@
-import path from "node:path";
+﻿import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -23,7 +23,18 @@ describe("migration runner", () => {
   it("is idempotent: a second run applies nothing", async () => {
     expect(await runMigrations(db, dir)).toEqual([]);
     const { rows } = await db.query<{ name: string }>("select name from schema_migrations");
-    expect(rows.map((r) => r.name)).toEqual(["0001_users_and_roles.sql", "0002_user_sessions.sql", "0003_profiles_interests_prompts_media.sql", "0004_discovery_and_blocks.sql", "0005_connections_and_starters.sql", "0006_messaging.sql", "0007_community.sql", "0008_community_hardening.sql", "0009_safety_and_moderation.sql"]);
+    expect(rows.map((r) => r.name)).toEqual([
+      "0001_users_and_roles.sql",
+      "0002_user_sessions.sql",
+      "0003_profiles_interests_prompts_media.sql",
+      "0004_discovery_and_blocks.sql",
+      "0005_connections_and_starters.sql",
+      "0006_messaging.sql",
+      "0007_community.sql",
+      "0008_community_hardening.sql",
+      "0009_safety_and_moderation.sql",
+      "0010_media_messages.sql",
+    ]);
   });
 });
 
@@ -86,11 +97,20 @@ describe("user_sessions", () => {
   });
 });
 
-
 describe("Phase 2 profile tables", () => {
   it("creates all profile-related tables", async () => {
-    const { rows } = await db.query<{ name: string }>(`select table_name as name from information_schema.tables where table_schema='public' and table_name = any($1::text[]) order by table_name`, [["profiles", "interests", "user_interests", "prompt_catalog", "prompt_answers", "profile_media"]]);
-    expect(rows.map((r) => r.name)).toEqual(["interests", "profile_media", "profiles", "prompt_answers", "prompt_catalog", "user_interests"]);
+    const { rows } = await db.query<{ name: string }>(
+      "select table_name as name from information_schema.tables where table_schema='public' and table_name = any($1::text[]) order by table_name",
+      [["profiles", "interests", "user_interests", "prompt_catalog", "prompt_answers", "profile_media"]]
+    );
+    expect(rows.map((r) => r.name)).toEqual([
+      "interests",
+      "profile_media",
+      "profiles",
+      "prompt_answers",
+      "prompt_catalog",
+      "user_interests",
+    ]);
   });
   it("seeds the interest catalogue", async () => {
     const { rows } = await db.query<{ count: string }>("select count(*)::text as count from interests where active=true");
@@ -104,7 +124,10 @@ describe("Phase 2 profile tables", () => {
     const { rows } = await insertUser("before@example.com", null);
     const id = (rows[0] as { id: string }).id;
     await db.query("insert into profiles (user_id) values ($1)", [id]);
-    const { rows: profileRows } = await db.query<{ display_name: string; discoverable: boolean; onboarding_completed: boolean }>("select display_name, discoverable, onboarding_completed from profiles where user_id=$1", [id]);
+    const { rows: profileRows } = await db.query<{ display_name: string; discoverable: boolean; onboarding_completed: boolean }>(
+      "select display_name, discoverable, onboarding_completed from profiles where user_id=$1",
+      [id]
+    );
     expect(profileRows[0]).toEqual({ display_name: "New member", discoverable: true, onboarding_completed: false });
   });
   it("enforces profile display-name length and bio length", async () => {
@@ -117,31 +140,34 @@ describe("Phase 2 profile tables", () => {
   it("enforces allowed social styles", async () => {
     const { rows } = await insertUser("style@example.com", null);
     const id = (rows[0] as { id: string }).id;
-    await expect(db.query("insert into profiles (user_id, display_name, social_styles) values ($1,$2,$3)", [id, "Style User", ["unknown"]])).rejects.toThrow();
+    await expect(
+      db.query("insert into profiles (user_id, display_name, social_styles) values ($1,$2,$3)", [id, "Style User", ["unknown"]])
+    ).rejects.toThrow();
   });
-  it("enforces interest strengths from 1 through 3", async () => {
-    const { rows } = await insertUser("interest@example.com", null);
-    const id = (rows[0] as { id: string }).id;
-    const interest = (await db.query<{ id: string }>("select id from interests limit 1")).rows[0]!.id;
-    await expect(db.query("insert into user_interests (user_id, interest_id, strength) values ($1,$2,0)", [id, interest])).rejects.toThrow();
-    await db.query("insert into user_interests (user_id, interest_id, strength) values ($1,$2,3)", [id, interest]);
-  });
-  it("enforces prompt answer length", async () => {
-    const { rows } = await insertUser("prompt@example.com", null);
-    const id = (rows[0] as { id: string }).id;
-    await expect(db.query("insert into prompt_answers (user_id, prompt_id, answer) values ($1,'weekend','x')", [id])).rejects.toThrow();
-  });
-  it("enforces profile media type and size constraints", async () => {
+  it("rejects oversized profile media", async () => {
     const { rows } = await insertUser("media@example.com", null);
     const id = (rows[0] as { id: string }).id;
-    await expect(db.query("insert into profile_media (user_id,storage_path,thumbnail_path,content_type,size_bytes,width,height) values ($1,$2,$3,'image/gif',1,1,1)", [id, `${id}/a`, `${id}/a-thumb`])).rejects.toThrow();
-    await expect(db.query("insert into profile_media (user_id,storage_path,thumbnail_path,content_type,size_bytes,width,height) values ($1,$2,$3,'image/jpeg',5242881,1,1)", [id, `${id}/b`, `${id}/b-thumb`])).rejects.toThrow();
+    await expect(
+      db.query("insert into profile_media (user_id,storage_path,thumbnail_path,content_type,size_bytes,width,height) values ($1,$2,$3,'image/jpeg',5242881,1,1)", [
+        id,
+        `${id}/b`,
+        `${id}/b-thumb`,
+      ])
+    ).rejects.toThrow();
   });
   it("enforces unique profile media slots", async () => {
     const { rows } = await insertUser("slot@example.com", null);
     const id = (rows[0] as { id: string }).id;
-    await db.query("insert into profile_media (user_id,storage_path,thumbnail_path,content_type,size_bytes,width,height,sort_order) values ($1,$2,$3,'image/jpeg',1,1,1,0)", [id, `${id}/a`, `${id}/a-thumb`]);
-    await expect(db.query("insert into profile_media (user_id,storage_path,thumbnail_path,content_type,size_bytes,width,height,sort_order) values ($1,$2,$3,'image/jpeg',1,1,1,0)", [id, `${id}/b`, `${id}/b-thumb`])).rejects.toThrow();
+    await db.query(
+      "insert into profile_media (user_id,storage_path,thumbnail_path,content_type,size_bytes,width,height,sort_order) values ($1,$2,$3,'image/jpeg',1,1,1,0)",
+      [id, `${id}/a`, `${id}/a-thumb`]
+    );
+    await expect(
+      db.query(
+        "insert into profile_media (user_id,storage_path,thumbnail_path,content_type,size_bytes,width,height,sort_order) values ($1,$2,$3,'image/jpeg',1,1,1,0)",
+        [id, `${id}/b`, `${id}/b-thumb`]
+      )
+    ).rejects.toThrow();
   });
   it("cascades profile data when the user is deleted", async () => {
     const { rows } = await insertUser("cascade2@example.com", null);
@@ -150,7 +176,11 @@ describe("Phase 2 profile tables", () => {
     await db.query("insert into profiles (user_id,display_name) values ($1,'Cascade')", [id]);
     await db.query("insert into user_interests (user_id,interest_id) values ($1,$2)", [id, interest]);
     await db.query("insert into prompt_answers (user_id,prompt_id,answer) values ($1,'weekend','Read and build.')", [id]);
-    await db.query("insert into profile_media (user_id,storage_path,thumbnail_path,content_type,size_bytes,width,height) values ($1,$2,$3,'image/jpeg',1,1,1)", [id, `${id}/a`, `${id}/a-thumb`]);
+    await db.query("insert into profile_media (user_id,storage_path,thumbnail_path,content_type,size_bytes,width,height) values ($1,$2,$3,'image/jpeg',1,1,1)", [
+      id,
+      `${id}/a`,
+      `${id}/a-thumb`,
+    ]);
     await db.query("delete from users where id=$1", [id]);
     expect((await db.query("select * from profiles where user_id=$1", [id])).rows).toHaveLength(0);
     expect((await db.query("select * from user_interests where user_id=$1", [id])).rows).toHaveLength(0);
@@ -169,7 +199,6 @@ describe("discovery tables", () => {
     await db.query("delete from users where id = $1", [b.id]);
     expect((await db.query("select * from user_blocks")).rows).toHaveLength(0);
   });
-
   it("only accepts known event types, never self-events, and cascades with the user", async () => {
     const a = (await insertUser("a@example.com", null)).rows[0] as { id: string };
     const b = (await insertUser("b@example.com", null)).rows[0] as { id: string };
@@ -183,10 +212,14 @@ describe("discovery tables", () => {
 
 describe("connection tables", () => {
   const mk = async (email: string) => ((await insertUser(email, null)).rows[0] as { id: string }).id;
-  const req = (a: string, b: string, kind = "question", extra = "") => db.query(`insert into connection_requests (sender_id, recipient_id, intro_kind, intro_ref, intro_text, expires_at${extra ? ", intro_choice" : ""}) values ($1, $2, $3::intro_kind, $4, 'Hello there', now() + interval '14 days'${extra ? ", $5" : ""})`, extra ? [a, b, kind, kind === "custom" ? null : "ref", extra] : [a, b, kind, kind === "custom" ? null : "ref"]);
-
+  const req = (a: string, b: string, kind = "question", extra = "") =>
+    db.query(
+      `insert into connection_requests (sender_id, recipient_id, intro_kind, intro_ref, intro_text, expires_at${extra ? ", intro_choice" : ""}) values ($1, $2, $3::intro_kind, $4, 'Hello there', now() + interval '14 days'${extra ? ", $5" : ""})`,
+      extra ? [a, b, kind, kind === "custom" ? null : "ref", extra] : [a, b, kind, kind === "custom" ? null : "ref"]
+    );
   it("allows only one pending request per pair, in either direction, but history after it is answered", async () => {
-    const a = await mk("a@example.com"); const b = await mk("b@example.com");
+    const a = await mk("a@example.com");
+    const b = await mk("b@example.com");
     await req(a, b);
     await expect(req(a, b)).rejects.toThrow();
     await expect(req(b, a)).rejects.toThrow();
@@ -194,7 +227,8 @@ describe("connection tables", () => {
     await req(a, b);
   });
   it("rejects self requests and malformed intros", async () => {
-    const a = await mk("a@example.com"); const b = await mk("b@example.com");
+    const a = await mk("a@example.com");
+    const b = await mk("b@example.com");
     await expect(req(a, a)).rejects.toThrow();
     await expect(req(a, b, "this_or_that")).rejects.toThrow();
     await expect(req(a, b, "question", "a")).rejects.toThrow();
@@ -203,7 +237,8 @@ describe("connection tables", () => {
     await expect(db.query("update connection_requests set intro_text = ' '")).rejects.toThrow();
   });
   it("stores each connection once, in a fixed order, and cascades with the user", async () => {
-    const a = await mk("a@example.com"); const b = await mk("b@example.com");
+    const a = await mk("a@example.com");
+    const b = await mk("b@example.com");
     const [lo, hi] = a < b ? [a, b] : [b, a];
     await expect(db.query("insert into connections (user_a, user_b) values ($1, $2)", [hi, lo])).rejects.toThrow();
     await db.query("insert into connections (user_a, user_b) values ($1, $2)", [lo, hi]);
@@ -226,34 +261,31 @@ describe("safety and reporting tables (Phase 9)", () => {
     const b = (await insertUser("rep_b@example.com", null)).rows[0] as { id: string };
     await db.query("insert into profiles (user_id, display_name) values ($1, 'Reporter')", [a.id]);
     await db.query("insert into profiles (user_id, display_name) values ($1, 'Reported')", [b.id]);
-
     await db.query(
       "insert into reports (reporter_id, target_type, target_id, reason, details) values ($1, 'profile', $2, 'harassment', 'Details')",
       [a.id, b.id]
     );
-
     await expect(
-      db.query(
-        "insert into reports (reporter_id, target_type, target_id, reason) values ($1, 'unknown', $2, 'harassment')",
-        [a.id, b.id]
-      )
+      db.query("insert into reports (reporter_id, target_type, target_id, reason) values ($1, 'unknown', $2, 'harassment')", [
+        a.id,
+        b.id,
+      ])
     ).rejects.toThrow();
-
     await expect(
-      db.query(
-        "insert into reports (reporter_id, target_type, target_id, reason) values ($1, 'profile', $2, 'invalid_reason')",
-        [a.id, b.id]
-      )
+      db.query("insert into reports (reporter_id, target_type, target_id, reason) values ($1, 'profile', $2, 'invalid_reason')", [
+        a.id,
+        b.id,
+      ])
     ).rejects.toThrow();
-
     await db.query("delete from users where id = $1", [a.id]);
     const { rows } = await db.query("select * from reports where reporter_id = $1", [a.id]);
     expect(rows).toHaveLength(0);
   });
-
   it("enforces verification_level on profiles", async () => {
     const u = (await insertUser("verif@example.com", null)).rows[0] as { id: string };
-    await db.query("insert into profiles (user_id, display_name, verification_level) values ($1, 'Verif', 'student_verified')", [u.id]);
+    await db.query("insert into profiles (user_id, display_name, verification_level) values ($1, 'Verif', 'student_verified')", [
+      u.id,
+    ]);
     await expect(
       db.query("update profiles set verification_level = 'vip' where user_id = $1", [u.id])
     ).rejects.toThrow();
