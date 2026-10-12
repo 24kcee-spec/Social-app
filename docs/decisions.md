@@ -104,3 +104,15 @@ The Phase 6 backend on the branch had no tests, a red migrations test, and real 
 
 ## D-034 | 2026-10-06 | Event chat is polled, not streamed; QR/share deferred
 Event chat refreshes every 8 seconds on web and mobile (paused while the tab is hidden on web). Realtime for `event_messages` would need a block-aware, going-only RLS policy and a publication change; polling keeps the table API-only (RLS on, no client policies) and is enough for pilot-size events. Revisit if chat volume grows. QR codes and share links stay in the Sharing/Phase 10 plan (public preview pages and deep links do not exist yet). Moderator promotion and member removal are not built: only owners create events until a moderation phase (Phase 9) adds roles management and reporting.
+
+## D-035 | 2026-10-12 | Phase 9 Reporting, Moderation Queue & Automatic Block
+Users can submit structured reports against any platform entity (`profile`, `message`, `group`, `event`, `event_message`) with specific predefined violation reasons (`harassment`, `spam`, `inappropriate_content`, `hate_speech`, `impersonation`, `safety_concern`, `other`). To protect victims quickly without requiring multiple manual steps, reporting includes an optional `blockUser: true` parameter that immediately establishes a bidirectional block in `user_blocks`. To prevent weaponized report spam, an anti-flood limit restricts report generation to 5 reports per hour per user, and duplicate reports for the same target within 24 hours are deduplicated.
+
+## D-036 | 2026-10-12 | Community Roles & Member Moderation
+Addresses the D-034 deferral. Group owners can promote members to `moderator` and demote them back to `member` via `PATCH /groups/:id/members/:userId`. Group owners and moderators can remove offending members via `DELETE /groups/:id/members/:userId`. Moderators cannot remove other moderators or the owner. Removing a member automatically releases upcoming event RSVPs in that group, automatically promoting waitlisted members. Group moderators can now create events in the group alongside group owners.
+
+## D-037 | 2026-10-12 | Profile Verification Levels for Pilot
+Profiles gain a structured `verification_level` column (`unverified`, `email_verified`, `student_verified`, `trusted`) with an index. This enables the NUST/Bulawayo pilot gate (D-007) to verify university affiliations or trusted community standing before granting pilot access or badges.
+
+## D-038 | 2026-10-12 | User Account Deletion & Right to Be Forgotten
+Under `POST /me/delete-account`, a user can permanently request data erasure. The user status is set to `'deleted'`, personal profile fields are anonymized to "Deleted User" with bio and verification cleared, active sessions in `user_sessions` and push tokens in `device_push_tokens` are deleted, personal photos, prompt answers, interests, group memberships, and event RSVPs are permanently purged.

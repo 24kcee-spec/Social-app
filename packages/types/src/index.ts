@@ -53,6 +53,7 @@ export interface Profile {
   onboardingCompleted: boolean;
   createdAt: string;
   updatedAt: string;
+  verificationLevel?: VerificationLevel;
   interests: Interest[];
   prompts: PromptAnswer[];
   media: ProfileMedia[];
@@ -324,3 +325,58 @@ export interface CommunityEvent {
 export interface EventAttendee { userId: string; displayName: string }
 export interface EventMessage { id: string; eventId: string; senderId: string; senderName: string; body: string; clientTag: string; createdAt: string }
 export interface EventMessagePage { messages: EventMessage[]; hasMore: boolean; nextCursor: string | null }
+
+// ---- Phase 9: safety + moderation + verification ----
+export const REPORT_TARGET_TYPES = ["profile", "message", "group", "event", "event_message"] as const;
+export type ReportTargetType = (typeof REPORT_TARGET_TYPES)[number];
+
+export const REPORT_REASONS = [
+  "harassment",
+  "spam",
+  "inappropriate_content",
+  "hate_speech",
+  "impersonation",
+  "safety_concern",
+  "other",
+] as const;
+export type ReportReason = (typeof REPORT_REASONS)[number];
+
+export const REPORT_STATUSES = ["pending", "reviewed", "resolved", "dismissed"] as const;
+export type ReportStatus = (typeof REPORT_STATUSES)[number];
+
+export const REPORT_ACTIONS = [
+  "none",
+  "warning_issued",
+  "content_removed",
+  "user_suspended",
+  "user_banned",
+] as const;
+export type ReportAction = (typeof REPORT_ACTIONS)[number];
+
+export const VERIFICATION_LEVELS = [
+  "unverified",
+  "email_verified",
+  "student_verified",
+  "trusted",
+] as const;
+export type VerificationLevel = (typeof VERIFICATION_LEVELS)[number];
+
+export interface ReportItem {
+  id: string;
+  reporterId: string;
+  targetType: ReportTargetType;
+  targetId: string;
+  reason: ReportReason;
+  details: string | null;
+  status: ReportStatus;
+  actionTaken: ReportAction | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  resolutionNotes: string | null;
+  createdAt: string;
+}
+
+export interface ReportSummary {
+  id: string;
+  status: ReportStatus;
+}

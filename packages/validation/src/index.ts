@@ -219,3 +219,38 @@ export type EventListQueryInput = z.infer<typeof eventListQuerySchema>;
 
 export const eventMessageSchema = z.object({ body: z.string().trim().min(1).max(2000), clientTag: z.string().uuid() });
 export type EventMessageInput = z.infer<typeof eventMessageSchema>;
+
+// ---- Phase 9: safety + moderation ----
+export const reportTargetTypes = ["profile", "message", "group", "event", "event_message"] as const;
+export const reportReasons = ["harassment", "spam", "inappropriate_content", "hate_speech", "impersonation", "safety_concern", "other"] as const;
+export const reportStatuses = ["pending", "reviewed", "resolved", "dismissed"] as const;
+export const reportActions = ["none", "warning_issued", "content_removed", "user_suspended", "user_banned"] as const;
+export const verificationLevels = ["unverified", "email_verified", "student_verified", "trusted"] as const;
+
+export const createReportSchema = z.object({
+  targetType: z.enum(reportTargetTypes),
+  targetId: z.string().uuid(),
+  reason: z.enum(reportReasons),
+  details: z.string().trim().max(1000).optional(),
+  blockUser: z.boolean().optional(),
+});
+export type CreateReportInput = z.infer<typeof createReportSchema>;
+
+export const reportListQuerySchema = z.object({
+  status: z.enum(reportStatuses).optional(),
+  targetType: z.enum(reportTargetTypes).optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  before: z.string().datetime({ offset: true }).optional(),
+});
+export type ReportListQuery = z.input<typeof reportListQuerySchema>;
+
+export const resolveReportSchema = z.object({
+  actionTaken: z.enum(reportActions),
+  resolutionNotes: z.string().trim().max(1000).optional(),
+});
+export type ResolveReportInput = z.infer<typeof resolveReportSchema>;
+
+export const updateGroupMemberRoleSchema = z.object({
+  role: z.enum(["moderator", "member"]),
+});
+export type UpdateGroupMemberRoleInput = z.infer<typeof updateGroupMemberRoleSchema>;

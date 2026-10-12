@@ -236,3 +236,45 @@ describe("event chat", () => {
     expect(await code(store().sendEventMessage(ANN, id, "f0", TAG(400)))).toBe("ok"); // replay of an accepted message
   });
 });
+
+describe("group member moderation (Phase 9)", () => {
+  it("allows owner to promote member to moderator and demote back", async () => {
+    const { g } = await setup();
+    await store().updateMemberRole(OWNER, g.id, ANN, "moderator");
+    const members = await store().listMembers(OWNER, g.id);
+    expect(members.find((m) => m.userId === ANN)?.role).toBe("moderator");
+
+    await expect(store().updateMemberRole(BEN, g.id, ANN, "member")).rejects.toMatchObject({ code: "forbidden" });
+
+    await store().updateMemberRole(OWNER, g.id, ANN, "member");
+    const updated = await store().listMembers(OWNER, g.id);
+    expect(updated.find((m) => m.userId === ANN)?.role).toBe("member");
+  });
+
+  it("allows owner or moderator to remove standard members", async () => {
+    const { g } = await setup();
+    await store().updateMemberRole(OWNER, g.id, ANN, "moderator");
+
+    await store().removeMember(ANN, g.id, BEN);
+    const members = await store().listMembers(OWNER, g.id);
+    expect(members.some((m) => m.userId === BEN)).toBe(false);
+
+    await expect(store().removeMember(ANN, g.id, OWNER)).rejects.toMatchObject({ code: "forbidden" });
+    await expect(store().removeMember(CY, g.id, DEE)).rejects.toMatchObject({ code: "forbidden" });
+  });
+
+  it("allows promoted moderator to create events", async () => {
+    const { g } = await setup();
+    await store().updateMemberRole(OWNER, g.id, ANN, "moderator");
+    const event = await store().createEvent(ANN, {
+      groupId: g.id,
+      title: "Moderator Event",
+      description: "",
+      generalArea: "Bulawayo",
+      startsAt: inHours(24),
+      endsAt: inHours(26),
+      capacity: 10,
+    });
+    expect(event.title).toBe("Moderator Event");
+  });
+});

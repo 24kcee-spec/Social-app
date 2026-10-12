@@ -57,6 +57,14 @@ if (env) {
         const rls6 = await pool.query("select relname from pg_class where relnamespace = 'public'::regnamespace and relname in ('groups','group_members','activities','group_activities','events','event_rsvps','event_messages') and relrowsecurity");
         rls6.rows.length === 7 ? ok("RLS enabled on all Phase 6 community tables") : fail("RLS is not enabled on all Phase 6 tables (event_messages would be readable with the public key)", "Run: pnpm --filter @sp/api run migrate   (applies 0008_community_hardening.sql)");
       }
+      const phase9 = (await pool.query("select to_regclass('public.reports') as t")).rows[0]?.t;
+      if (phase9) {
+        const rls9 = await pool.query("select relname from pg_class where relnamespace = 'public'::regnamespace and relname in ('reports') and relrowsecurity");
+        rls9.rows.length === 1 ? ok("RLS enabled on Phase 9 reports table") : fail("RLS is not enabled on Phase 9 reports table", "Run: pnpm --filter @sp/api run migrate (applies 0009_safety_and_moderation.sql)");
+        const col9 = await pool.query("select column_name from information_schema.columns where table_schema = 'public' and table_name = 'profiles' and column_name = 'verification_level'");
+        col9.rows.length === 1 ? ok("Verification level column exists on profiles") : fail("verification_level column missing on profiles", "Run: pnpm --filter @sp/api run migrate");
+      }
+
       if (phase3) {
         const rls3 = await pool.query("select relname from pg_class where relnamespace = 'public'::regnamespace and relname in ('user_blocks','discovery_events') and relrowsecurity");
         rls3.rows.length === 2 ? ok("RLS enabled on Phase 3 tables") : fail("RLS is not enabled on Phase 3 tables", "Run docs/supabase-phase3-security.sql in Supabase SQL Editor");

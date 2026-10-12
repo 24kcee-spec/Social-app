@@ -23,7 +23,7 @@ describe("migration runner", () => {
   it("is idempotent: a second run applies nothing", async () => {
     expect(await runMigrations(db, dir)).toEqual([]);
     const { rows } = await db.query<{ name: string }>("select name from schema_migrations");
-    expect(rows.map((r) => r.name)).toEqual(["0001_users_and_roles.sql", "0002_user_sessions.sql", "0003_profiles_interests_prompts_media.sql", "0004_discovery_and_blocks.sql", "0005_connections_and_starters.sql", "0006_messaging.sql", "0007_community.sql", "0008_community_hardening.sql"]);
+    expect(rows.map((r) => r.name)).toEqual(["0001_users_and_roles.sql", "0002_user_sessions.sql", "0003_profiles_interests_prompts_media.sql", "0004_discovery_and_blocks.sql", "0005_connections_and_starters.sql", "0006_messaging.sql", "0007_community.sql", "0008_community_hardening.sql", "0009_safety_and_moderation.sql"]);
   });
 });
 
@@ -217,5 +217,45 @@ describe("connection tables", () => {
     const a = await mk("a@example.com");
     await db.query("insert into activation_milestones (user_id, milestone) values ($1, 'first_request_sent')", [a]);
     await expect(db.query("insert into activation_milestones (user_id, milestone) values ($1, 'went_viral')", [a])).rejects.toThrow();
+  });
+});
+
+describe("safety and reporting tables (Phase 9)", () => {
+  it("enforces report target types, reasons, and cascades with reporter", async () => {
+    const a = (await insertUser("rep_a@example.com", null)).rows[0] as { id: string };
+    const b = (await insertUser("rep_b@example.com", null)).rows[0] as { id: string };
+    await db.query("insert into profiles (user_id, display_name) values ($1, 'Reporter')", [a.id]);
+    await db.query("insert into profiles (user_id, display_name) values ($1, 'Reported')", [b.id]);
+
+    await db.query(
+      "insert into reports (reporter_id, target_type, target_id, reason, details) values ($1, 'profile', $2, 'harassment', 'Details')",
+      [a.id, b.id]
+    );
+
+    await expect(
+      db.query(
+        "insert into reports (reporter_id, target_type, target_id, reason) values ($1, 'unknown', $2, 'harassment')",
+        [a.id, b.id]
+      )
+    ).rejects.toThrow();
+
+    await expect(
+      db.query(
+        "insert into reports (reporter_id, target_type, target_id, reason) values ($1, 'profile', $2, 'invalid_reason')",
+        [a.id, b.id]
+      )
+    ).rejects.toThrow();
+
+    await db.query("delete from users where id = $1", [a.id]);
+    const { rows } = await db.query("select * from reports where reporter_id = $1", [a.id]);
+    expect(rows).toHaveLength(0);
+  });
+
+  it("enforces verification_level on profiles", async () => {
+    const u = (await insertUser("verif@example.com", null)).rows[0] as { id: string };
+    await db.query("insert into profiles (user_id, display_name, verification_level) values ($1, 'Verif', 'student_verified')", [u.id]);
+    await expect(
+      db.query("update profiles set verification_level = 'vip' where user_id = $1", [u.id])
+    ).rejects.toThrow();
   });
 });

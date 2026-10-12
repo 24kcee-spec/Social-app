@@ -58,4 +58,27 @@ describe("community routes", () => {
     expect(res.statusCode).toBe(201);
     expect(sendEventMessage).toHaveBeenCalledWith(ME, ID, "hi", TAG);
   });
+
+  it("supports updating member roles and removing members", async () => {
+    const updateMemberRole = vi.fn(async () => undefined);
+    const removeMember = vi.fn(async () => undefined);
+    const app = makeApp({ updateMemberRole, removeMember });
+
+    const patchRes = await app.inject({
+      method: "PATCH",
+      url: `/groups/${ID}/members/${ID}`,
+      headers: h,
+      payload: { role: "moderator" },
+    });
+    expect(patchRes.statusCode).toBe(204);
+    expect(updateMemberRole).toHaveBeenCalledWith(ME, ID, ID, "moderator");
+
+    const delRes = await app.inject({
+      method: "DELETE",
+      url: `/groups/${ID}/members/${ID}`,
+      headers: h,
+    });
+    expect(delRes.statusCode).toBe(204);
+    expect(removeMember).toHaveBeenCalledWith(ME, ID, ID);
+  });
 });

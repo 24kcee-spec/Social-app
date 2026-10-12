@@ -35,4 +35,16 @@ describe("community client", () => {
     await page.client.listEventMessages("e1", { limit: 20, before: "2026-10-12 11:00:00+00~abc" });
     expect(page.fetchImpl.mock.calls[0]![0]).toBe("http://api/events/e1/messages?limit=20&before=2026-10-12%2011%3A00%3A00%2B00~abc");
   });
+
+  it("supports updating member roles and removing members", async () => {
+    const { client, fetchImpl } = setup(json(204));
+    await client.updateMemberRole("g1", "u1", "moderator");
+    expect(fetchImpl.mock.calls[0]![0]).toBe("http://api/groups/g1/members/u1");
+    expect((fetchImpl.mock.calls[0]![1] as RequestInit).method).toBe("PATCH");
+
+    await client.removeMember("g1", "u1");
+    expect(fetchImpl.mock.calls[1]![0]).toBe("http://api/groups/g1/members/u1");
+    expect((fetchImpl.mock.calls[1]![1] as RequestInit).method).toBe("DELETE");
+  });
+
 });

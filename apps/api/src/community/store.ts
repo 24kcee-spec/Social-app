@@ -153,6 +153,33 @@ export function createCommunityStore(db: SqlRunner, clock: () => Date = () => ne
           order by case m.role when 'owner' then 0 when 'moderator' then 1 else 2 end, m.joined_at, m.user_id`, [groupId, me]);
       return rows.map((x) => ({ userId: text(x.user_id), displayName: text(x.display_name), role: x.role as GroupMember["role"] }));
     },
+    async updateMemberRole(requesterId: string, groupId: string, targetUserId: string, newRole: "moderator" | "member"): Promise<void> {
+      const myRole = await roleIn(requesterId, groupId);
+      if (myRole !== "owner") throw new CommunityError("forbidden", "Only the group owner can manage member roles");
+      const targetRole = await roleIn(targetUserId, groupId);
+      if (!targetRole) throw new CommunityError("not_found", "Member not found in this group");
+      if (targetRole === "owner") throw new CommunityError("forbidden", "Cannot change owner role");
+      await q(`update group_members set role = $1 where group_id = $2 and user_id = $3`, [newRole, groupId, targetUserId]);
+    },
+    async removeMember(requesterId: string, groupId: string, targetUserId: string): Promise<void> {
+      const myRole = await roleIn(requesterId, groupId);
+      if (!myRole || (myRole !== "owner" && myRole !== "moderator")) {
+        throw new CommunityError("forbidden", "Only group owners and moderators can remove members");
+      }
+      const targetRole = await roleIn(targetUserId, groupId);
+      if (!targetRole) throw new CommunityError("not_found", "Member not found in this group");
+      if (targetRole === "owner") throw new CommunityError("forbidden", "Cannot remove the group owner");
+      if (myRole === "moderator" && targetRole === "moderator") {
+        throw new CommunityError("forbidden", "Moderators cannot remove other moderators");
+      }
+      await q(`delete from group_members where group_id = $1 and user_id = $2`, [groupId, targetUserId]);
+      const { rows } = await q(
+        `select r.event_id::text as id from event_rsvps r join events e on e.id = r.event_id where e.group_id = $1 and r.user_id = $2 and r.status in ('going', 'waitlisted') and e.ends_at >= $3::timestamptz`,
+        [groupId, targetUserId, clock().toISOString()],
+      );
+      for (const r of rows) await store.cancelRsvp(targetUserId, text(r.id));
+    },
+
 
     // ---------- events ----------
     async createEvent(me: string, input: { groupId: string; title: string; description: string; generalArea: string; startsAt: string; endsAt: string; capacity: number }): Promise<CommunityEvent> {

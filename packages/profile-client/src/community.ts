@@ -48,6 +48,8 @@ export function createCommunityClient(config: ProfileClientConfig) {
     joinGroup: (id: string) => call<void>(`/groups/${id}/join`, "POST"),
     leaveGroup: (id: string) => call<void>(`/groups/${id}/join`, "DELETE"),
     listMembers: async (id: string) => (await call<{ members: GroupMember[] }>(`/groups/${id}/members`, "GET")).members,
+    updateMemberRole: (groupId: string, memberId: string, role: "moderator" | "member") => call<void>(`/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(memberId)}`, "PATCH", { role }),
+    removeMember: (groupId: string, memberId: string) => call<void>(`/groups/${encodeURIComponent(groupId)}/members/${encodeURIComponent(memberId)}`, "DELETE"),
     listEvents: async (q: { generalArea?: string; groupId?: string } = {}) => (await call<{ events: CommunityEvent[] }>(`/events${qs(q)}`, "GET")).events,
     getEvent: async (id: string) => (await call<{ event: CommunityEvent }>(`/events/${id}`, "GET")).event,
     createEvent: async (body: CreateEventBody) => (await call<{ event: CommunityEvent }>("/events", "POST", body)).event,

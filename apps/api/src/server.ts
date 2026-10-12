@@ -17,6 +17,8 @@ import { registerMessaging } from "./messaging/plugin";
 import { loadDotEnv } from "./env";
 import { createCommunityStore } from "./community/store";
 import { registerCommunity } from "./community/plugin";
+import { createSafetyStore } from "./safety/store";
+import { registerSafety } from "./safety/plugin";
 
 loadDotEnv();
 const env = loadApiEnv(process.env);
@@ -44,6 +46,7 @@ if (pool && env.SUPABASE_URL) {
   const notifier = createMessageNotifier(db, noopPushSender, (msg, err) => app.log.warn({ err }, msg));
   registerMessaging(app, { requireAuth, store: createMessagingStore(db, undefined, { onMessageSent: notifier.messageSent }) });
   registerCommunity(app, { requireAuth, store: createCommunityStore(db) });
+  registerSafety(app, { requireAuth, requireRole, store: createSafetyStore(db) });
 } else {
   app.log.warn("DATABASE_URL and/or SUPABASE_URL not set: auth routes (/me, /me/sessions) are NOT registered");
 }

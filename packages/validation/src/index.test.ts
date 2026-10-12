@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activationQuerySchema, interactionSettingsSchema, introSchema, messageListQuerySchema, requestBoxSchema, sendRequestSchema, blockRequestSchema, discoveryEventsRequestSchema, discoveryQuerySchema, interestSelectionsRequestSchema, onboardingSchema, profileMediaRegistrationSchema, profileUpdateSchema, promptAnswersRequestSchema } from "./index";
+import { createReportSchema, resolveReportSchema, updateGroupMemberRoleSchema, activationQuerySchema, interactionSettingsSchema, introSchema, messageListQuerySchema, requestBoxSchema, sendRequestSchema, blockRequestSchema, discoveryEventsRequestSchema, discoveryQuerySchema, interestSelectionsRequestSchema, onboardingSchema, profileMediaRegistrationSchema, profileUpdateSchema, promptAnswersRequestSchema } from "./index";
 
 describe("validation", () => {
   it("accepts standard email", async () => { const { emailSchema } = await import("./index"); expect(emailSchema.parse(" A@Example.com ")).toBe("a@example.com"); });
@@ -74,5 +74,26 @@ describe("connection schemas", () => {
     expect(messageListQuerySchema.safeParse({ before: "yesterday" }).success).toBe(false);
     expect(messageListQuerySchema.safeParse({ before: "2026-10-12 12:00:00+00~not-a-uuid" }).success).toBe(false);
     expect(messageListQuerySchema.safeParse({ before: "~a1000000-0000-4000-8000-000000000000" }).success).toBe(false);
+  });
+});
+
+describe("safety and moderation schemas", () => {
+  const id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+  it("validates report creation input", () => {
+    expect(createReportSchema.safeParse({ targetType: "profile", targetId: id, reason: "harassment" }).success).toBe(true);
+    expect(createReportSchema.safeParse({ targetType: "message", targetId: id, reason: "spam", details: "Spam message", blockUser: true }).success).toBe(true);
+    expect(createReportSchema.safeParse({ targetType: "invalid", targetId: id, reason: "spam" }).success).toBe(false);
+    expect(createReportSchema.safeParse({ targetType: "profile", targetId: "not-a-uuid", reason: "spam" }).success).toBe(false);
+    expect(createReportSchema.safeParse({ targetType: "profile", targetId: id, reason: "invalid_reason" }).success).toBe(false);
+  });
+  it("validates report resolution input", () => {
+    expect(resolveReportSchema.safeParse({ actionTaken: "warning_issued", resolutionNotes: "Issued warning" }).success).toBe(true);
+    expect(resolveReportSchema.safeParse({ actionTaken: "content_removed" }).success).toBe(true);
+    expect(resolveReportSchema.safeParse({ actionTaken: "invalid_action" }).success).toBe(false);
+  });
+  it("validates group member role update", () => {
+    expect(updateGroupMemberRoleSchema.safeParse({ role: "moderator" }).success).toBe(true);
+    expect(updateGroupMemberRoleSchema.safeParse({ role: "member" }).success).toBe(true);
+    expect(updateGroupMemberRoleSchema.safeParse({ role: "owner" }).success).toBe(false);
   });
 });

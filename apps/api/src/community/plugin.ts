@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { createEventSchema, createGroupSchema, eventListQuerySchema, eventMessageListQuerySchema, eventMessageSchema, groupListQuerySchema } from "@sp/validation";
+import { createEventSchema, createGroupSchema, updateGroupMemberRoleSchema, eventListQuerySchema, eventMessageListQuerySchema, eventMessageSchema, groupListQuerySchema } from "@sp/validation";
 import { CommunityError, type CommunityStore } from "./store";
 
 type Guard = (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>;
@@ -48,6 +48,19 @@ export function registerCommunity(app: FastifyInstance, deps: CommunityDeps) {
   app.post("/groups/:id/join", pre, wrap(async (req, reply, me) => { if (!idOk(req)) return badId(reply); await deps.store.joinGroup(me, req.params.id); return reply.code(204).send(); }));
   app.delete("/groups/:id/join", pre, wrap(async (req, reply, me) => { if (!idOk(req)) return badId(reply); await deps.store.leaveGroup(me, req.params.id); return reply.code(204).send(); }));
   app.get("/groups/:id/members", pre, wrap(async (req, reply, me) => idOk(req) ? reply.send({ members: await deps.store.listMembers(me, req.params.id) }) : badId(reply)));
+  app.patch("/groups/:id/members/:userId", pre, wrap(async (req, reply, me) => {
+    if (!idOk(req) || !UUID_RE.test(req.params.userId)) return badId(reply);
+    const p = updateGroupMemberRoleSchema.safeParse(req.body);
+    if (!p.success) return reply.code(400).send(validationPayload(p));
+    await deps.store.updateMemberRole(me, req.params.id, req.params.userId, p.data.role);
+    return reply.code(204).send();
+  }));
+  app.delete("/groups/:id/members/:userId", pre, wrap(async (req, reply, me) => {
+    if (!idOk(req) || !UUID_RE.test(req.params.userId)) return badId(reply);
+    await deps.store.removeMember(me, req.params.id, req.params.userId);
+    return reply.code(204).send();
+  }));
+
 
   // ---- events ----
   app.get("/events", pre, wrap(async (req, reply, me) => {

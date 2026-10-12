@@ -5,6 +5,7 @@ import { mergeEventMessages, newClientTag, type EventThreadMessage } from "@sp/p
 import { useCallback, useEffect, useRef, useState } from "react";
 import { errorMessage } from "../lib/auth";
 import { getCommunityClient } from "../lib/community";
+import { ReportModal } from "./report-modal";
 
 const POLL_MS = 8000;
 const fmt = (iso: string) => new Date(iso).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -140,7 +141,11 @@ function GroupPage({ group, events, onOpenEvent, onBack, onChanged }: { group: G
   const client = getCommunityClient();
   const [members, setMembers] = useState<GroupMember[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => { if (group.joined) client.listMembers(group.id).then(setMembers).catch((e) => setError(errorMessage(e))); }, [client, group.id, group.joined]);
+  const [reporting, setReporting] = useState(false);
+  const reloadMembers = useCallback(() => {
+    if (group.joined) client.listMembers(group.id).then(setMembers).catch((e) => setError(errorMessage(e)));
+  }, [client, group.id, group.joined]);
+  useEffect(() => { reloadMembers(); }, [reloadMembers]);
   async function remove() {
     if (!window.confirm(`Delete “${group.name}” and all its events? This cannot be undone.`)) return;
     try { await client.deleteGroup(group.id); await onChanged(); onBack(); } catch (err) { setError(errorMessage(err)); }
@@ -150,8 +155,42 @@ function GroupPage({ group, events, onOpenEvent, onBack, onChanged }: { group: G
     {error && <div className="notice err" role="alert">{error}</div>}
     {group.description && <div className="card"><p>{group.description}</p></div>}
     <div className="card"><h3>Upcoming events</h3>{events.length === 0 ? <p className="muted">Nothing planned yet.</p> : events.map((e) => <p key={e.id}><button className="link" onClick={() => onOpenEvent(e.id)}>{e.title}</button> · {fmt(e.startsAt)}</p>)}</div>
-    <div className="card"><h3>Members</h3>{!group.joined ? <p className="muted">Join the group to see who is in it.</p> : members === null ? <p className="muted">Loading…</p> : members.map((m) => <p key={m.userId}>{m.displayName}{m.role !== "member" ? <span className="tag">{m.role}</span> : null}</p>)}</div>
-    {group.role === "owner" && <div className="card-actions"><button className="link danger" onClick={() => void remove()}>Delete group</button></div>}
+    <div className="card"><h3>Members</h3>{!group.joined ? <p className="muted">Join the group to see who is in it.</p> : members === null ? <p className="muted">Loading…</p> : members.map((m) => (
+      <div key={m.userId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+        <span>{m.displayName} {m.role !== "member" ? <span className="tag">{m.role}</span> : null}</span>
+        <div style={{ display: "flex", gap: 6 }}>
+          {group.role === "owner" && m.role !== "owner" && (
+            <button
+              className="link compact"
+              style={{ fontSize: "0.8rem", margin: 0 }}
+              onClick={async () => {
+                const nextRole = m.role === "moderator" ? "member" : "moderator";
+                try { await client.updateMemberRole(group.id, m.userId, nextRole); reloadMembers(); } catch (e) { setError(errorMessage(e)); }
+              }}
+            >
+              {m.role === "moderator" ? "Demote" : "Make moderator"}
+            </button>
+          )}
+          {((group.role === "owner" && m.role !== "owner") || (group.role === "moderator" && m.role === "member")) && (
+            <button
+              className="link danger compact"
+              style={{ fontSize: "0.8rem", margin: 0 }}
+              onClick={async () => {
+                if (!window.confirm(`Remove ${m.displayName} from this group?`)) return;
+                try { await client.removeMember(group.id, m.userId); reloadMembers(); } catch (e) { setError(errorMessage(e)); }
+              }}
+            >
+              Remove
+            </button>
+          )}
+        </div>
+      </div>
+    ))}</div>
+    <div className="card-actions" style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
+      <button className="link" style={{ margin: 0 }} onClick={() => setReporting(true)}>Report group</button>
+      {group.role === "owner" && <button className="link danger" style={{ margin: 0 }} onClick={() => void remove()}>Delete group</button>}
+    </div>
+    {reporting && <ReportModal targetType="group" targetId={group.id} targetLabel={group.name} onClose={() => setReporting(false)} />}
   </div>;
 }
 

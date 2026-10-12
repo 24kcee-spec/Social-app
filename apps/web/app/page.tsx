@@ -11,6 +11,7 @@ import { Discover } from "./discover";
 import { Community } from "./community";
 import { Messages } from "./messages";
 import { getMessagingClient } from "../lib/messaging";
+import { getSafetyClient } from "../lib/safety";
 import { deleteProfileImage, getProfileClient, getSignedMediaUrl, uploadProfileImage } from "../lib/profile";
 
 const SOCIAL_STYLE_LABELS: Record<SocialStyle, string> = {
@@ -212,6 +213,30 @@ function ProfileEditor({ profile, interests, prompts, client, onSaved }: { profi
     <section className="card"><div className="eyebrow">PROMPTS</div><h2>Prompt answers</h2><div className="prompt-list">{prompts.slice(0, 6).map((p) => <div className="prompt-row" key={p.id}><label htmlFor={`p-${p.id}`}>{p.prompt}</label><textarea id={`p-${p.id}`} value={answers[p.id] ?? ""} onChange={(e) => setAnswers((a) => ({ ...a, [p.id]: e.target.value }))} maxLength={240} rows={2} /></div>)}</div><button onClick={() => void save()} disabled={busy}>Save prompts</button></section>
     <section className="card"><div className="eyebrow">MEDIA</div><h2>Profile photos</h2><p className="muted">Up to 6 JPG, PNG or WebP images, max 5 MB each. Images are cropped square and a thumbnail is created before upload.</p><div className="media-grid">{profile.media.map((m) => <div className="media-card" key={m.id}>{mediaUrls[m.id] ? <img src={mediaUrls[m.id]} alt="Your profile" /> : <div className="media-placeholder">Loading…</div>}<button className="secondary" onClick={() => void removeImage(m.id)}>Remove</button></div>)}<label className="upload-tile"> <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => { const file = e.target.files?.[0]; if (file) void addImage(file); e.currentTarget.value = ""; }} disabled={profile.media.length >= 6} /> <span>＋ Add photo</span></label></div></section>
     <section className="card"><div className="eyebrow">PRIVACY</div><h2>Who can reach you?</h2><PrivacyEditor privacy={privacy} setPrivacy={setPrivacy} /><button onClick={() => void save()} disabled={busy}>Save privacy</button></section>
+    
+    <section className="card" style={{ border: "1px solid #fecaca" }}>
+      <div className="eyebrow" style={{ color: "var(--err)" }}>PRIVACY & DATA DELETION</div>
+      <h2>Delete account and personal data</h2>
+      <p className="muted">Permanently anonymizes your account, removes your profile photos, prompt answers, interests, group memberships and ends all sessions.</p>
+      <button
+        type="button"
+        className="secondary compact"
+        style={{ color: "var(--err)", borderColor: "var(--err)" }}
+        onClick={async () => {
+          if (!window.confirm("Are you sure you want to permanently delete your account and data?")) return;
+          try {
+            await getSafetyClient().deleteAccount();
+            await getAuth().signOut();
+            window.location.reload();
+          } catch (e) {
+            setError(errorMessage(e));
+          }
+        }}
+      >
+        Delete my account
+      </button>
+    </section>
+
     <section className="card preview"><div className="eyebrow">PREVIEW</div><h2>{displayName || "Your display name"}</h2><p>{bio || "Add a short bio so people can understand you."}</p><div className="tag-row">{Object.keys(selected).slice(0, 8).map((id) => { const i = interests.find((x) => x.id === id); return i ? <span className="tag" key={id}>{i.name}</span> : null; })}</div>{Object.entries(answers).filter(([, a]) => a.trim()).slice(0, 3).map(([id, answer]) => { const p = prompts.find((x) => x.id === id); return p ? <div className="preview-prompt" key={id}><strong>{p.prompt}</strong><p>{answer}</p></div> : null; })}</section>
     {message && <div className="notice ok" role="status">{message}</div>}{error && <div className="notice err" role="alert">{error}</div>}
   </div>;
