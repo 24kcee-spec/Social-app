@@ -12,7 +12,7 @@ import { registerConnections } from "./connections/plugin";
 import { createDiscoveryStore } from "./discovery/store";
 import { registerDiscovery } from "./discovery/plugin";
 import { createMessagingStore } from "./messaging/store";
-import { createMessageNotifier, noopPushSender } from "./messaging/notify";
+import { createMessageNotifier, createExpoPushSender, noopPushSender } from "./messaging/notify";
 import { registerMessaging } from "./messaging/plugin";
 import { loadDotEnv } from "./env";
 import { createCommunityStore } from "./community/store";
@@ -63,4 +63,5 @@ const shutdown = async () => {
 };
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
+
 

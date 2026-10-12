@@ -18,9 +18,10 @@ export async function runMigrations(db: SqlRunner, dir: string): Promise<string[
   for (const file of files) {
     if (!FILE_RE.test(file)) throw new Error(`Bad migration filename: ${file} (expected 0001_name.sql)`);
     if (done.has(file)) continue;
-    const sql = await readFile(path.join(dir, file), "utf8");
+    const sql = (await readFile(path.join(dir, file), "utf8")).replace(/^\uFEFF/, "");
     await db.exec(`begin;\n${sql}\ninsert into schema_migrations (name) values ('${file}');\ncommit;`);
     applied.push(file);
   }
   return applied;
 }
+

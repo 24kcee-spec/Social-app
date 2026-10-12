@@ -61,3 +61,36 @@ export function createMessageNotifier(db: SqlRunner, sender: PushSender, log: (m
   return { messageSent };
 }
 export type MessageNotifier = ReturnType<typeof createMessageNotifier>;
+
+/**
+ * Production Expo Push Notification Sender.
+ * Sends notifications to iOS and Android devices via the Expo Push API.
+ */
+export function createExpoPushSender(log: (msg: string, err?: unknown) => void = () => {}): PushSender {
+  return {
+    async send(tokens: PushToken[], payload: PushPayload): Promise<void> {
+      const expoTokens = tokens.filter((t) => t.token.startsWith("ExponentPushToken[") || t.token.startsWith("ExpoPushToken["));
+      if (expoTokens.length === 0) return;
+
+      const messages = expoTokens.map((t) => ({
+        to: t.token,
+        sound: "default",
+        title: payload.title,
+        body: payload.body,
+        data: payload.data,
+        priority: "high",
+        channelId: "messages",
+      }));
+
+      try {
+        await fetch("https://exp.host/--/api/v2/push/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify(messages),
+        });
+      } catch (err) {
+        log("Failed to deliver push to Expo service", err);
+      }
+    },
+  };
+}
