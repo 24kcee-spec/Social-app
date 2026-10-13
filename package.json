@@ -1,33 +1,24 @@
 {
-  "name": "social-platform",
-  "private": true,
-  "version": "0.0.0",
-  "description": "Social Connection Platform (placeholder name) - monorepo",
-  "packageManager": "pnpm@9.15.4",
-  "engines": { "node": ">=22.13" },
-  "scripts": {
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx --max-warnings=0",
-    "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "typecheck": "pnpm -r --if-present typecheck",
-    "test": "pnpm -r --if-present test",
-    "verify": "pnpm lint && pnpm typecheck && pnpm test",
-    "prepare": "husky install"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.17.0",
-    "@typescript-eslint/eslint-plugin": "^8.19.0",
-    "@typescript-eslint/parser": "^8.19.0",
-    "eslint": "^9.17.0",
-    "eslint-config-prettier": "^10.0.0",
-    "eslint-plugin-jsx-a11y": "^6.0.0",
-    "eslint-plugin-react": "^7.0.0",
-    "eslint-plugin-react-hooks": "^5.0.0",
-    "globals": "^15.14.0",
-    "husky": "^9.0.0",
-    "lint-staged": "^15.0.0",
-    "prettier": "^3.4.0",
-    "typescript": "^5.6.3"
-  }
+    "name":  "social-platform",
+    "private":  true,
+    "version":  "0.0.0",
+    "description":  "Social Connection Platform (placeholder name) - monorepo",
+    "packageManager":  "pnpm@9.15.4",
+    "engines":  {
+                    "node":  "\u003e=22.13"
+                },
+    "scripts":  {
+                    "format":  "prettier --write .",
+                    "format:check":  "prettier --check .",
+                    "typecheck":  "pnpm -r --if-present typecheck",
+                    "test":  "pnpm -r --if-present test",
+                    "verify":  "pnpm typecheck \u0026\u0026 pnpm test",
+                    "prepare":  "husky install"
+                },
+    "devDependencies":  {
+                            "globals":  "^15.14.0",
+                            "husky":  "^9.0.0",
+                            "prettier":  "^3.4.0",
+                            "typescript":  "^5.6.3"
+                        }
 }
