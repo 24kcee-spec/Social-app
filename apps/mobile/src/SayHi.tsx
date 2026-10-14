@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { errorMessage } from "./auth";
 import { getConnectionsClient } from "./connectionClient";
+import { colors } from "./theme";
 
 function Opt({ label, onPress, disabled }: { label: string; onPress: () => void; disabled?: boolean }) {
   return <Pressable accessibilityRole="button" onPress={onPress} disabled={disabled} style={[h.opt, disabled && h.off]}><Text style={h.optText}>{label}</Text></Pressable>;
@@ -48,9 +49,9 @@ export function SayHi({ card, onSent, onClose }: { card: DiscoveryCard; onSent: 
 }
 
 const h = StyleSheet.create({
-  box: { backgroundColor: "#fafbff", borderWidth: 1, borderColor: "#dfe5ee", borderRadius: 12, padding: 12, gap: 8 },
-  muted: { fontSize: 14, color: "#667085" }, err: { color: "#b42318", fontSize: 14 }, h4: { fontSize: 11, fontWeight: "700", color: "#667085", marginTop: 4, letterSpacing: 0.5 },
-  opt: { paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: "#bfc7dd", backgroundColor: "#fff" }, optText: { color: "#152033", fontWeight: "600", fontSize: 15 }, off: { opacity: 0.55 },
+  box: { backgroundColor: colors.surfaceSunken, borderWidth: 1, borderColor: colors.line, borderRadius: 12, padding: 12, gap: 8 },
+  muted: { fontSize: 14, color: colors.textMuted }, err: { color: colors.danger, fontSize: 14 }, h4: { fontSize: 11, fontWeight: "700", color: colors.textMuted, marginTop: 4, letterSpacing: 0.5 },
+  opt: { paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.surface }, optText: { color: colors.text, fontWeight: "600", fontSize: 15 }, off: { opacity: 0.55 },
   game: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
-  input: { borderWidth: 1, borderColor: "#bfc7dd", borderRadius: 10, padding: 10, minHeight: 60, backgroundColor: "#fff", fontSize: 15 },
+  input: { borderWidth: 1, borderColor: colors.lineStrong, borderRadius: 10, padding: 10, minHeight: 60, backgroundColor: colors.surface, fontSize: 15 },
 });

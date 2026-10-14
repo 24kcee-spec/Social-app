@@ -55,10 +55,10 @@ export default function Home() {
     });
   }, [load]);
 
-  if (phase.kind === "loading") return <main><p className="muted">Loading your account…</p></main>;
-  if (phase.kind === "error") return <main><div className="card"><p className="err" role="alert">{phase.message}</p><button onClick={() => { setPhase({ kind: "loading" }); void load(); }}>Try again</button></div></main>;
-  if (phase.kind === "signedOut") return <main><AuthForm /></main>;
-  return <main className="wide"><Account me={phase.me} sessions={phase.sessions} reload={load} /></main>;
+  if (phase.kind === "loading") return <main id="main" tabIndex={-1}><p className="muted">Loading your account…</p></main>;
+  if (phase.kind === "error") return <main id="main" tabIndex={-1}><div className="card"><p className="err" role="alert">{phase.message}</p><button onClick={() => { setPhase({ kind: "loading" }); void load(); }}>Try again</button></div></main>;
+  if (phase.kind === "signedOut") return <main id="main" tabIndex={-1}><AuthForm /></main>;
+  return <main id="main" tabIndex={-1} className="wide"><Account me={phase.me} sessions={phase.sessions} reload={load} /></main>;
 }
 
 function AuthForm() {

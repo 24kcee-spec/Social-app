@@ -1,4 +1,4 @@
-﻿import type { GroupSharePreview, EventSharePreview, ProfileSharePreview } from "@sp/types";
+import type { GroupSharePreview, EventSharePreview, ProfileSharePreview } from "@sp/types";
 
 export class ShareError extends Error {
   constructor(public readonly code: "not_found" | "private" | "inactive", message: string) {

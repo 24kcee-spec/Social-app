@@ -6,6 +6,7 @@ import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, Sc
 import { errorMessage } from "./auth";
 import { getMessagingClient, subscribeToConversation } from "./messagingClient";
 import { getSignedMediaUrl } from "./profile";
+import { colors } from "./theme";
 
 function Avatar({ name, url }: { name: string; url?: string }) {
   return url ? <Image source={{ uri: url }} style={m.avatar} accessibilityLabel={`${name}'s profile`} /> : <View style={[m.avatar, m.ph]}><Text style={m.letter}>{name.slice(0, 1).toUpperCase()}</Text></View>;
@@ -195,31 +196,31 @@ function Thread({ conversation, photo, onBack }: { conversation: ConversationVie
       >
         <Text style={{ fontSize: 18 }}>??</Text>
       </Pressable>
-      <TextInput style={m.input} value={draft} onChangeText={setDraft} placeholder="Write a message…" placeholderTextColor="#8a94a6" maxLength={2000} multiline accessibilityLabel="Message" />
+      <TextInput style={m.input} value={draft} onChangeText={setDraft} placeholder="Write a message…" placeholderTextColor={colors.textMuted} maxLength={2000} multiline accessibilityLabel="Message" />
       <Pressable accessibilityRole="button" onPress={submit} disabled={sending || !draft.trim()} style={[m.send, (sending || !draft.trim()) && m.disabled]}><Text style={m.sendText}>Send</Text></Pressable>
     </View>
   </KeyboardAvoidingView>;
 }
 
 const m = StyleSheet.create({
-  card: { borderWidth: 1, borderColor: "#dfe5ee", borderRadius: 16, padding: 14, marginTop: 12, backgroundColor: "#fff", gap: 8 },
-  h2: { fontSize: 18, fontWeight: "700", color: "#152033" }, name: { fontSize: 16, fontWeight: "700", color: "#152033" }, muted: { fontSize: 14, color: "#667085" },
-  err: { color: "#b42318", fontSize: 14, marginTop: 6 },
+  card: { borderWidth: 1, borderColor: colors.line, borderRadius: 16, padding: 14, marginTop: 12, backgroundColor: colors.surface, gap: 8 },
+  h2: { fontSize: 18, fontWeight: "700", color: colors.text }, name: { fontSize: 16, fontWeight: "700", color: colors.text }, muted: { fontSize: 14, color: colors.textMuted },
+  err: { color: colors.danger, fontSize: 14, marginTop: 6 },
   head: { flexDirection: "row", gap: 12, alignItems: "center" }, row: { flexDirection: "row", gap: 10, alignItems: "center" },
-  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#eef2ff" }, ph: { alignItems: "center", justifyContent: "center" }, letter: { fontSize: 18, fontWeight: "800", color: "#4f46e5" },
+  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.accentSoft }, ph: { alignItems: "center", justifyContent: "center" }, letter: { fontSize: 18, fontWeight: "800", color: colors.accent },
   topbar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 8 },
-  btn: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: "#bfc7dd", backgroundColor: "#fff" }, btnText: { color: "#4f46e5", fontWeight: "700", fontSize: 14 },
-  chat: { maxHeight: 420, borderWidth: 1, borderColor: "#dfe5ee", borderRadius: 16, padding: 10, backgroundColor: "#f8fafc" },
+  btn: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.surface }, btnText: { color: colors.accent, fontWeight: "700", fontSize: 14 },
+  chat: { maxHeight: 420, borderWidth: 1, borderColor: colors.line, borderRadius: 16, padding: 10, backgroundColor: colors.surfaceSunken },
   more: { alignSelf: "center", paddingVertical: 8 },
   bubbleRow: { flexDirection: "row", marginVertical: 3 }, left: { justifyContent: "flex-start" }, right: { justifyContent: "flex-end" },
   bubble: { maxWidth: "80%", borderRadius: 14, paddingVertical: 8, paddingHorizontal: 12 },
-  theirs: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#dfe5ee" }, mine: { backgroundColor: "#4f46e5" },
-  theirsText: { color: "#152033", fontSize: 15 }, mineText: { color: "#fff", fontSize: 15 },
-  pendingBubble: { opacity: 0.6 }, failedBubble: { backgroundColor: "#b42318" },
-  meta: { fontSize: 11, color: "#667085", marginTop: 2 }, metaMine: { color: "#dfe3ff" }, retry: { color: "#fff", fontWeight: "700", marginTop: 4 },
+  theirs: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line }, mine: { backgroundColor: colors.accent },
+  theirsText: { color: colors.text, fontSize: 15 }, mineText: { color: colors.onAccent, fontSize: 15 },
+  pendingBubble: { opacity: 0.6 }, failedBubble: { backgroundColor: colors.danger },
+  meta: { fontSize: 11, color: colors.textMuted, marginTop: 2 }, metaMine: { color: colors.accentLine }, retry: { color: colors.onAccent, fontWeight: "700", marginTop: 4 },
   composer: { flexDirection: "row", gap: 8, marginTop: 10, alignItems: "flex-end" },
-  input: { flex: 1, borderWidth: 1, borderColor: "#dfe5ee", borderRadius: 12, padding: 10, fontSize: 16, color: "#152033", backgroundColor: "#fff", maxHeight: 120 },
-  send: { backgroundColor: "#4f46e5", paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12 }, sendText: { color: "#fff", fontWeight: "700", fontSize: 15 }, disabled: { opacity: 0.55 },
+  input: { flex: 1, borderWidth: 1, borderColor: colors.line, borderRadius: 12, padding: 10, fontSize: 16, color: colors.text, backgroundColor: colors.surface, maxHeight: 120 },
+  send: { backgroundColor: colors.accent, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12 }, sendText: { color: colors.onAccent, fontWeight: "700", fontSize: 15 }, disabled: { opacity: 0.55 },
 });
 
 

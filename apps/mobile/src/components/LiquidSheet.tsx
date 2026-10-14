@@ -1,50 +1,47 @@
-import React from 'react';
-import { View, Text, Modal, Pressable, StyleSheet } from 'react-native';
+import type { ReactNode } from 'react';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { colors, radius, space, touch, type } from '../theme';
 
 export interface LiquidSheetProps {
   visible: boolean;
   title: string;
   onClose: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
+/**
+ * Bottom sheet on a native Modal: Android back button closes it (onRequestClose),
+ * content scrolls when tall, the keyboard pushes the sheet up, iOS safe area is respected.
+ */
 export function LiquidSheet({ visible, title, onClose, children }: LiquidSheetProps) {
-  if (!visible) return null;
+  const { height } = useWindowDimensions();
   return (
-    <Modal transparent animationType="slide" visible={visible} onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <Pressable accessibilityRole="button" style={styles.backdrop} onPress={onClose} />
-        <View style={styles.sheetContainer}>
+    <Modal transparent animationType="slide" visible={visible} onRequestClose={onClose} statusBarTranslucent>
+      <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Dismiss" style={styles.backdrop} onPress={onClose} />
+        <SafeAreaView accessibilityViewIsModal style={[styles.sheet, { maxHeight: height * 0.85 }]}>
           <View style={styles.grabHandle} />
           <View style={styles.header}>
-            <Text style={styles.title}>{title}</Text>
-            <Pressable accessibilityRole="button" onPress={onClose} style={styles.closeBtn}>
-              <Text style={styles.closeBtnText}>âœ•</Text>
+            <Text accessibilityRole="header" style={styles.title}>{title}</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel="Close" onPress={onClose} hitSlop={8} style={styles.closeBtn}>
+              <Text style={styles.closeBtnText}>{'\u2715'}</Text>
             </Pressable>
           </View>
-          <View>{children}</View>
-        </View>
-      </View>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.body}>{children}</ScrollView>
+        </SafeAreaView>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(15, 23, 42, 0.6)' },
+  overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.overlay },
   backdrop: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
-  sheetContainer: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    borderTopWidth: 1,
-    borderColor: '#E2E8F0',
-    paddingHorizontal: 20,
-    paddingBottom: 36,
-    paddingTop: 12,
-  },
-  grabHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#CBD5E1', alignSelf: 'center', marginBottom: 14 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  title: { color: '#0F172A', fontSize: 17, fontWeight: '800' },
-  closeBtn: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
-  closeBtnText: { color: '#64748B', fontSize: 13, fontWeight: '600' },
+  sheet: { backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, borderTopWidth: 1, borderColor: colors.line, paddingHorizontal: space[5], paddingTop: space[3] },
+  grabHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: colors.lineStrong, alignSelf: 'center', marginBottom: space[3] },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: space[3] },
+  title: { flex: 1, color: colors.text, fontSize: type.title.size, lineHeight: type.title.line, fontWeight: '700' },
+  closeBtn: { width: touch.min, height: touch.min, borderRadius: touch.min / 2, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
+  closeBtnText: { color: colors.text2, fontSize: type.small.size, fontWeight: '700' },
+  body: { paddingBottom: space[6] },
 });

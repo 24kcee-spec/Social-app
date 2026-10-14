@@ -5,6 +5,7 @@ import { errorMessage } from "./auth";
 import { getDiscoveryClient } from "./discovery";
 import { getSignedMediaUrl } from "./profile";
 import { SayHi } from "./SayHi";
+import { colors } from "./theme";
 
 const STYLE_LABELS: Record<SocialStyle, string> = { small_group: "Small groups", one_to_one: "One-to-one", text_first: "Text-first", voice_first: "Voice-first", low_pressure: "Low pressure" };
 const PAGE = 12;
@@ -99,14 +100,14 @@ export function Discover() {
 }
 
 const d = StyleSheet.create({
-  muted: { fontSize: 14, color: "#667085", marginBottom: 8 }, err: { color: "#b42318", fontSize: 14, marginTop: 6 }, ok: { color: "#167647", fontSize: 14, marginTop: 6 }, pad: { padding: 24 },
-  card: { borderWidth: 1, borderColor: "#dfe5ee", borderRadius: 16, padding: 14, marginTop: 14, backgroundColor: "#fff", gap: 8 },
-  head: { flexDirection: "row", alignItems: "center", gap: 12 }, headText: { flex: 1 }, h2: { fontSize: 20, fontWeight: "700", color: "#152033" }, styles: { fontSize: 12, color: "#667085", marginTop: 2 },
-  avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: "#eef2ff" }, avatarPlaceholder: { alignItems: "center", justifyContent: "center" }, avatarLetter: { fontSize: 26, fontWeight: "800", color: "#4f46e5" },
-  reason: { backgroundColor: "#eef2ff", borderRadius: 10, paddingVertical: 6, paddingHorizontal: 10 }, reasonText: { color: "#4f46e5", fontWeight: "600", fontSize: 14 },
-  bio: { fontSize: 15, color: "#344054" }, tags: { flexDirection: "row", flexWrap: "wrap", gap: 6 }, tag: { backgroundColor: "#f2f4f7", borderRadius: 999, paddingVertical: 4, paddingHorizontal: 9 }, tagShared: { backgroundColor: "#eef2ff" },
-  tagText: { color: "#475467", fontSize: 12 }, tagSharedText: { color: "#4f46e5", fontSize: 12, fontWeight: "700" },
-  prompt: { borderTopWidth: 1, borderTopColor: "#eef2f7", paddingTop: 8 }, promptTitle: { fontSize: 14, fontWeight: "700", color: "#152033" },
+  muted: { fontSize: 14, color: colors.textMuted, marginBottom: 8 }, err: { color: colors.danger, fontSize: 14, marginTop: 6 }, ok: { color: colors.success, fontSize: 14, marginTop: 6 }, pad: { padding: 24 },
+  card: { borderWidth: 1, borderColor: colors.line, borderRadius: 16, padding: 14, marginTop: 14, backgroundColor: colors.surface, gap: 8 },
+  head: { flexDirection: "row", alignItems: "center", gap: 12 }, headText: { flex: 1 }, h2: { fontSize: 20, fontWeight: "700", color: colors.text }, styles: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+  avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.accentSoft }, avatarPlaceholder: { alignItems: "center", justifyContent: "center" }, avatarLetter: { fontSize: 26, fontWeight: "800", color: colors.accent },
+  reason: { backgroundColor: colors.accentSoft, borderRadius: 10, paddingVertical: 6, paddingHorizontal: 10 }, reasonText: { color: colors.accent, fontWeight: "600", fontSize: 14 },
+  bio: { fontSize: 15, color: colors.text2 }, tags: { flexDirection: "row", flexWrap: "wrap", gap: 6 }, tag: { backgroundColor: colors.surfaceSunken, borderRadius: 999, paddingVertical: 4, paddingHorizontal: 9 }, tagShared: { backgroundColor: colors.accentSoft },
+  tagText: { color: colors.text2, fontSize: 12 }, tagSharedText: { color: colors.accent, fontSize: 12, fontWeight: "700" },
+  prompt: { borderTopWidth: 1, borderTopColor: colors.surfaceSunken, paddingTop: 8 }, promptTitle: { fontSize: 14, fontWeight: "700", color: colors.text },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 }, blockRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  btn: { marginTop: 8, paddingVertical: 9, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: "#bfc7dd", backgroundColor: "#fff" }, btnText: { color: "#4f46e5", fontWeight: "700", fontSize: 14 }, danger: { color: "#b42318" }, disabled: { opacity: 0.55 },
+  btn: { marginTop: 8, paddingVertical: 9, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.surface }, btnText: { color: colors.accent, fontWeight: "700", fontSize: 14 }, danger: { color: colors.danger }, disabled: { opacity: 0.55 },
 });

@@ -1,6 +1,5 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
-import { tokens } from '../theme/tokens';
 
 export interface StudentProfileData {
   id: string;
@@ -49,7 +48,7 @@ export function EditorialCard({ profile, onSparkPress, onDoubleTapHeart }: Edito
         <View style={styles.nameLockup}>
           <Text style={styles.nameText}>{profile.name}</Text>
           <View style={styles.verifiedCrest}>
-            <Text style={styles.verifiedCheck}>âœ“</Text>
+            <Text style={styles.verifiedCheck}>✓</Text>
             <Text style={styles.verifiedLabel}>CAMPUS VERIFIED</Text>
           </View>
         </View>
@@ -58,7 +57,7 @@ export function EditorialCard({ profile, onSparkPress, onDoubleTapHeart }: Edito
 
       <View style={styles.metaRow}>
         <Text style={styles.metaText}>{profile.faculty} '{profile.gradYear}</Text>
-        <Text style={styles.metaDot}>Â·</Text>
+        <Text style={styles.metaDot}>·</Text>
         <Text style={styles.metaText}>{profile.campus}</Text>
       </View>
 
@@ -80,7 +79,7 @@ export function EditorialCard({ profile, onSparkPress, onDoubleTapHeart }: Edito
         </View>
         {showHeartBurst && (
           <View style={styles.heartBurst}>
-            <Text style={styles.heartEmoji}>âš¡</Text>
+            <Text style={styles.heartEmoji}>⚡</Text>
           </View>
         )}
       </Pressable>
@@ -108,7 +107,7 @@ export function EditorialCard({ profile, onSparkPress, onDoubleTapHeart }: Edito
           style={[styles.sparkButton, sparkSent && styles.sparkButtonSent]}
         >
           <Text style={[styles.sparkButtonText, sparkSent && styles.sparkButtonTextSent]}>
-            {sparkSent ? 'Spark Sent âš¡' : 'Spark Connection âš¡'}
+            {sparkSent ? 'Spark Sent ⚡' : 'Spark Connection ⚡'}
           </Text>
         </Pressable>
       </View>

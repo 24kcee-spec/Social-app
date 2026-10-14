@@ -1,4 +1,4 @@
-﻿import { loadApiEnv } from "@sp/config";
+import { loadApiEnv } from "@sp/config";
 import { buildApp, type ReadinessCheck } from "./app";
 import { registerAuth } from "./auth/plugin";
 import { resolveCorsOrigins } from "./cors";

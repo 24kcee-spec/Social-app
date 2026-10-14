@@ -12,6 +12,7 @@
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
     "@sp/auth-client": "workspace:*",
+    "@sp/design-tokens": "workspace:*",
     "@sp/profile-client": "workspace:*",
     "@sp/types": "workspace:*",
     "@sp/validation": "workspace:*",

@@ -4,6 +4,7 @@ import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Switch, Text, V
 import { errorMessage } from "./auth";
 import { getConnectionsClient } from "./connectionClient";
 import { getSignedMediaUrl } from "./profile";
+import { colors } from "./theme";
 
 const STATUS_TEXT = { pending: "Waiting. They can reply any time in the next two weeks.", accepted: "Connected", no_reply: "No reply yet. That is okay, people reply on their own time." } as const;
 
@@ -65,11 +66,11 @@ export function Connections({ onCount, onMessage }: { onCount?: (pending: number
 }
 
 const c = StyleSheet.create({
-  card: { borderWidth: 1, borderColor: "#dfe5ee", borderRadius: 16, padding: 14, marginTop: 12, backgroundColor: "#fff", gap: 8 },
-  h2: { fontSize: 18, fontWeight: "700", color: "#152033", marginTop: 18 }, name: { fontSize: 16, fontWeight: "700", color: "#152033" }, muted: { fontSize: 14, color: "#667085" },
-  err: { color: "#b42318", fontSize: 14, marginTop: 6 }, ok: { color: "#167647", fontSize: 14, marginTop: 6 },
+  card: { borderWidth: 1, borderColor: colors.line, borderRadius: 16, padding: 14, marginTop: 12, backgroundColor: colors.surface, gap: 8 },
+  h2: { fontSize: 18, fontWeight: "700", color: colors.text, marginTop: 18 }, name: { fontSize: 16, fontWeight: "700", color: colors.text }, muted: { fontSize: 14, color: colors.textMuted },
+  err: { color: colors.danger, fontSize: 14, marginTop: 6 }, ok: { color: colors.success, fontSize: 14, marginTop: 6 },
   head: { flexDirection: "row", gap: 12, alignItems: "center" }, row: { flexDirection: "row", gap: 10, alignItems: "center", flexWrap: "wrap" },
-  avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: "#eef2ff" }, ph: { alignItems: "center", justifyContent: "center" }, letter: { fontSize: 20, fontWeight: "800", color: "#4f46e5" },
-  intro: { borderLeftWidth: 4, borderLeftColor: "#4f46e5", backgroundColor: "#eef2ff", padding: 10, borderRadius: 8, fontWeight: "600", color: "#152033", fontSize: 15 },
-  btn: { paddingVertical: 9, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, borderColor: "#bfc7dd", backgroundColor: "#fff" }, btnText: { color: "#4f46e5", fontWeight: "700", fontSize: 14 }, danger: { color: "#b42318" },
+  avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.accentSoft }, ph: { alignItems: "center", justifyContent: "center" }, letter: { fontSize: 20, fontWeight: "800", color: colors.accent },
+  intro: { borderLeftWidth: 4, borderLeftColor: colors.accent, backgroundColor: colors.accentSoft, padding: 10, borderRadius: 8, fontWeight: "600", color: colors.text, fontSize: 15 },
+  btn: { paddingVertical: 9, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.surface }, btnText: { color: colors.accent, fontWeight: "700", fontSize: 14 }, danger: { color: colors.danger },
 });

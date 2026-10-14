@@ -1,9 +1,10 @@
-﻿import type { Activity, CommunityEvent, EventAttendee, GroupMember, GroupSummary } from "@sp/types";
+import type { Activity, CommunityEvent, EventAttendee, GroupMember, GroupSummary } from "@sp/types";
 import { mergeEventMessages, newClientTag, type EventThreadMessage } from "@sp/profile-client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { errorMessage } from "./auth";
 import { getCommunityClient } from "./communityClient";
+import { colors } from "./theme";
 
 const POLL_MS = 8000;
 const fmt = (iso: string) => new Date(iso).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -12,7 +13,7 @@ function Btn({ label, onPress, danger, disabled }: { label: string; onPress: () 
   return <Pressable accessibilityRole="button" onPress={onPress} disabled={disabled} style={[s.btn, disabled && s.off]}><Text style={[s.btnText, danger && s.danger]}>{label}</Text></Pressable>;
 }
 function Field({ label, value, onChange, multiline, keyboard, placeholder }: { label: string; value: string; onChange: (v: string) => void; multiline?: boolean; keyboard?: "numeric"; placeholder?: string }) {
-  return <View style={{ marginTop: 8 }}><Text style={s.label}>{label}</Text><TextInput accessibilityLabel={label} style={[s.input, multiline && { minHeight: 64 }]} value={value} onChangeText={onChange} multiline={multiline} keyboardType={keyboard} placeholder={placeholder} placeholderTextColor="#8a94a6" /></View>;
+  return <View style={{ marginTop: 8 }}><Text style={s.label}>{label}</Text><TextInput accessibilityLabel={label} style={[s.input, multiline && { minHeight: 64 }]} value={value} onChangeText={onChange} multiline={multiline} keyboardType={keyboard} placeholder={placeholder} placeholderTextColor={colors.textMuted} /></View>;
 }
 
 /** Groups and events. Event chat is for people who are going and refreshes every few seconds. */
@@ -274,16 +275,16 @@ function EventPage({ event, group, onBack, onChanged }: { event: CommunityEvent;
         {hasMore && <Pressable accessibilityRole="button" onPress={() => void loadOlder()} style={{ alignSelf: "center", padding: 8 }}><Text style={s.link}>Load older messages</Text></Pressable>}
         {messages.length === 0 && <Text style={s.muted}>No messages yet. Say hello to everyone who is going.</Text>}
         {messages.map((m) => { const mine = m.senderId === "me" || !!m.pending || !!m.failed; return <View key={m.id} style={[s.bubbleRow, mine ? s.right : s.left]}>
-          <View style={[s.bubble, mine ? s.mine : s.theirs, m.pending && { opacity: 0.6 }, m.failed && { backgroundColor: "#b42318" }]}>
+          <View style={[s.bubble, mine ? s.mine : s.theirs, m.pending && { opacity: 0.6 }, m.failed && { backgroundColor: colors.danger }]}>
             {!mine && <Text style={s.sender}>{m.senderName}</Text>}
             <Text style={mine ? s.mineText : s.theirsText}>{m.body}</Text>
-            <Text style={[s.meta, mine && { color: "#dfe3ff" }]}>{m.pending ? "Sendingâ€¦" : m.failed ? "Not sent" : new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</Text>
-            {m.failed && <Pressable accessibilityRole="button" onPress={() => { setMessages((c) => c.filter((x) => x.id !== m.id)); void send(m.body, m.clientTag); }}><Text style={{ color: "#fff", fontWeight: "700" }}>Retry</Text></Pressable>}
+            <Text style={[s.meta, mine && { color: colors.accentLine }]}>{m.pending ? "Sendingâ€¦" : m.failed ? "Not sent" : new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</Text>
+            {m.failed && <Pressable accessibilityRole="button" onPress={() => { setMessages((c) => c.filter((x) => x.id !== m.id)); void send(m.body, m.clientTag); }}><Text style={{ color: colors.onAccent, fontWeight: "700" }}>Retry</Text></Pressable>}
           </View>
         </View>; })}
       </ScrollView>
       <View style={s.composer}>
-        <TextInput accessibilityLabel="Message" style={[s.input, { flex: 1, maxHeight: 120 }]} value={draft} onChangeText={setDraft} placeholder="Write to everyone goingâ€¦" placeholderTextColor="#8a94a6" maxLength={2000} multiline />
+        <TextInput accessibilityLabel="Message" style={[s.input, { flex: 1, maxHeight: 120 }]} value={draft} onChangeText={setDraft} placeholder="Write to everyone goingâ€¦" placeholderTextColor={colors.textMuted} maxLength={2000} multiline />
         <Btn label="Send" disabled={sending || !draft.trim()} onPress={submit} />
       </View>
     </> : <View style={s.card}><Text style={s.muted}>{event.myStatus === "waitlisted" ? "You can chat once a place opens up for you." : "RSVP to join the event chat."}</Text></View>}
@@ -291,17 +292,17 @@ function EventPage({ event, group, onBack, onChanged }: { event: CommunityEvent;
 }
 
 const s = StyleSheet.create({
-  card: { borderWidth: 1, borderColor: "#dfe5ee", borderRadius: 16, padding: 14, marginTop: 12, backgroundColor: "#fff", gap: 6 },
-  h2: { fontSize: 20, fontWeight: "800", color: "#152033" }, h3: { fontSize: 17, fontWeight: "700", color: "#152033" },
-  text: { fontSize: 15, color: "#152033" }, muted: { fontSize: 14, color: "#667085" }, label: { fontSize: 14, fontWeight: "600", color: "#152033", marginBottom: 4 },
-  err: { color: "#b42318", fontSize: 14, marginTop: 8 }, link: { color: "#4f46e5", fontWeight: "700", fontSize: 15, paddingVertical: 4 },
+  card: { borderWidth: 1, borderColor: colors.line, borderRadius: 16, padding: 14, marginTop: 12, backgroundColor: colors.surface, gap: 6 },
+  h2: { fontSize: 20, fontWeight: "800", color: colors.text }, h3: { fontSize: 17, fontWeight: "700", color: colors.text },
+  text: { fontSize: 15, color: colors.text }, muted: { fontSize: 14, color: colors.textMuted }, label: { fontSize: 14, fontWeight: "600", color: colors.text, marginBottom: 4 },
+  err: { color: colors.danger, fontSize: 14, marginTop: 8 }, link: { color: colors.accent, fontWeight: "700", fontSize: 15, paddingVertical: 4 },
   row: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 6 }, top: { flexDirection: "row", gap: 10, alignItems: "flex-start", marginTop: 4 },
-  btn: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: "#bfc7dd", backgroundColor: "#fff" }, btnText: { color: "#4f46e5", fontWeight: "700", fontSize: 14 }, danger: { color: "#b42318" }, off: { opacity: 0.5 },
-  input: { borderWidth: 1, borderColor: "#dfe5ee", borderRadius: 12, padding: 10, fontSize: 16, color: "#152033", backgroundColor: "#fff" },
-  chat: { maxHeight: 380, borderWidth: 1, borderColor: "#dfe5ee", borderRadius: 16, padding: 10, backgroundColor: "#f8fafc", marginTop: 12 },
+  btn: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.surface }, btnText: { color: colors.accent, fontWeight: "700", fontSize: 14 }, danger: { color: colors.danger }, off: { opacity: 0.5 },
+  input: { borderWidth: 1, borderColor: colors.line, borderRadius: 12, padding: 10, fontSize: 16, color: colors.text, backgroundColor: colors.surface },
+  chat: { maxHeight: 380, borderWidth: 1, borderColor: colors.line, borderRadius: 16, padding: 10, backgroundColor: colors.surfaceSunken, marginTop: 12 },
   bubbleRow: { flexDirection: "row", marginVertical: 3 }, left: { justifyContent: "flex-start" }, right: { justifyContent: "flex-end" },
-  bubble: { maxWidth: "80%", borderRadius: 14, paddingVertical: 8, paddingHorizontal: 12 }, theirs: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#dfe5ee" }, mine: { backgroundColor: "#4f46e5" },
-  theirsText: { color: "#152033", fontSize: 15 }, mineText: { color: "#fff", fontSize: 15 }, sender: { fontSize: 12, fontWeight: "700", color: "#4f46e5" }, meta: { fontSize: 11, color: "#667085", marginTop: 2 },
+  bubble: { maxWidth: "80%", borderRadius: 14, paddingVertical: 8, paddingHorizontal: 12 }, theirs: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line }, mine: { backgroundColor: colors.accent },
+  theirsText: { color: colors.text, fontSize: 15 }, mineText: { color: colors.onAccent, fontSize: 15 }, sender: { fontSize: 12, fontWeight: "700", color: colors.accent }, meta: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
   composer: { flexDirection: "row", gap: 8, marginTop: 10, alignItems: "flex-end" },
 });
 

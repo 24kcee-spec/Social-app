@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 
 export function CampusPulseRadar() {
@@ -23,7 +23,7 @@ export function CampusPulseRadar() {
           style={[styles.btn, checkedIn ? styles.btnActive : styles.btnInactive]}
         >
           <Text style={[styles.btnText, checkedIn ? styles.btnTextActive : styles.btnTextInactive]}>
-            {checkedIn ? 'Checked In âœ“' : 'Check In'}
+            {checkedIn ? 'Checked In ✓' : 'Check In'}
           </Text>
         </Pressable>
       </View>

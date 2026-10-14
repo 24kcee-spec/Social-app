@@ -7,6 +7,10 @@ import { errorMessage, getAuth, isConfigured } from "../../lib/auth";
 
 /** Opened from the reset email. Supabase puts a temporary session in the URL; we then let the user choose a new password. */
 export default function ResetPassword() {
+  return <main id="main" tabIndex={-1}><ResetForm /></main>;
+}
+
+function ResetForm() {
   const [ready, setReady] = useState(false);
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);

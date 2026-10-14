@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 param([string]$ApiUrl = "http://localhost:4000")
 $ErrorActionPreference = "Stop"
 

@@ -1,4 +1,4 @@
-﻿-- Phase 11 Supabase Storage Bucket for Direct Chat Media
+-- Phase 11 Supabase Storage Bucket for Direct Chat Media
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('chat-media', 'chat-media', false, 10485760, array['image/jpeg', 'image/png', 'image/webp'])
 on conflict (id) do nothing;
