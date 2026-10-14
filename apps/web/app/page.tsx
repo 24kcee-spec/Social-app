@@ -54,10 +54,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!isConfigured()) {
-      return setPhase({
-        kind: "error",
-        message: "Supabase is not configured. Fill SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY in .env, then restart.",
-      });
+      return setPhase({ kind: "signedOut" });
     }
     void load();
     return getAuth().onAuthChange((event) => {
@@ -77,23 +74,28 @@ export default function Home() {
     );
   }
 
+  if (phase.kind === "signedOut") {
+    return <AuthForm />;
+  }
+
   if (phase.kind === "error") {
     return (
       <div className="auth-wrapper">
         <div className="auth-card-editorial">
-          <div className="auth-brand-badge">Configuration</div>
-          <h2>Unable to connect</h2>
-          <p className="err" role="alert">{phase.message}</p>
-          <button className="auth-submit-btn" onClick={() => { setPhase({ kind: "loading" }); void load(); }}>
-            Try again
+          <div className="auth-brand-badge">Configuration Notice</div>
+          <h2>Supabase configuration required</h2>
+          <p className="muted">
+            To connect to your live database, add your credentials to <code>.env</code>:
+          </p>
+          <pre className="notice" style={{ background: "var(--surface-sunken)", fontSize: "0.82rem", overflowX: "auto" }}>
+            SUPABASE_URL=...{"\n"}SUPABASE_PUBLISHABLE_KEY=...
+          </pre>
+          <button className="auth-submit-btn secondary" onClick={() => setPhase({ kind: "signedOut" })}>
+            View Auth & Entry Screens →
           </button>
         </div>
       </div>
     );
-  }
-
-  if (phase.kind === "signedOut") {
-    return <AuthForm />;
   }
 
   return <Account me={phase.me} sessions={phase.sessions} reload={load} />;
