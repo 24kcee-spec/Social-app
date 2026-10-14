@@ -12,7 +12,7 @@ $h = Invoke-RestMethod -Uri "$ApiUrl/health" -Method Get; Write-Host "    [OK] A
 
 Write-Host "[2] Authenticating test user..." -ForegroundColor Cyan
 $email = Read-Host "Test email (hit Enter for default)"
-if (-not $email) { $email = "n02420280y@students.nust.ac.zw" }
+if (-not $email) { $email = "smoke-test@social-app.local" }
 $sec = Read-Host "Password (min 8 chars)" -AsSecureString
 $pw = [System.Net.NetworkCredential]::new("", $sec).Password
 $hAuth = @{ apikey = $key; "Content-Type" = "application/json" }

@@ -1,24 +1,21 @@
 {
-    "name":  "social-platform",
-    "private":  true,
-    "version":  "0.0.0",
-    "description":  "Social Connection Platform (placeholder name) - monorepo",
-    "packageManager":  "pnpm@9.15.4",
-    "engines":  {
-                    "node":  "\u003e=22.13"
-                },
-    "scripts":  {
-                    "format":  "prettier --write .",
-                    "format:check":  "prettier --check .",
-                    "typecheck":  "pnpm -r --if-present typecheck",
-                    "test":  "pnpm -r --if-present test",
-                    "verify":  "pnpm typecheck \u0026\u0026 pnpm test",
-                    "prepare":  "husky install"
-                },
-    "devDependencies":  {
-                            "globals":  "^15.14.0",
-                            "husky":  "^9.0.0",
-                            "prettier":  "^3.4.0",
-                            "typescript":  "^5.6.3"
-                        }
+  "name": "social-platform",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Social Connection Platform (placeholder name) - monorepo",
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "verify": "pnpm typecheck && pnpm test"
+  },
+  "devDependencies": {
+    "prettier": "^3.4.0",
+    "typescript": "^5.6.3"
+  }
 }

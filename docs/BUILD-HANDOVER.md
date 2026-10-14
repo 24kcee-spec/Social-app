@@ -5,7 +5,7 @@ Paste this file into a new Claude session, attach `Social-Connection-Platform-Bl
 ## 1. Snapshot
 | Field | Value |
 |---|---|
-| Owner | 24kcee-spec (24kcee@gmail.com), Bulawayo, **Windows PowerShell 5.1** |
+| Owner | 24kcee-spec, Bulawayo, **Windows PowerShell 5.1** |
 | Local repo | `C:\Dev\social-platform` (untracked `.agents/` and `skills-lock.json` are NOT ours - never commit) |
 | GitHub | `https://github.com/24kcee-spec/Social-app.git`, branch `main` (make repo PRIVATE) |
 | Stack | pnpm monorepo, TypeScript, Fastify API, Supabase (Postgres + Auth + Storage + Realtime), Next.js web, Expo mobile, vitest, zod |
