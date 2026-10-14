@@ -10,8 +10,9 @@ try {
 
 /** @type {import('next').NextConfig} */
 export default {
+  output: "standalone",
   reactStrictMode: true,
-  transpilePackages: ["@sp/auth-client", "@sp/validation", "@sp/types"],
+  transpilePackages: ["@sp/auth-client", "@sp/profile-client", "@sp/validation", "@sp/types"],
   env: {
     NEXT_PUBLIC_SUPABASE_URL: process.env.SUPABASE_URL ?? "",
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.SUPABASE_PUBLISHABLE_KEY ?? "",

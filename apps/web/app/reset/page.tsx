@@ -7,7 +7,11 @@ import { errorMessage, getAuth, isConfigured } from "../../lib/auth";
 
 /** Opened from the reset email. Supabase puts a temporary session in the URL; we then let the user choose a new password. */
 export default function ResetPassword() {
-  return <main id="main" tabIndex={-1}><ResetForm /></main>;
+  return (
+    <div className="auth-wrapper">
+      <ResetForm />
+    </div>
+  );
 }
 
 function ResetForm() {
@@ -29,7 +33,8 @@ function ResetForm() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true); setError(null);
+    setBusy(true);
+    setError(null);
     try {
       await getAuth().setNewPassword(password);
       setDone(true);
@@ -40,29 +45,77 @@ function ResetForm() {
     }
   }
 
-  if (done)
+  if (done) {
     return (
-      <div className="card">
+      <div className="auth-card-editorial">
+        <div className="auth-brand-badge">✦ Social Connection</div>
         <h1>Password updated</h1>
-        <p className="ok">You can now use your new password.</p>
-        <Link href="/">Continue</Link>
+        <p className="ok" role="status">Your password has been successfully updated.</p>
+        <div style={{ marginTop: 24 }}>
+          <Link href="/" className="auth-submit-btn" style={{ display: "inline-flex", textDecoration: "none" }}>
+            Continue to sign in
+          </Link>
+        </div>
       </div>
     );
-  if (!ready)
+  }
+
+  if (!ready) {
     return (
-      <div className="card">
+      <div className="auth-card-editorial">
+        <div className="auth-brand-badge">✦ Social Connection</div>
         <h1>Reset your password</h1>
-        <p className="muted">Open this page from the link in your reset email. If the link has expired, request a new one.</p>
-        <Link href="/">Back to sign in</Link>
+        <p className="muted">
+          Open this page from the link sent in your password recovery email. If the link has expired or is invalid, please request a new one.
+        </p>
+        <div style={{ marginTop: 24 }}>
+          <Link href="/" className="link">
+            ← Return to sign in
+          </Link>
+        </div>
       </div>
     );
+  }
+
   return (
-    <form className="card" onSubmit={submit} noValidate>
-      <h1>Choose a new password</h1>
-      <label htmlFor="password">New password</label>
-      <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" required />
-      {error && <p className="err" role="alert">{error}</p>}
-      <button type="submit" disabled={busy}>{busy ? "Please wait..." : "Update password"}</button>
-    </form>
+    <div className="auth-card-editorial">
+      <header>
+        <div className="auth-brand-badge">✦ Social Connection</div>
+        <h1>Choose a new password</h1>
+        <p className="muted">Create a strong, memorable password for your account.</p>
+      </header>
+
+      <form onSubmit={submit} noValidate style={{ marginTop: 16 }}>
+        <div className="field">
+          <label htmlFor="password">New password</label>
+          <input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+            placeholder="At least 8 characters"
+            required
+            aria-invalid={Boolean(error)}
+          />
+        </div>
+
+        {error && (
+          <div className="notice err" role="alert" style={{ marginTop: 12 }}>
+            <span>{error}</span>
+          </div>
+        )}
+
+        <button type="submit" className="auth-submit-btn" disabled={busy || password.length < 6}>
+          {busy ? "Updating…" : "Update password"}
+        </button>
+
+        <div className="auth-footer-links">
+          <Link href="/" className="link">
+            ← Back to sign in
+          </Link>
+        </div>
+      </form>
+    </div>
   );
 }
