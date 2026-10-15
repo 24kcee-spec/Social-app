@@ -48,8 +48,19 @@ export function Community() {
   if (openGroup) return <GroupPage group={openGroup} events={events.filter((e) => e.groupId === openGroup.id)} onOpenEvent={setOpenEventId} onBack={() => { setOpenGroupId(null); void load(); }} onChanged={load} />;
 
   const myGroups = groups.filter((g) => g.role === "owner" || g.role === "moderator");
-  return <div>
-    <div className="card">
+  return (
+    <div className="community-page">
+      <div className="discover-header-bar">
+        <div>
+          <span className="eyebrow">✦ LOCAL SPACES</span>
+          <h1 style={{ margin: "2px 0 0" }}>Community & Events</h1>
+        </div>
+        <div className="discover-philosophy">
+          <span className="discover-philosophy-dot" />
+          <span>Small groups and low-key events. No exact addresses are ever shared publicly.</span>
+        </div>
+      </div>
+      <div className="card">
       <div className="field"><label htmlFor="area">Area</label><input id="area" value={area} onChange={(e) => setArea(e.target.value)} placeholder="e.g. Bulawayo (leave empty for everywhere)" maxLength={120} /></div>
       <div className="tabs" role="tablist">
         <button role="tab" aria-selected={view === "events"} className={view === "events" ? "tab active" : "tab"} onClick={() => setView("events")}>Events</button>
@@ -86,7 +97,8 @@ export function Community() {
             {g.role === "member" || g.role === "moderator" ? <button className="link" onClick={() => void act(() => client.leaveGroup(g.id))}>Leave</button> : null}
           </div>
         </div>))}
-  </div>;
+    </div>
+  );
 }
 
 function GroupForm({ activities, onDone }: { activities: Activity[]; onDone: () => void }) {

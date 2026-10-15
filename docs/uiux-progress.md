@@ -17,3 +17,17 @@ Files: apps/web/app/globals.css, apps/web/app/page.tsx, apps/web/app/discover.ts
 - Auth: Redesigned sign-in, sign-up and reset forms with mode segmented switcher, clear visual hierarchy, accessible validation, and token styling.
 - Discover: Redesigned candidate cards with prominent avatars, mutual-interest chips (cobalt highlighted vs neutral), match reason callouts ("✦"), expandable prompt quotes, integrated low-pressure openers (SayHi), and polite skip/block actions.
 - Preserved: Supabase auth flows, real discovery feeds and impressions tracking, opener interactions, session management, and existing routes.
+
+## Stage C2: done (Web UI Transformation: Connections, Messages, Community, Modals & Safety)
+Files: apps/web/app/connections.tsx, apps/web/app/messages.tsx, apps/web/app/community.tsx, apps/web/app/report-modal.tsx, apps/web/app/share-modal.tsx, apps/web/app/globals.css.
+- Connections: Editorial header, incoming request cards with intro quotes & accept/decline, active connections with message/remove, outgoing hellos with withdraw, low-pressure mode toggle card.
+- Messages: Conversation list items with avatar, preview & unread badges, real-time thread with live connection status, message bubbles with cobalt accent & retry handling, composer.
+- Community: Local space editorial header, area filtering, segmented tabs (Events / Groups), RSVP waitlist management, group/event creation, attendee rosters.
+- Modals: ReportModal and ShareModal updated with accessible dialog semantics, Escape key handling, backdrop click-to-close, and design token conformance (removing old hardcoded indigo hex values).
+- Globals CSS: Added supporting utility classes for avatars, card-actions, intro quotes, topbar, tabs, and modals.
+
+## Stage D: done (Mobile UI Harmonization & Token Cleanup)
+Files: apps/mobile/src/components/EditorialCard.tsx, apps/mobile/src/Discover.tsx.
+- EditorialCard.tsx: Refactored to import `useTheme` and consume shared design tokens (`colors.surface`, `colors.line`, `colors.accent`, `colors.text`, etc.) instead of hardcoded hex values. Documented relationship with production `Discover.tsx`.
+- CampusPulseRadar.tsx: Confirmed omitted from production UI (no backend, avoids fabricated social counts).
+

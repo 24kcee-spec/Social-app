@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ReportReason, ReportTargetType } from "@sp/types";
 import { getSafetyClient } from "../lib/safety";
 import { errorMessage } from "../lib/auth";
@@ -33,6 +33,14 @@ export function ReportModal({
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -55,26 +63,50 @@ export function ReportModal({
   }
 
   return (
-    <div className="modal-backdrop" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
-      <div className="card" style={{ maxWidth: 480, width: "100%", margin: 0, background: "#fff" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h3>Report {targetLabel ?? targetType}</h3>
-          <button className="link" onClick={onClose} style={{ margin: 0 }}>Close</button>
+    <div
+      className="modal-backdrop"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="report-modal-title"
+    >
+      <div className="card modal-card" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3 id="report-modal-title">Report {targetLabel ?? targetType}</h3>
+          <button className="link" onClick={onClose} style={{ margin: 0 }}>
+            ✕
+          </button>
         </div>
         {done ? (
-          <div>
-            <p className="ok">Thank you for letting us know. Our safety moderators have received this report.</p>
-            {blockUser && <p className="muted">This user has also been blocked from your feed and messages.</p>}
-            <button onClick={onClose}>Done</button>
+          <div className="modal-body">
+            <p className="notice ok">
+              Thank you for letting us know. Our safety moderators have received this report.
+            </p>
+            {blockUser && (
+              <p className="muted">This user has also been blocked from your feed and messages.</p>
+            )}
+            <div className="card-actions" style={{ marginTop: 16 }}>
+              <button onClick={onClose}>Done</button>
+            </div>
           </div>
         ) : (
-          <form onSubmit={submit}>
-            {error && <p className="err" role="alert">{error}</p>}
+          <form onSubmit={submit} className="modal-body">
+            {error && (
+              <div className="notice err" role="alert">
+                {error}
+              </div>
+            )}
             <div className="field">
               <label htmlFor="rep-reason">Why are you reporting this?</label>
-              <select id="rep-reason" value={reason} onChange={(e) => setReason(e.target.value as ReportReason)}>
+              <select
+                id="rep-reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value as ReportReason)}
+              >
                 {REASONS.map((r) => (
-                  <option key={r.value} value={r.value}>{r.label}</option>
+                  <option key={r.value} value={r.value}>
+                    {r.label}
+                  </option>
                 ))}
               </select>
             </div>
@@ -90,7 +122,7 @@ export function ReportModal({
               />
             </div>
             {(targetType === "profile" || targetType === "message" || targetType === "event_message") && (
-              <label className="check" style={{ display: "flex", gap: 8, alignItems: "center", margin: "12px 0" }}>
+              <label className="check" style={{ margin: "12px 0" }}>
                 <input
                   type="checkbox"
                   checked={blockUser}
@@ -99,9 +131,13 @@ export function ReportModal({
                 <span>Also block this person so they can never see you or contact you</span>
               </label>
             )}
-            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
-              <button type="button" className="secondary compact" onClick={onClose} disabled={busy}>Cancel</button>
-              <button type="submit" className="compact" disabled={busy}>{busy ? "Submitting…" : "Submit report"}</button>
+            <div className="card-actions" style={{ marginTop: 18 }}>
+              <button type="button" className="secondary compact" onClick={onClose} disabled={busy}>
+                Cancel
+              </button>
+              <button type="submit" className="compact" disabled={busy}>
+                {busy ? "Submitting…" : "Submit report"}
+              </button>
             </div>
           </form>
         )}
