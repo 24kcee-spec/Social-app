@@ -11,11 +11,11 @@
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
-    "@sp/auth-client": "workspace:*",
-    "@sp/design-tokens": "workspace:*",
-    "@sp/profile-client": "workspace:*",
-    "@sp/types": "workspace:*",
-    "@sp/validation": "workspace:*",
+    "@sp/auth-client": "*",
+    "@sp/design-tokens": "*",
+    "@sp/profile-client": "*",
+    "@sp/types": "*",
+    "@sp/validation": "*",
     "expo": "~57.0.26",
     "expo-constants": "~57.0.20",
     "expo-image-manipulator": "~57.0.20",
@@ -23,6 +23,7 @@
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
     "react-native": "0.86.3",
+    "react-native-safe-area-context": "^5.10.1",
     "react-native-url-polyfill": "^4.0.0"
   },
   "devDependencies": {

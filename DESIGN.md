@@ -27,7 +27,10 @@ Scale (size/line): caption 12/16, small 14/20, body 16/24, title 20/28, heading 
 
 ## Implemented components
 - **Web (CSS):** `button` (44px min, hover, `.secondary`, `.compact`, `.link`), inputs (44px min, 3:1 border), focus-visible ring on all interactive elements, `.card`, skip link (`#main`), landmarks (one `<main id="main">` per page).
-- **Mobile (`src/ui`):** `Button` (44dp, busy/disabled state, a11y state), `Field` (label, error, a11y label), `Banner` (error/success/info with icon, live region). Used by `App.tsx` for auth, onboarding and profile screens.
+- **Mobile (`src/ui` & `src/theme`):**
+  - Theme runtime: `ThemeProvider`, `useTheme()`, supporting System, Light, and Dark modes with AsyncStorage persistence.
+  - Controls: `Button` (44dp, busy/disabled, secondary, danger, compact), `Field` (label, hint, error, a11y, multiline), `Banner` (error/success/info/warning with icons & live regions).
+  - Data display & navigation: `Avatar` (sm, md, lg, xl with image + deterministic initials), `Badge` (count and status pills), `Chip` (selectable, accent/mutual, neutral), `Card` (borders-first surface container), `EmptyState` (editorial mark, description, optional action), `BottomNav` (5 native destinations with live badge indicators), `ReportSheet` (safety reporting modal), `LiquidSheet` (draggable native bottom sheet with keyboard avoidance).
 
-## Not yet adopted (Stages C–E)
-Web dialogs (focus trap, Escape), tabs semantics, cards for discovery/profile; mobile Sheet, Chip, Badge, Avatar, Skeleton, EmptyState, bottom tabs, dark scheme. Web still has legacy variable aliases (`--fg`, `--muted`, `--card`, `--err`, `--ok`, `--shadow`) and inline hex colours in `share-modal.tsx`, `report-modal.tsx`, `discover.tsx` and others. Stage C removes them.
+## Not yet adopted (Remaining Web Scope & Future Stages)
+Web still has remaining areas from Stage C: Web dialogs (focus trap, Escape), tabs semantics, full responsive redesign of web Connections, Messages, Community, Profile, and legacy CSS variable cleanup. Mobile Stage D is complete across all five primary destinations, theming, safe-area handling, and safety reporting.

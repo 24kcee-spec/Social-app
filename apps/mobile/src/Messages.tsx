@@ -6,15 +6,21 @@ import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, Sc
 import { errorMessage } from "./auth";
 import { getMessagingClient, subscribeToConversation } from "./messagingClient";
 import { getSignedMediaUrl } from "./profile";
-import { colors } from "./theme";
+import { useTheme } from "./theme";
+import { Avatar, Badge, Banner, Button, EmptyState, ReportSheet } from "./ui";
 
-function Avatar({ name, url }: { name: string; url?: string }) {
-  return url ? <Image source={{ uri: url }} style={m.avatar} accessibilityLabel={`${name}'s profile`} /> : <View style={[m.avatar, m.ph]}><Text style={m.letter}>{name.slice(0, 1).toUpperCase()}</Text></View>;
-}
-
-/** Conversation list + thread. Same behaviour as web: Realtime keeps the open thread live, every reconnect refetches the latest page. */
-export function Messages({ onUnread, openWithUserId, onOpened }: { onUnread?: (total: number) => void; openWithUserId?: string | null; onOpened?: () => void }) {
+export function Messages({
+  onUnread,
+  openWithUserId,
+  onOpened,
+}: {
+  onUnread?: (total: number) => void;
+  openWithUserId?: string | null;
+  onOpened?: () => void;
+}) {
+  const { colors, radius, space, type, shadow } = useTheme();
   const client = getMessagingClient();
+
   const [conversations, setConversations] = useState<ConversationView[]>([]);
   const [photos, setPhotos] = useState<Record<string, string>>({});
   const [openId, setOpenId] = useState<string | null>(null);
@@ -30,15 +36,30 @@ export function Messages({ onUnread, openWithUserId, onOpened }: { onUnread?: (t
       setSettings(s);
       onUnread?.(list.reduce((n, c) => n + c.unreadCount, 0));
       const people = list.filter((c) => c.other.thumbnailPath);
-      const pairs = await Promise.all(people.map(async (c) => { try { return [c.other.userId, await getSignedMediaUrl(c.other.thumbnailPath!)] as const; } catch { return null; } }));
+      const pairs = await Promise.all(
+        people.map(async (c) => {
+          try {
+            return [c.other.userId, await getSignedMediaUrl(c.other.thumbnailPath!)] as const;
+          } catch {
+            return null;
+          }
+        })
+      );
       setPhotos(Object.fromEntries(pairs.filter((p): p is readonly [string, string] => p !== null)));
-    } catch (err) { setError(errorMessage(err)); }
-    finally { setLoading(false); }
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setLoading(false);
+    }
   }, [client, onUnread]);
-  useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const onOpenedRef = useRef(onOpened);
   onOpenedRef.current = onOpened;
+
   useEffect(() => {
     if (!openWithUserId) return;
     let cancelled = false;
@@ -48,45 +69,169 @@ export function Messages({ onUnread, openWithUserId, onOpened }: { onUnread?: (t
         if (cancelled) return;
         setConversations((list) => (list.some((c) => c.id === conversation.id) ? list : [conversation, ...list]));
         setOpenId(conversation.id);
-      } catch (err) { if (!cancelled) setError(errorMessage(err)); }
-      finally { if (!cancelled) onOpenedRef.current?.(); }
+      } catch (err) {
+        if (!cancelled) setError(errorMessage(err));
+      } finally {
+        if (!cancelled) onOpenedRef.current?.();
+      }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [openWithUserId, client]);
 
   const toggle = async (key: keyof NotificationSettings, value: boolean) => {
     if (!settings) return;
     const next = { ...settings, [key]: value };
     setSettings(next);
-    try { await client.setNotificationSettings(next); } catch (err) { setSettings(settings); setError(errorMessage(err)); }
+    try {
+      await client.setNotificationSettings(next);
+    } catch (err) {
+      setSettings(settings);
+      setError(errorMessage(err));
+    }
   };
 
   const open = conversations.find((c) => c.id === openId) ?? null;
-  if (open) return <Thread conversation={open} photo={photos[open.other.userId]} onBack={() => { setOpenId(null); void load(); }} />;
+  if (open) {
+    return <Thread conversation={open} photo={photos[open.other.userId]} onBack={() => { setOpenId(null); void load(); }} />;
+  }
 
-  return <View>
-    {error && <Text style={m.err} accessibilityRole="alert">{error}</Text>}
-    {settings && <View style={m.card}>
-      <Text style={m.h2}>Notifications</Text>
-      <View style={m.row}><View style={{ flex: 1 }}><Text style={m.name}>New messages</Text><Text style={m.muted}>A gentle nudge when someone writes to you.</Text></View><Switch value={settings.messages} onValueChange={(v) => void toggle("messages", v)} accessibilityLabel="New message notifications" /></View>
-      <View style={m.row}><View style={{ flex: 1 }}><Text style={m.name}>Someone says hi</Text><Text style={m.muted}>When someone new would like to connect.</Text></View><Switch value={settings.connectionRequests} onValueChange={(v) => void toggle("connectionRequests", v)} accessibilityLabel="Connection request notifications" /></View>
-      <Text style={m.muted}>Push delivery to this phone is switched on in a later release; these choices are saved now.</Text>
-    </View>}
-    {loading ? <ActivityIndicator style={{ padding: 24 }} /> : conversations.length === 0
-      ? <View style={m.card}><Text style={m.muted}>No conversations yet. Open Connections and tap Message next to someone you are connected with.</Text></View>
-      : conversations.map((c) => <Pressable key={c.id} accessibilityRole="button" onPress={() => setOpenId(c.id)} style={m.card}>
-        <View style={m.head}><Avatar name={c.other.displayName} url={photos[c.other.userId]} />
-          <View style={{ flex: 1 }}>
-            <Text style={m.name}>{c.other.displayName}{c.unreadCount > 0 ? `  (${c.unreadCount})` : ""}</Text>
-            <Text style={m.muted} numberOfLines={1}>{c.lastMessage ? c.lastMessage.body : "Say hello."}</Text>
+  return (
+    <View style={styles.container}>
+      {error ? <Banner tone="error">{error}</Banner> : null}
+
+      {/* Notifications settings panel */}
+      {settings ? (
+        <View
+          style={[
+            styles.card,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.line,
+              borderRadius: radius.md,
+              padding: space[4],
+            },
+            shadow[1],
+          ]}
+        >
+          <Text style={[styles.sectionTitle, { color: colors.text, fontSize: type.title.size }]}>
+            Notifications
+          </Text>
+          <View style={[styles.settingRow, { marginTop: space[2] }]}>
+            <View style={{ flex: 1, paddingRight: space[2] }}>
+              <Text style={[styles.settingName, { color: colors.text }]}>New messages</Text>
+              <Text style={[styles.muted, { color: colors.textMuted }]}>
+                A gentle notice when someone writes to you.
+              </Text>
+            </View>
+            <Switch
+              value={settings.messages}
+              onValueChange={(v) => void toggle("messages", v)}
+              accessibilityLabel="New message notifications"
+            />
+          </View>
+
+          <View style={[styles.settingRow, { marginTop: space[3] }]}>
+            <View style={{ flex: 1, paddingRight: space[2] }}>
+              <Text style={[styles.settingName, { color: colors.text }]}>Someone says hi</Text>
+              <Text style={[styles.muted, { color: colors.textMuted }]}>
+                When someone would like to connect from Discover.
+              </Text>
+            </View>
+            <Switch
+              value={settings.connectionRequests}
+              onValueChange={(v) => void toggle("connectionRequests", v)}
+              accessibilityLabel="Connection request notifications"
+            />
           </View>
         </View>
-      </Pressable>)}
-  </View>;
+      ) : null}
+
+      {loading ? (
+        <View style={styles.loaderWrap}>
+          <ActivityIndicator size="large" color={colors.accent} />
+          <Text style={[styles.muted, { color: colors.textMuted, marginTop: space[3] }]}>
+            Loading conversations…
+          </Text>
+        </View>
+      ) : conversations.length === 0 ? (
+        <EmptyState
+          title="No conversations yet"
+          description="Go to Connections and tap Message next to someone you're connected with to begin a conversation."
+          mark="✉"
+        />
+      ) : (
+        <View style={{ marginTop: space[3] }}>
+          {conversations.map((c) => {
+            const hasUnread = c.unreadCount > 0;
+            return (
+              <Pressable
+                key={c.id}
+                accessibilityRole="button"
+                accessibilityLabel={`Conversation with ${c.other.displayName}${hasUnread ? `, ${c.unreadCount} unread` : ""}`}
+                onPress={() => setOpenId(c.id)}
+                style={({ pressed }) => [
+                  styles.card,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: hasUnread ? colors.accentLine : colors.line,
+                    borderRadius: radius.md,
+                    padding: space[4],
+                    marginTop: space[2],
+                    opacity: pressed ? 0.85 : 1,
+                  },
+                  shadow[1],
+                ]}
+              >
+                <View style={styles.conversationRow}>
+                  <Avatar name={c.other.displayName} url={photos[c.other.userId]} size="md" />
+                  <View style={{ flex: 1, marginLeft: space[3] }}>
+                    <View style={styles.convoTop}>
+                      <Text style={[styles.convoName, { color: colors.text, fontSize: type.bodyStrong.size }]}>
+                        {c.other.displayName}
+                      </Text>
+                      {hasUnread ? (
+                        <Badge count={c.unreadCount} tone="accent" compact />
+                      ) : null}
+                    </View>
+                    <Text
+                      style={[
+                        styles.convoPreview,
+                        {
+                          color: hasUnread ? colors.text : colors.textMuted,
+                          fontWeight: hasUnread ? "600" : "400",
+                          fontSize: type.small.size,
+                          marginTop: 2,
+                        },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {c.lastMessage ? c.lastMessage.body : "Say hello."}
+                    </Text>
+                  </View>
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
+    </View>
+  );
 }
 
-function Thread({ conversation, photo, onBack }: { conversation: ConversationView; photo?: string; onBack: () => void }) {
+function Thread({
+  conversation,
+  photo,
+  onBack,
+}: {
+  conversation: ConversationView;
+  photo?: string;
+  onBack: () => void;
+}) {
+  const { colors, radius, space, type } = useTheme();
   const client = getMessagingClient();
+
   const [messages, setMessages] = useState<ThreadMessage[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
@@ -94,9 +239,12 @@ function Thread({ conversation, photo, onBack }: { conversation: ConversationVie
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reporting, setReporting] = useState(false);
   const scroller = useRef<ScrollView>(null);
 
-  const merge = useCallback((incoming: ThreadMessage[]) => { setMessages((current) => mergeMessages(current, incoming)); }, []);
+  const merge = useCallback((incoming: ThreadMessage[]) => {
+    setMessages((current) => mergeMessages(current, incoming));
+  }, []);
 
   const refetchLatest = useCallback(async () => {
     try {
@@ -105,7 +253,9 @@ function Thread({ conversation, photo, onBack }: { conversation: ConversationVie
       setHasMore(page.hasMore);
       setNextCursor(page.nextCursor);
       await client.markRead(conversation.id);
-    } catch { /* transient; the next realtime resync retries */ }
+    } catch {
+      // transient; the next realtime resync retries
+    }
   }, [client, conversation.id, merge]);
 
   useEffect(() => {
@@ -117,7 +267,11 @@ function Thread({ conversation, photo, onBack }: { conversation: ConversationVie
         if (msg.senderId === conversation.other.userId) void client.markRead(conversation.id).catch(() => undefined);
       },
       onStatus: setStatus,
-      onRead: (r) => { if (r.userId === conversation.other.userId) setMessages((current) => applyReadWatermark(current, conversation.other.userId, r.lastReadAt)); },
+      onRead: (r) => {
+        if (r.userId === conversation.other.userId) {
+          setMessages((current) => applyReadWatermark(current, conversation.other.userId, r.lastReadAt));
+        }
+      },
       onResync: () => void refetchLatest(),
     });
     return () => sub.close();
@@ -130,97 +284,382 @@ function Thread({ conversation, photo, onBack }: { conversation: ConversationVie
       merge(page.messages);
       setHasMore(page.hasMore);
       setNextCursor(page.nextCursor);
-    } catch (err) { setError(errorMessage(err)); }
+    } catch (err) {
+      setError(errorMessage(err));
+    }
   }
 
   async function send(body: string, tag: string) {
-    setSending(true); setError(null);
+    setSending(true);
+    setError(null);
     try {
       merge([await client.sendMessage(conversation.id, body, tag)]);
       setDraft("");
     } catch (err) {
-      setMessages((current) => current.map((x) => (x.clientTag === tag && x.pending ? { ...x, pending: false, failed: true } : x)));
+      setMessages((current) =>
+        current.map((x) => (x.clientTag === tag && x.pending ? { ...x, pending: false, failed: true } : x))
+      );
       setError(errorMessage(err));
-    } finally { setSending(false); }
+    } finally {
+      setSending(false);
+    }
   }
 
   function submit() {
     const body = draft.trim();
     if (!body || sending) return;
     const tag = newClientTag();
-    setMessages((current) => [...current, { id: `local-${tag}`, conversationId: conversation.id, senderId: "me", kind: "text", body, clientTag: tag, createdAt: new Date().toISOString(), read: false, pending: true }]);
+    setMessages((current) => [
+      ...current,
+      {
+        id: `local-${tag}`,
+        conversationId: conversation.id,
+        senderId: "me",
+        kind: "text",
+        body,
+        clientTag: tag,
+        createdAt: new Date().toISOString(),
+        read: false,
+        pending: true,
+      },
+    ]);
     void send(body, tag);
   }
 
-  return <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
-    <View style={m.topbar}>
-      <View style={m.head}><Avatar name={conversation.other.displayName} url={photo} />
-        <View><Text style={m.name}>{conversation.other.displayName}</Text><Text style={m.muted}>{status === "live" ? "Connected" : status === "closed" ? "Offline" : "Reconnecting…"}</Text></View>
-      </View>
-      <Pressable accessibilityRole="button" onPress={onBack} style={m.btn}><Text style={m.btnText}>All messages</Text></Pressable>
-    </View>
-    {error && <Text style={m.err} accessibilityRole="alert">{error}</Text>}
-    <ScrollView ref={scroller} style={m.chat} onContentSizeChange={() => scroller.current?.scrollToEnd({ animated: false })}>
-      {hasMore && <Pressable accessibilityRole="button" onPress={() => void loadOlder()} style={m.more}><Text style={m.btnText}>Load older messages</Text></Pressable>}
-      {messages.map((x) => {
-        const theirs = x.senderId === conversation.other.userId;
-        return <View key={x.id} style={[m.bubbleRow, theirs ? m.left : m.right]}>
-          <View style={[m.bubble, theirs ? m.theirs : m.mine, x.pending && m.pendingBubble, x.failed && m.failedBubble]}>
-            {Boolean((x as any).mediaUrl) && <Image source={{ uri: ((x as any).mediaThumbUrl || (x as any).mediaUrl) }} style={{ width: 220, height: 160, borderRadius: 10, marginBottom: 6 }} resizeMode="cover" />}
-            <Text style={theirs ? m.theirsText : m.mineText}>{x.body}</Text>
-            <Text style={[m.meta, !theirs && m.metaMine]}>
-              {x.pending ? "Sending…" : x.failed ? "Not sent" : new Date(x.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              {!theirs && !x.pending && !x.failed && x.read ? " · Read" : ""}
-            </Text>
-            {x.failed && <Pressable accessibilityRole="button" onPress={() => { setMessages((c) => c.filter((y) => y.id !== x.id)); setMessages((c) => [...c, { ...x, failed: false, pending: true }]); void send(x.body, x.clientTag); }}><Text style={m.retry}>Retry</Text></Pressable>}
-          </View>
-        </View>;
-      })}
-    </ScrollView>
-    <View style={m.composer}>
-      <Pressable
-        accessibilityRole="button"
-        onPress={async () => {
-          try {
-            const res = await ImagePicker.launchImageLibraryAsync({
-              mediaTypes: ["images"],
-              allowsEditing: true,
-              quality: 0.8,
-            });
-            if (!res.canceled && res.assets[0]?.uri) {
-              setDraft((d) => d ? d : "Shared a photo");
-            }
-          } catch {}
-        }}
-        style={[m.btn, { paddingHorizontal: 10, justifyContent: "center", alignItems: "center" }]}
+  return (
+    <KeyboardAvoidingView
+      style={styles.threadContainer}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 88 : 0}
+    >
+      {/* Thread Top Bar */}
+      <View
+        style={[
+          styles.topbar,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.line,
+            borderRadius: radius.md,
+            padding: space[3],
+          },
+        ]}
       >
-        <Text style={{ fontSize: 18 }}>??</Text>
-      </Pressable>
-      <TextInput style={m.input} value={draft} onChangeText={setDraft} placeholder="Write a message…" placeholderTextColor={colors.textMuted} maxLength={2000} multiline accessibilityLabel="Message" />
-      <Pressable accessibilityRole="button" onPress={submit} disabled={sending || !draft.trim()} style={[m.send, (sending || !draft.trim()) && m.disabled]}><Text style={m.sendText}>Send</Text></Pressable>
-    </View>
-  </KeyboardAvoidingView>;
+        <Button label="← All" secondary compact onPress={onBack} />
+        <View style={styles.topbarCenter}>
+          <Avatar name={conversation.other.displayName} url={photo} size="sm" />
+          <View style={{ marginLeft: 8 }}>
+            <Text style={[styles.threadName, { color: colors.text, fontSize: type.small.size }]}>
+              {conversation.other.displayName}
+            </Text>
+            <Text style={[styles.statusText, { color: status === "live" ? colors.success : colors.textMuted }]}>
+              {status === "live" ? "Connected" : status === "closed" ? "Offline" : "Reconnecting…"}
+            </Text>
+          </View>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Report ${conversation.other.displayName}`}
+          onPress={() => setReporting(true)}
+          hitSlop={8}
+          style={styles.flagBtn}
+        >
+          <Text style={[styles.flagText, { color: colors.textMuted }]}>⚑</Text>
+        </Pressable>
+      </View>
+
+      {error ? <Banner tone="error">{error}</Banner> : null}
+
+      {/* Messages Scroll Area */}
+      <ScrollView
+        ref={scroller}
+        style={[
+          styles.chat,
+          {
+            backgroundColor: colors.surfaceSunken,
+            borderColor: colors.line,
+            borderRadius: radius.md,
+            padding: space[3],
+          },
+        ]}
+        onContentSizeChange={() => scroller.current?.scrollToEnd({ animated: false })}
+      >
+        {hasMore ? (
+          <Button
+            label="Load older messages"
+            secondary
+            compact
+            onPress={() => void loadOlder()}
+            style={{ alignSelf: "center", marginBottom: space[3] }}
+          />
+        ) : null}
+
+        {messages.map((x) => {
+          const theirs = x.senderId === conversation.other.userId;
+          const mediaUri = (x as any).mediaThumbUrl || (x as any).mediaUrl;
+          return (
+            <View key={x.id} style={[styles.bubbleRow, theirs ? styles.left : styles.right]}>
+              <View
+                style={[
+                  styles.bubble,
+                  {
+                    borderRadius: radius.md,
+                    paddingVertical: space[2],
+                    paddingHorizontal: space[3],
+                    backgroundColor: theirs ? colors.surface : colors.accent,
+                    borderColor: theirs ? colors.line : colors.accent,
+                    borderWidth: 1,
+                  },
+                  x.pending && styles.pendingBubble,
+                  x.failed && { backgroundColor: colors.danger, borderColor: colors.danger },
+                ]}
+              >
+                {mediaUri ? (
+                  <Image
+                    source={{ uri: mediaUri }}
+                    style={{ width: 220, height: 160, borderRadius: 10, marginBottom: 6 }}
+                    resizeMode="cover"
+                  />
+                ) : null}
+                <Text
+                  style={[
+                    styles.bubbleText,
+                    {
+                      color: theirs ? colors.text : colors.onAccent,
+                      fontSize: type.body.size - 1,
+                    },
+                  ]}
+                >
+                  {x.body}
+                </Text>
+                <Text
+                  style={[
+                    styles.meta,
+                    {
+                      color: theirs ? colors.textMuted : colors.accentLine,
+                    },
+                  ]}
+                >
+                  {x.pending
+                    ? "Sending…"
+                    : x.failed
+                    ? "Not sent"
+                    : new Date(x.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  {!theirs && !x.pending && !x.failed && x.read ? " · Read" : ""}
+                </Text>
+
+                {x.failed ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setMessages((c) => c.filter((y) => y.id !== x.id));
+                      setMessages((c) => [...c, { ...x, failed: false, pending: true }]);
+                      void send(x.body, x.clientTag);
+                    }}
+                    style={{ marginTop: 4 }}
+                  >
+                    <Text style={{ color: colors.onAccent, fontWeight: "700", fontSize: 13 }}>Retry</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            </View>
+          );
+        })}
+      </ScrollView>
+
+      {/* Message Composer */}
+      <View style={[styles.composer, { marginTop: space[3] }]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Share photo"
+          onPress={async () => {
+            try {
+              const res = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ["images"],
+                allowsEditing: true,
+                quality: 0.8,
+              });
+              if (!res.canceled && res.assets[0]?.uri) {
+                setDraft((d) => (d ? `${d} (Photo attached)` : "Shared a photo"));
+              }
+            } catch {}
+          }}
+          style={[
+            styles.attachBtn,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.lineStrong,
+              borderRadius: radius.sm,
+            },
+          ]}
+        >
+          <Text style={{ fontSize: 18, color: colors.accent }}>📷</Text>
+        </Pressable>
+
+        <TextInput
+          style={[
+            styles.input,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.lineStrong,
+              color: colors.text,
+              borderRadius: radius.sm,
+              paddingHorizontal: space[3],
+              paddingVertical: space[2],
+            },
+          ]}
+          value={draft}
+          onChangeText={setDraft}
+          placeholder="Write a message…"
+          placeholderTextColor={colors.textMuted}
+          maxLength={2000}
+          multiline
+          accessibilityLabel="Message text"
+        />
+
+        <Button
+          label={sending ? "…" : "Send"}
+          compact
+          onPress={submit}
+          disabled={sending || !draft.trim()}
+          style={{ minWidth: 64 }}
+        />
+      </View>
+
+      {/* Report Modal */}
+      {reporting ? (
+        <ReportSheet
+          visible={reporting}
+          targetType="profile"
+          targetId={conversation.other.userId}
+          targetLabel={conversation.other.displayName}
+          onClose={() => setReporting(false)}
+          onSuccess={() => {
+            setReporting(false);
+            onBack();
+          }}
+        />
+      ) : null}
+    </KeyboardAvoidingView>
+  );
 }
 
-const m = StyleSheet.create({
-  card: { borderWidth: 1, borderColor: colors.line, borderRadius: 16, padding: 14, marginTop: 12, backgroundColor: colors.surface, gap: 8 },
-  h2: { fontSize: 18, fontWeight: "700", color: colors.text }, name: { fontSize: 16, fontWeight: "700", color: colors.text }, muted: { fontSize: 14, color: colors.textMuted },
-  err: { color: colors.danger, fontSize: 14, marginTop: 6 },
-  head: { flexDirection: "row", gap: 12, alignItems: "center" }, row: { flexDirection: "row", gap: 10, alignItems: "center" },
-  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.accentSoft }, ph: { alignItems: "center", justifyContent: "center" }, letter: { fontSize: 18, fontWeight: "800", color: colors.accent },
-  topbar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 8 },
-  btn: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.surface }, btnText: { color: colors.accent, fontWeight: "700", fontSize: 14 },
-  chat: { maxHeight: 420, borderWidth: 1, borderColor: colors.line, borderRadius: 16, padding: 10, backgroundColor: colors.surfaceSunken },
-  more: { alignSelf: "center", paddingVertical: 8 },
-  bubbleRow: { flexDirection: "row", marginVertical: 3 }, left: { justifyContent: "flex-start" }, right: { justifyContent: "flex-end" },
-  bubble: { maxWidth: "80%", borderRadius: 14, paddingVertical: 8, paddingHorizontal: 12 },
-  theirs: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line }, mine: { backgroundColor: colors.accent },
-  theirsText: { color: colors.text, fontSize: 15 }, mineText: { color: colors.onAccent, fontSize: 15 },
-  pendingBubble: { opacity: 0.6 }, failedBubble: { backgroundColor: colors.danger },
-  meta: { fontSize: 11, color: colors.textMuted, marginTop: 2 }, metaMine: { color: colors.accentLine }, retry: { color: colors.onAccent, fontWeight: "700", marginTop: 4 },
-  composer: { flexDirection: "row", gap: 8, marginTop: 10, alignItems: "flex-end" },
-  input: { flex: 1, borderWidth: 1, borderColor: colors.line, borderRadius: 12, padding: 10, fontSize: 16, color: colors.text, backgroundColor: colors.surface, maxHeight: 120 },
-  send: { backgroundColor: colors.accent, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12 }, sendText: { color: colors.onAccent, fontWeight: "700", fontSize: 15 }, disabled: { opacity: 0.55 },
+const styles = StyleSheet.create({
+  container: {
+    paddingBottom: 24,
+  },
+  card: {
+    borderWidth: 1,
+  },
+  sectionTitle: {
+    fontWeight: "700",
+  },
+  settingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  settingName: {
+    fontWeight: "600",
+    fontSize: 15,
+  },
+  muted: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  loaderWrap: {
+    paddingVertical: 48,
+    alignItems: "center",
+  },
+  conversationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  convoTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  convoName: {
+    fontWeight: "700",
+  },
+  convoPreview: {
+    lineHeight: 18,
+  },
+  threadContainer: {
+    flex: 1,
+  },
+  topbar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  topbarCenter: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    marginLeft: 8,
+  },
+  threadName: {
+    fontWeight: "700",
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: "500",
+  },
+  flagBtn: {
+    padding: 6,
+  },
+  flagText: {
+    fontSize: 16,
+  },
+  chat: {
+    maxHeight: 460,
+    minHeight: 280,
+    borderWidth: 1,
+  },
+  bubbleRow: {
+    flexDirection: "row",
+    marginVertical: 4,
+  },
+  left: {
+    justifyContent: "flex-start",
+  },
+  right: {
+    justifyContent: "flex-end",
+  },
+  bubble: {
+    maxWidth: "80%",
+  },
+  bubbleText: {
+    lineHeight: 20,
+  },
+  pendingBubble: {
+    opacity: 0.6,
+  },
+  meta: {
+    fontSize: 10,
+    marginTop: 3,
+    alignSelf: "flex-end",
+  },
+  composer: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "flex-end",
+  },
+  attachBtn: {
+    width: 44,
+    height: 44,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  input: {
+    flex: 1,
+    minHeight: 44,
+    maxHeight: 120,
+    borderWidth: 1,
+    fontSize: 15,
+  },
 });
-
-

@@ -1,28 +1,70 @@
 import type { ReactNode } from "react";
-import { StyleSheet, Text, View } from "react-native";
-import { colors, radius, space, type } from "../theme";
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
+import { useTheme } from "../theme";
 
-type Tone = "error" | "success" | "info";
-const palette = { error: { bg: colors.dangerSoft, fg: colors.danger, mark: "!" }, success: { bg: colors.successSoft, fg: colors.success, mark: "✓" }, info: { bg: colors.accentSoft, fg: colors.accent, mark: "i" } } as const;
+export type BannerTone = "error" | "success" | "info" | "warning";
 
-/** Status message. Icon + text, so status never relies on colour alone. */
-export function Banner({ tone, children }: { tone: Tone; children: ReactNode }) {
+export function Banner({
+  tone,
+  children,
+  style,
+}: {
+  tone: BannerTone;
+  children: ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const { colors, radius, space, type } = useTheme();
+
+  const palette = {
+    error: { bg: colors.dangerSoft, fg: colors.danger, mark: "!" },
+    success: { bg: colors.successSoft, fg: colors.success, mark: "✓" },
+    info: { bg: colors.accentSoft, fg: colors.accent, mark: "i" },
+    warning: { bg: colors.warningSoft, fg: colors.warning, mark: "⚠" },
+  } as const;
+
   const p = palette[tone];
+
   return (
     <View
       accessible
       accessibilityRole={tone === "error" ? "alert" : undefined}
       accessibilityLiveRegion={tone === "error" ? "assertive" : "polite"}
-      style={[styles.box, { backgroundColor: p.bg }]}
+      style={[
+        styles.box,
+        {
+          backgroundColor: p.bg,
+          padding: space[3],
+          borderRadius: radius.sm,
+          marginTop: space[3],
+          borderColor: p.fg,
+          borderLeftWidth: 3,
+        },
+        style,
+      ]}
     >
-      <Text style={[styles.mark, { color: p.fg }]} importantForAccessibility="no">{p.mark}</Text>
-      <Text style={[styles.text, { color: p.fg }]}>{children}</Text>
+      <Text style={[styles.mark, { color: p.fg, fontSize: type.small.size }]} importantForAccessibility="no">
+        {p.mark}
+      </Text>
+      <Text style={[styles.text, { color: p.fg, fontSize: type.small.size, lineHeight: type.small.line }]}>
+        {children}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  box: { flexDirection: "row", gap: space[2], padding: space[3], borderRadius: radius.sm, marginTop: space[3] },
-  mark: { fontSize: type.small.size, fontWeight: "800", width: 16, textAlign: "center" },
-  text: { flex: 1, fontSize: type.small.size, lineHeight: type.small.line, fontWeight: "600" },
+  box: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "flex-start",
+  },
+  mark: {
+    fontWeight: "800",
+    width: 18,
+    textAlign: "center",
+  },
+  text: {
+    flex: 1,
+    fontWeight: "600",
+  },
 });
