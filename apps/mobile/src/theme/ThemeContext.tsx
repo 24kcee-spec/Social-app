@@ -1,5 +1,14 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { dark, elevation, light, radius, space, touch, type, type ColorTokens } from "@sp/design-tokens";
+import {
+  dark,
+  elevation,
+  light,
+  radius,
+  space,
+  touch,
+  type as themeType,
+  type ColorTokens,
+} from "@sp/design-tokens";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useColorScheme } from "react-native";
 
@@ -15,7 +24,7 @@ export interface ThemeContextValue {
   radius: typeof radius;
   space: typeof space;
   touch: typeof touch;
-  type: typeof type;
+  type: typeof themeType;
   shadow: { 1: typeof elevation[1]["rn"]; 2: typeof elevation[2]["rn"] };
 }
 
@@ -30,7 +39,7 @@ const defaultThemeContext: ThemeContextValue = {
   radius,
   space,
   touch,
-  type,
+  type: themeType,
   shadow: { 1: elevation[1].rn, 2: elevation[2].rn },
 };
 
@@ -79,7 +88,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       radius,
       space,
       touch,
-      type,
+      type: themeType,
       shadow: { 1: elevation[1].rn, 2: elevation[2].rn },
     };
   }, [activeMode, preference]);
