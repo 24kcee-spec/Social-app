@@ -8,6 +8,10 @@
     "node": ">=22.13"
   },
   "scripts": {
+    "dev": "pnpm --filter @sp/web dev",
+    "build": "pnpm --filter @sp/web build",
+    "start": "pnpm --filter @sp/web start",
+    "lint": "pnpm typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r --if-present typecheck",

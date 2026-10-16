@@ -91,3 +91,13 @@ export { mergeMessages, mergeEventMessages, applyReadWatermark, type ThreadMessa
 export { subscribeToConversationMessages, type ConversationSubscription, type ConversationSubscriptionOptions, type RealtimeChannelFactory, type RealtimeChannelLike, type RealtimeStatus, type ReadReceipt } from "./realtime";
 
 export { createSafetyClient, type SafetyClient } from "./safety";
+export {
+  createShareClient,
+  type ShareClient,
+  type ShareClientConfig,
+  ShareClientError,
+  parseShareUrl,
+  buildDeepLink,
+  buildShareUrl,
+  validateSafeRedirect,
+} from "./share";
