@@ -18,3 +18,5 @@ next-env.d.ts
 # Local AI tooling, not part of the product
 .agents/
 skills-lock.json
+metadata.json
+bun.lock

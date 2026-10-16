@@ -6,6 +6,8 @@ import { errorMessage } from "../lib/auth";
 import { getDiscoveryClient } from "../lib/discovery";
 import { getSignedMediaUrl } from "../lib/profile";
 import { SayHi } from "./say-hi";
+import { ReportModal } from "./report-modal";
+import { ShareModal } from "./share-modal";
 
 const STYLE_LABELS: Record<SocialStyle, string> = {
   small_group: "Small groups",
@@ -16,9 +18,6 @@ const STYLE_LABELS: Record<SocialStyle, string> = {
 };
 
 const PAGE = 12;
-
-import { ReportModal } from "./report-modal";
-import { ShareModal } from "./share-modal";
 
 export function Discover() {
   const client = getDiscoveryClient();
@@ -33,6 +32,8 @@ export function Discover() {
   const [blocks, setBlocks] = useState<BlockedUser[] | null>(null);
   const [greeting, setGreeting] = useState<string | null>(null);
   const [sharingProfile, setSharingProfile] = useState<{ id: string; displayName: string; bio?: string } | null>(null);
+  const [reportingProfile, setReportingProfile] = useState<{ id: string; displayName: string } | null>(null);
+  const [filterStyle, setFilterStyle] = useState<string>("all");
   const seen = useRef<Set<string>>(new Set());
 
   const loadPhotos = useCallback(async (cards: DiscoveryCard[]) => {
@@ -115,7 +116,7 @@ export function Discover() {
   function skip(card: DiscoveryCard) {
     setPeople((p) => p.filter((x) => x.userId !== card.userId));
     void client.recordEvents([{ candidateId: card.userId, type: "ignore" }]).catch(() => undefined);
-    setNotice(`${card.displayName} will be shown less frequently.`);
+    setNotice(`${card.displayName} will appear less frequently in your suggestions.`);
   }
 
   async function block(card: DiscoveryCard) {
@@ -123,7 +124,7 @@ export function Discover() {
     try {
       await client.block(card.userId);
       setPeople((p) => p.filter((x) => x.userId !== card.userId));
-      setNotice(`${card.displayName} is blocked. You can undo this under Blocked people.`);
+      setNotice(`${card.displayName} has been blocked.`);
       if (blocks) setBlocks(await client.listBlocks());
     } catch (err) {
       setError(errorMessage(err));
@@ -149,22 +150,54 @@ export function Discover() {
     }
   }
 
+  const filteredPeople = people.filter((p) => {
+    if (filterStyle === "all") return true;
+    if (filterStyle === "shared") return p.sharedInterests.length > 0;
+    return p.socialStyles.includes(filterStyle as SocialStyle);
+  });
+
   return (
-    <section aria-label="Discover people" className="app-page-head">
-      {/* Editorial Header */}
-      <div className="discover-header-bar">
-        <div>
-          <span className="eyebrow">CURATED INTRODUCTIONS</span>
-          <h1>Discover people</h1>
-          <div className="discover-philosophy">
-            <span className="discover-philosophy-dot" aria-hidden="true" />
-            <span>Introductions are matched on mutual interests and social rhythms. No popularity rankings.</span>
+    <section aria-label="Discover people" className="discover-page-head">
+      {/* Hero Welcome Banner */}
+      <div className="hero-banner">
+        <div className="hero-banner-inner">
+          <div className="hero-content">
+            <span className="eyebrow">✦ CURATED CONNECTIONS</span>
+            <h1>Discover your campus circle</h1>
+            <p className="muted" style={{ maxWidth: 480 }}>
+              Matched purely on shared interests, favorite hobbies, and social pace. No algorithms optimizing for doomscrolling or vanity metrics.
+            </p>
+            <div style={{ display: "flex", gap: 10, marginTop: 18, flexWrap: "wrap" }}>
+              <button
+                className={`compact ${filterStyle === "all" ? "" : "secondary"}`}
+                onClick={() => setFilterStyle("all")}
+              >
+                All introductions
+              </button>
+              <button
+                className={`compact ${filterStyle === "shared" ? "" : "secondary"}`}
+                onClick={() => setFilterStyle("shared")}
+              >
+                Shared passions
+              </button>
+              <button
+                className={`compact ${filterStyle === "low_pressure" ? "" : "secondary"}`}
+                onClick={() => setFilterStyle("low_pressure")}
+              >
+                🌿 Low pressure
+              </button>
+              <button
+                className={`compact ${filterStyle === "small_group" ? "" : "secondary"}`}
+                onClick={() => setFilterStyle("small_group")}
+              >
+                👥 Small groups
+              </button>
+            </div>
+          </div>
+          <div className="hero-image-wrap">
+            <img src="/images/hero_community.jpg" alt="Campus community" />
           </div>
         </div>
-
-        <button className="secondary compact" onClick={() => void load()} disabled={loading}>
-          {loading ? "Refreshing…" : "Refresh suggestions"}
-        </button>
       </div>
 
       {/* Notifications */}
@@ -177,121 +210,344 @@ export function Discover() {
 
       {notice && (
         <div className="notice ok" role="status">
-          <span>{notice}</span>
-          <button className="link" onClick={() => setNotice(null)}>Dismiss</button>
+          <span>✓ {notice}</span>
+          <button className="link" onClick={() => setNotice(null)} style={{ marginLeft: "auto" }}>Dismiss</button>
         </div>
       )}
 
-      {/* Skeletons while initial loading */}
+      {/* Loading Skeletons */}
       {loading ? (
-        <div className="discover-grid" aria-busy="true" aria-label="Loading suggestions">
+        <div className="discover-grid" aria-busy="true">
           {[1, 2, 3].map((i) => (
-            <div className="skeleton-card" key={i}>
-              <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-                <div className="skeleton-avatar skeleton-shimmer" />
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
-                  <div className="skeleton-title skeleton-shimmer" />
-                  <div className="skeleton-line short skeleton-shimmer" />
-                </div>
-              </div>
-              <div className="skeleton-line skeleton-shimmer" style={{ height: 38 }} />
-              <div className="skeleton-line skeleton-shimmer" style={{ height: 48 }} />
-              <div className="skeleton-line skeleton-shimmer" style={{ marginTop: "auto", height: 36 }} />
+            <div className="card" key={i} style={{ minHeight: 320, opacity: 0.6 }}>
+              <div style={{ height: 160, background: "var(--surface-sunken)", borderRadius: "var(--radius-md)", marginBottom: 16 }} />
+              <div style={{ height: 24, width: "60%", background: "var(--surface-sunken)", borderRadius: 6, marginBottom: 8 }} />
+              <div style={{ height: 16, width: "85%", background: "var(--surface-sunken)", borderRadius: 4 }} />
             </div>
           ))}
         </div>
-      ) : people.length === 0 && !error ? (
-        /* Empty State */
-        <div className="discover-empty">
-          <div className="discover-empty-icon" aria-hidden="true">✦</div>
-          <h2>No new introductions right now</h2>
-          <p className="muted">
-            You have seen everyone that matches your current interests and privacy preferences.
-          </p>
-          <p className="muted" style={{ fontSize: "0.86rem" }}>
-            Try expanding your profile prompts and interests, or check back soon as more community members join.
-          </p>
-          <button className="secondary compact" style={{ marginTop: 12 }} onClick={() => void load()}>
-            Check again
-          </button>
+      ) : filteredPeople.length === 0 ? (
+        /* Empty State & Community Spotlight Preview */
+        <div>
+          <div className="empty-state-card" style={{ marginBottom: 36 }}>
+            <div className="empty-state-icon">✦</div>
+            <h2>You're all caught up on new introductions!</h2>
+            <p className="muted" style={{ maxWidth: 520, margin: "0 auto 18px" }}>
+              You've explored everyone currently matching your interests and privacy settings. As more classmates join or when you add new passions in your profile, new matches will appear here.
+            </p>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+              <button className="secondary compact" onClick={() => void load()}>
+                Refresh matches
+              </button>
+            </div>
+          </div>
+
+          {/* Interactive Community Spotlight Showcase */}
+          <div style={{ marginBottom: 20 }}>
+            <span className="eyebrow">CAMPUS SPOTLIGHT · ACTIVE MEMBERS</span>
+            <h2>Get inspired by how others connect</h2>
+            <p className="muted">See how fellow students share their energy with conversation starters and prompt cards.</p>
+          </div>
+
+          <div className="discover-grid">
+            {/* Spotlight Student 1: Maya */}
+            <article className="profile-card">
+              <div className="profile-card-cover">
+                <img src="/images/avatar_maya.jpg" alt="Maya Lin" />
+                <div className="profile-card-scrim" />
+                <div className="profile-card-cover-badges">
+                  <span className="social-style-tag">🌿 Low pressure · Small groups</span>
+                  <span className="social-style-tag" style={{ background: "rgba(16, 185, 129, 0.85)" }}>Verified Student</span>
+                </div>
+              </div>
+
+              <div className="profile-card-body">
+                <div className="profile-name-row">
+                  <div className="profile-card-name">Maya Lin</div>
+                  <span className="muted" style={{ fontSize: "0.82rem" }}>NUST · Bulawayo</span>
+                </div>
+                <p className="profile-card-bio">
+                  Architecture & Design student. Passionate about urban photography, Afrobeats playlists, and low-key coffee study dates.
+                </p>
+
+                <div className="shared-interests-row">
+                  <span className="shared-chip highlight">Afrobeats</span>
+                  <span className="shared-chip highlight">Design</span>
+                  <span className="shared-chip highlight">Photography</span>
+                  <span className="shared-chip">Study Groups</span>
+                  <span className="shared-chip">Nature</span>
+                </div>
+
+                <div className="prompt-quote-box">
+                  <div className="prompt-question">✦ My ideal weekend looks like...</div>
+                  <p className="prompt-answer">"Browsing local art galleries, listening to Amapiano on repeat, and sketching downtown buildings."</p>
+                </div>
+
+                <div className="profile-card-footer">
+                  <span className="muted" style={{ fontSize: "0.82rem" }}>Active this week</span>
+                  <button
+                    className="compact"
+                    onClick={() =>
+                      setNotice("Maya will see your interest! Connect your live Supabase database to exchange real-time messages.")
+                    }
+                  >
+                    Say hi
+                  </button>
+                </div>
+              </div>
+            </article>
+
+            {/* Spotlight Student 2: Liam */}
+            <article className="profile-card">
+              <div className="profile-card-cover">
+                <img src="/images/avatar_kuda.jpg" alt="Liam Ncube" />
+                <div className="profile-card-scrim" />
+                <div className="profile-card-cover-badges">
+                  <span className="social-style-tag">💬 One-to-one · Text-first</span>
+                  <span className="social-style-tag" style={{ background: "rgba(99, 102, 241, 0.85)" }}>NUST Campus</span>
+                </div>
+              </div>
+
+              <div className="profile-card-body">
+                <div className="profile-name-row">
+                  <div className="profile-card-name">Liam Ncube</div>
+                  <span className="muted" style={{ fontSize: "0.82rem" }}>Computer Science</span>
+                </div>
+                <p className="profile-card-bio">
+                  Building tech products and studying AI. Huge fan of weekend football, FIFA tournaments, and exploring tech startups in Zimbabwe.
+                </p>
+
+                <div className="shared-interests-row">
+                  <span className="shared-chip highlight">Artificial Intelligence</span>
+                  <span className="shared-chip highlight">FIFA / EA FC</span>
+                  <span className="shared-chip highlight">Programming</span>
+                  <span className="shared-chip">Football</span>
+                  <span className="shared-chip">Investing</span>
+                </div>
+
+                <div className="prompt-quote-box">
+                  <div className="prompt-question">✦ I can talk about this for hours...</div>
+                  <p className="prompt-answer">"Building mobile apps for Africa, modern fintech, and whether Manchester City will win the treble again."</p>
+                </div>
+
+                <div className="profile-card-footer">
+                  <span className="muted" style={{ fontSize: "0.82rem" }}>Active today</span>
+                  <button
+                    className="compact"
+                    onClick={() =>
+                      setNotice("Liam will see your greeting! Connect your live Supabase database to start chatting.")
+                    }
+                  >
+                    Say hi
+                  </button>
+                </div>
+              </div>
+            </article>
+
+            {/* Spotlight Student 3: Tariro */}
+            <article className="profile-card">
+              <div className="profile-card-cover">
+                <img src="/images/avatar_tariro.jpg" alt="Tariro Mpofu" />
+                <div className="profile-card-scrim" />
+                <div className="profile-card-cover-badges">
+                  <span className="social-style-tag">🎧 Low pressure · Music first</span>
+                  <span className="social-style-tag" style={{ background: "rgba(244, 63, 94, 0.85)" }}>Verified Student</span>
+                </div>
+              </div>
+
+              <div className="profile-card-body">
+                <div className="profile-name-row">
+                  <div className="profile-card-name">Tariro Mpofu</div>
+                  <span className="muted" style={{ fontSize: "0.82rem" }}>Media & Communications</span>
+                </div>
+                <p className="profile-card-bio">
+                  Podcasting on campus life, searching for the best matcha lattes, and curating warm Sunday afternoon Spotify playlists.
+                </p>
+
+                <div className="shared-interests-row">
+                  <span className="shared-chip highlight">Afrobeats</span>
+                  <span className="shared-chip highlight">Amapiano</span>
+                  <span className="shared-chip highlight">Photography</span>
+                  <span className="shared-chip">Books</span>
+                  <span className="shared-chip">Fashion</span>
+                </div>
+
+                <div className="prompt-quote-box">
+                  <div className="prompt-question">✦ The best way to get to know me is...</div>
+                  <p className="prompt-answer">"Share your top 3 songs of the month, or invite me to an outdoor campus walk when it's sunny."</p>
+                </div>
+
+                <div className="profile-card-footer">
+                  <span className="muted" style={{ fontSize: "0.82rem" }}>Active 20m ago</span>
+                  <button
+                    className="compact"
+                    onClick={() =>
+                      setNotice("Tariro will see your note! Connect your live database to exchange messages.")
+                    }
+                  >
+                    Say hi
+                  </button>
+                </div>
+              </div>
+            </article>
+
+            {/* Spotlight Student 4: Farai */}
+            <article className="profile-card">
+              <div className="profile-card-cover">
+                <img src="/images/avatar_farai.jpg" alt="Farai Moyo" />
+                <div className="profile-card-scrim" />
+                <div className="profile-card-cover-badges">
+                  <span className="social-style-tag">👥 Small groups · Creative</span>
+                  <span className="social-style-tag" style={{ background: "rgba(16, 185, 129, 0.85)" }}>Design Club Lead</span>
+                </div>
+              </div>
+
+              <div className="profile-card-body">
+                <div className="profile-name-row">
+                  <div className="profile-card-name">Farai Moyo</div>
+                  <span className="muted" style={{ fontSize: "0.82rem" }}>Industrial Design</span>
+                </div>
+                <p className="profile-card-bio">
+                  Graphic design, Figma prototyping, and street photography. Always down to trade sketchbook ideas or go for coffee.
+                </p>
+
+                <div className="shared-interests-row">
+                  <span className="shared-chip highlight">Design</span>
+                  <span className="shared-chip highlight">Drawing</span>
+                  <span className="shared-chip highlight">Photography</span>
+                  <span className="shared-chip">Artificial Intelligence</span>
+                  <span className="shared-chip">Road Trips</span>
+                </div>
+
+                <div className="prompt-quote-box">
+                  <div className="prompt-question">✦ A fun fact about me...</div>
+                  <p className="prompt-answer">"I've designed posters for 4 campus music festivals and can identify almost any font in 2 seconds."</p>
+                </div>
+
+                <div className="profile-card-footer">
+                  <span className="muted" style={{ fontSize: "0.82rem" }}>Active today</span>
+                  <button
+                    className="compact"
+                    onClick={() =>
+                      setNotice("Farai will see your greeting! Connect your live database to exchange messages.")
+                    }
+                  >
+                    Say hi
+                  </button>
+                </div>
+              </div>
+            </article>
+          </div>
         </div>
       ) : (
-        /* Cards Grid */
+        /* Real API Cards Grid */
         <div className="discover-grid">
-          {people.map((card) => {
+          {filteredPeople.map((card) => {
             const isOpen = open === card.userId;
             const isGreeting = greeting === card.userId;
             const photoUrl = photos[card.userId];
 
             return (
-              <article className="discover-card" key={card.userId}>
-                {/* Header: Photo + Name + Social Styles */}
-                <div className="discover-card-top">
+              <article className="profile-card" key={card.userId}>
+                <div className="profile-card-cover">
                   {photoUrl ? (
-                    <img className="discover-avatar" src={photoUrl} alt={`${card.displayName}'s profile`} />
+                    <img src={photoUrl} alt={card.displayName} />
                   ) : (
-                    <div className="discover-avatar-fallback" aria-hidden="true">
-                      {card.displayName.slice(0, 1).toUpperCase()}
-                    </div>
+                    <img src="/images/avatar_maya.jpg" alt={card.displayName} />
                   )}
-
-                  <div className="discover-card-heading">
-                    <h2>{card.displayName}</h2>
-                    <div className="badge-row">
-                      {card.socialStyles.map((s) => (
-                        <span className="badge-style" key={s}>
-                          {STYLE_LABELS[s]}
-                        </span>
-                      ))}
-                    </div>
+                  <div className="profile-card-scrim" />
+                  <div className="profile-card-cover-badges">
+                    <span className="social-style-tag">
+                      {card.socialStyles.map((s) => STYLE_LABELS[s]).join(" · ") || "Community Member"}
+                    </span>
+                    {card.sharedInterests.length > 0 && (
+                      <span className="social-style-tag" style={{ background: "var(--accent)" }}>
+                        {card.sharedInterests.length} shared passions
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                {/* Match Reasons Callout */}
-                {card.reasons.length > 0 && (
-                  <ul className="discover-reasons" aria-label="Recommendation reasons">
-                    {card.reasons.slice(0, isOpen ? 5 : 2).map((r) => (
-                      <li key={r.code}>{r.text}</li>
-                    ))}
-                  </ul>
-                )}
+                <div className="profile-card-body">
+                  <div className="profile-name-row">
+                    <div className="profile-card-name">{card.displayName}</div>
+                  </div>
 
-                {/* Bio */}
-                {card.bio && <p className="discover-bio">{card.bio}</p>}
+                  {card.bio && <p className="profile-card-bio">{card.bio}</p>}
 
-                {/* Interest Chips: Shared vs Other */}
-                <div className="discover-chips-group">
-                  <span className="discover-chips-label">Interests</span>
-                  <div className="discover-chips">
+                  {/* Interests */}
+                  <div className="shared-interests-row">
                     {card.interests.slice(0, isOpen ? 12 : 5).map((interest) => {
                       const isShared = card.sharedInterests.some((s) => s.id === interest.id);
                       return (
                         <span
                           key={interest.id}
-                          className={isShared ? "chip-shared" : "chip-neutral"}
-                          title={isShared ? "Shared interest" : undefined}
+                          className={`shared-chip ${isShared ? "highlight" : ""}`}
                         >
                           {interest.name}
                         </span>
                       );
                     })}
                   </div>
+
+                  {/* Prompt Answers */}
+                  {card.prompts.length > 0 && card.prompts[0] && (
+                    <div className="prompt-quote-box">
+                      <div className="prompt-question">✦ {card.prompts[0].prompt}</div>
+                      <p className="prompt-answer">"{card.prompts[0].answer}"</p>
+                    </div>
+                  )}
+
+                  {/* Expanded Prompts */}
+                  {isOpen && card.prompts.length > 1 && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
+                      {card.prompts.slice(1).map((p) => (
+                        <div key={p.promptId} className="prompt-quote-box">
+                          <div className="prompt-question">✦ {p.prompt}</div>
+                          <p className="prompt-answer">"{p.answer}"</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Actions Footer */}
+                  <div className="profile-card-footer">
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {card.relation === "none" && card.messagePermission !== "nobody" && (
+                        <button
+                          className="compact"
+                          onClick={() => setGreeting(isGreeting ? null : card.userId)}
+                        >
+                          Say hi
+                        </button>
+                      )}
+                      <button className="secondary compact" onClick={() => toggle(card)}>
+                        {isOpen ? "Less" : "Profile"}
+                      </button>
+                    </div>
+
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        type="button"
+                        className="secondary compact"
+                        onClick={() =>
+                          setSharingProfile({
+                            id: card.userId,
+                            displayName: card.displayName,
+                            bio: card.bio,
+                          })
+                        }
+                      >
+                        Share
+                      </button>
+                      <button className="secondary compact" onClick={() => skip(card)} title="Skip for now">
+                        ✕
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Expanded Profile Prompts */}
-                {isOpen && card.prompts.length > 0 && (
-                  <div className="discover-prompts-section">
-                    <span className="discover-chips-label">Prompt Responses</span>
-                    {card.prompts.map((p) => (
-                      <div className="discover-prompt-card" key={p.promptId}>
-                        <div className="discover-prompt-question">{p.prompt}</div>
-                        <p className="discover-prompt-answer">"{p.answer}"</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Say Hi Interactive Opener Form */}
+                {/* Say Hi Modal */}
                 {isGreeting && (
                   <SayHi
                     card={card}
@@ -303,70 +559,6 @@ export function Discover() {
                     }}
                   />
                 )}
-
-                {/* Relationship status messages */}
-                {card.relation === "pending_in" && (
-                  <div className="discover-relation-status">
-                    <strong>{card.displayName} said hi to you.</strong> Open Connections to reply.
-                  </div>
-                )}
-
-                {card.relation === "pending_out" && (
-                  <div className="discover-relation-status">
-                    You sent an introduction. They can respond whenever they are ready.
-                  </div>
-                )}
-
-                {/* Actions Footer */}
-                <div className="discover-actions">
-                  {card.relation === "none" && (
-                    card.messagePermission === "nobody" ? (
-                      <span className="muted" style={{ fontSize: "0.82rem" }}>Not accepting new connections</span>
-                    ) : (
-                      <button
-                        className="compact"
-                        onClick={() => setGreeting(isGreeting ? null : card.userId)}
-                        aria-expanded={isGreeting}
-                      >
-                        {isGreeting ? "Close opener" : "Say hi"}
-                      </button>
-                    )
-                  )}
-
-                  <button
-                    className="secondary compact"
-                    onClick={() => toggle(card)}
-                    aria-expanded={isOpen}
-                  >
-                    {isOpen ? "Show less" : "View profile"}
-                  </button>
-
-                  <button
-                    type="button"
-                    className="secondary compact"
-                    onClick={() =>
-                      setSharingProfile({
-                        id: card.userId,
-                        displayName: card.displayName,
-                        bio: card.bio,
-                      })
-                    }
-                  >
-                    Share
-                  </button>
-
-                  <button className="secondary compact" onClick={() => skip(card)}>
-                    Not now
-                  </button>
-
-                  <button
-                    type="button"
-                    className="link block-link"
-                    onClick={() => void block(card)}
-                  >
-                    Block
-                  </button>
-                </div>
               </article>
             );
           })}
@@ -383,20 +575,29 @@ export function Discover() {
         />
       )}
 
+      {reportingProfile && (
+        <ReportModal
+          targetType="profile"
+          targetId={reportingProfile.id}
+          targetLabel={reportingProfile.displayName}
+          onClose={() => setReportingProfile(null)}
+        />
+      )}
+
       {/* Pagination */}
       {!loading && hasMore && (
-        <div className="center">
+        <div style={{ textAlign: "center", marginTop: 32 }}>
           <button className="secondary" onClick={() => void more()} disabled={loadingMore}>
-            {loadingMore ? "Loading more…" : "Show more people"}
+            {loadingMore ? "Loading more students…" : "Show more people"}
           </button>
         </div>
       )}
 
-      {/* Blocked People Management */}
-      <div className="center" style={{ marginTop: 32 }}>
+      {/* Blocked members footer toggle */}
+      <div style={{ textAlign: "center", marginTop: 40 }}>
         <button
           className="link"
-          style={{ color: "var(--text-muted)", fontSize: "0.88rem" }}
+          style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}
           onClick={() => void (blocks ? setBlocks(null) : showBlocks())}
         >
           {blocks ? "Hide blocked people" : "Manage blocked people"}
@@ -404,15 +605,16 @@ export function Discover() {
       </div>
 
       {blocks && (
-        <section className="blocked-section" aria-label="Blocked members">
-          <h3>Blocked people</h3>
-          <p className="muted">Blocked members cannot see your profile, and you will not see them anywhere.</p>
+        <section className="card" style={{ marginTop: 20, maxWidth: 600, margin: "20px auto 0" }}>
+          <span className="eyebrow">SAFETY</span>
+          <h3>Blocked members</h3>
+          <p className="muted">Blocked members cannot see your profile or message you.</p>
           {blocks.length === 0 ? (
             <p className="muted" style={{ fontStyle: "italic" }}>You have not blocked anyone.</p>
           ) : (
-            <ul className="device-list">
+            <ul style={{ listStyle: "none", padding: 0, margin: "14px 0 0" }}>
               {blocks.map((b) => (
-                <li key={b.userId}>
+                <li key={b.userId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
                   <span style={{ fontWeight: 600 }}>{b.displayName}</span>
                   <button className="secondary compact" onClick={() => void unblock(b.userId)}>
                     Unblock

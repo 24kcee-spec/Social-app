@@ -380,18 +380,81 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
       {/* Top Header */}
       <header className="app-header" role="banner">
         <div className="app-header-inner">
-          <div className="brand-group">
-            <div className="brand-mark" aria-hidden="true">✦</div>
+          <div className="brand-group" onClick={() => setTab("discover")}>
+            <div className="brand-mark-glow" aria-hidden="true">✦</div>
             <div className="brand-text-wrap">
               <span className="brand-title">Social</span>
               <span className="brand-tagline">Low-pressure connection</span>
             </div>
           </div>
 
-          <div className="user-status-pill">
-            <div className="user-meta">
-              <div className="user-meta-name">{profile?.displayName ?? "Member"}</div>
-              <div className="user-meta-email">{me.email ?? me.phone}</div>
+          {profile?.onboardingCompleted && (
+            <nav className="nav-pill-bar" aria-label="Main Navigation">
+              <button
+                role="tab"
+                aria-selected={tab === "discover"}
+                className={`nav-pill-btn ${tab === "discover" ? "active" : ""}`}
+                onClick={() => setTab("discover")}
+              >
+                <span>🧭</span>
+                <span>Discover</span>
+              </button>
+              <button
+                role="tab"
+                aria-selected={tab === "connections"}
+                className={`nav-pill-btn ${tab === "connections" ? "active" : ""}`}
+                onClick={() => setTab("connections")}
+              >
+                <span>🤝</span>
+                <span>Connections</span>
+                {pendingIn > 0 && <span className="nav-badge">{pendingIn}</span>}
+              </button>
+              <button
+                role="tab"
+                aria-selected={tab === "messages"}
+                className={`nav-pill-btn ${tab === "messages" ? "active" : ""}`}
+                onClick={() => setTab("messages")}
+              >
+                <span>💬</span>
+                <span>Messages</span>
+                {unread > 0 && <span className="nav-badge">{unread}</span>}
+              </button>
+              <button
+                role="tab"
+                aria-selected={tab === "community"}
+                className={`nav-pill-btn ${tab === "community" ? "active" : ""}`}
+                onClick={() => setTab("community")}
+              >
+                <span>🎈</span>
+                <span>Community</span>
+              </button>
+              <button
+                role="tab"
+                aria-selected={tab === "profile"}
+                className={`nav-pill-btn ${tab === "profile" ? "active" : ""}`}
+                onClick={() => setTab("profile")}
+              >
+                <span>👤</span>
+                <span>Profile</span>
+              </button>
+            </nav>
+          )}
+
+          <div className="user-bar">
+            <div className="user-badge-chip">
+              <div className="user-avatar-circle">
+                {profile?.media?.[0]?.thumbnailPath ? (
+                  <img src="/images/avatar_kuda.jpg" alt="Profile" />
+                ) : (
+                  <span>{profile?.displayName?.charAt(0).toUpperCase() ?? "U"}</span>
+                )}
+              </div>
+              <div className="user-chip-text">
+                <span className="user-chip-name">{profile?.displayName ?? "Member"}</span>
+                <span className="user-chip-campus">
+                  {me.email?.includes("@students.nust.ac.zw") ? "NUST Student" : me.email ? me.email.split("@")[0] : "Verified"}
+                </span>
+              </div>
             </div>
             <button className="secondary compact" onClick={() => void signOut()}>
               Sign out
@@ -400,58 +463,8 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
         </div>
       </header>
 
-      {/* Primary Navigation Tabs */}
-      {profile?.onboardingCompleted && (
-        <nav className="nav-bar" aria-label="Main Navigation">
-          <div className="nav-bar-inner" role="tablist">
-            <button
-              role="tab"
-              aria-selected={tab === "discover"}
-              className={`nav-tab-btn ${tab === "discover" ? "active" : ""}`}
-              onClick={() => setTab("discover")}
-            >
-              Discover
-            </button>
-            <button
-              role="tab"
-              aria-selected={tab === "connections"}
-              className={`nav-tab-btn ${tab === "connections" ? "active" : ""}`}
-              onClick={() => setTab("connections")}
-            >
-              Connections
-              {pendingIn > 0 && <span className="nav-badge">{pendingIn}</span>}
-            </button>
-            <button
-              role="tab"
-              aria-selected={tab === "messages"}
-              className={`nav-tab-btn ${tab === "messages" ? "active" : ""}`}
-              onClick={() => setTab("messages")}
-            >
-              Messages
-              {unread > 0 && <span className="nav-badge">{unread}</span>}
-            </button>
-            <button
-              role="tab"
-              aria-selected={tab === "community"}
-              className={`nav-tab-btn ${tab === "community" ? "active" : ""}`}
-              onClick={() => setTab("community")}
-            >
-              Community
-            </button>
-            <button
-              role="tab"
-              aria-selected={tab === "profile"}
-              className={`nav-tab-btn ${tab === "profile" ? "active" : ""}`}
-              onClick={() => setTab("profile")}
-            >
-              Your profile
-            </button>
-          </div>
-        </nav>
-      )}
-
       {/* Main Content Area */}
-      <main id="main" tabIndex={-1} className={profile?.onboardingCompleted ? "wide" : ""}>
+      <main id="main" tabIndex={-1}>
         {error && (
           <div className="notice err" role="alert">
             <span>{error}</span>
@@ -460,8 +473,10 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
         )}
 
         {loading ? (
-          <div className="card" style={{ textAlign: "center", padding: "48px 24px" }}>
-            <p className="muted">Loading your profile…</p>
+          <div className="empty-state-card">
+            <div className="empty-state-icon">✦</div>
+            <h2>Opening your space…</h2>
+            <p className="muted">Retrieving your profile, interests and connections.</p>
           </div>
         ) : profile && !profile.onboardingCompleted ? (
           <Onboarding profile={profile} interests={interests} prompts={prompts} client={client} onDone={setProfile} />
@@ -487,17 +502,16 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
               prompts={prompts}
               client={client}
               onSaved={setProfile}
+              sessions={sessions}
+              revoke={revoke}
             />
           )
         ) : null}
 
         {profile?.onboardingCompleted && (
-          <>
-            <Devices sessions={sessions} revoke={revoke} />
-            <p className="footer-note">
-              You choose whether you are discoverable in Your profile → Privacy. Blocked people never see you and you never see them.
-            </p>
-          </>
+          <p className="footer-note">
+            <span>✦ Social · Designed for authentic campus connection without vanity metrics or pressure.</span>
+          </p>
         )}
       </main>
     </div>
@@ -674,17 +688,22 @@ function ProfileEditor({
   prompts,
   client,
   onSaved,
+  sessions,
+  revoke,
 }: {
   profile: Profile;
   interests: Interest[];
   prompts: PromptDefinition[];
   client: ProfileClient;
   onSaved: (profile: Profile) => void;
+  sessions: DeviceSession[];
+  revoke: (id: string) => void;
 }) {
   const [displayName, setDisplayName] = useState(profile.displayName);
   const [bio, setBio] = useState(profile.bio);
   const [styles, setStyles] = useState(profile.socialStyles);
   const [privacy, setPrivacy] = useState(profile.privacy);
+  const [moodStatus, setMoodStatus] = useState("🌿 Low-pressure hangout");
   const [selected, setSelected] = useState<Record<string, 1 | 2 | 3>>(
     Object.fromEntries(profile.interests.map((i) => [i.id, (i.strength ?? 2) as 1 | 2 | 3]))
   );
@@ -723,11 +742,11 @@ function ProfileEditor({
       });
       const chosenAnswers = Object.entries(answers)
         .filter(([, answer]) => answer.trim())
-        .slice(0, 3)
+        .slice(0, 6)
         .map(([promptId, answer]) => ({ promptId, answer: answer.trim() }));
       next = await client.updatePrompts({ answers: chosenAnswers });
       onSaved(next);
-      setMessage("Profile saved.");
+      setMessage("Profile saved successfully.");
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -741,7 +760,7 @@ function ProfileEditor({
     try {
       const media = await uploadProfileImage(file, profile.media);
       onSaved({ ...profile, media: [...profile.media, media] });
-      setMessage("Photo added.");
+      setMessage("Photo uploaded.");
     } catch (err) {
       setError(errorMessage(err));
     }
@@ -760,173 +779,411 @@ function ProfileEditor({
     }
   }
 
+  const activePrompt = prompts.find((p) => (answers[p.id] ?? "").trim().length > 0);
+
   return (
-    <div className="grid">
-      <section className="card">
-        <div className="eyebrow">PROFILE</div>
-        <h2>Your profile</h2>
-        <Field label="Display name" id="editDisplayName" value={displayName} setValue={setDisplayName} />
-        <div className="field">
-          <label htmlFor="editBio">Bio</label>
-          <textarea id="editBio" value={bio} onChange={(e) => setBio(e.target.value)} maxLength={280} rows={4} />
-          <p className="counter">{bio.length}/280</p>
-        </div>
-        <ChoiceSet
-          title="Social style"
-          values={styles}
-          options={Object.keys(SOCIAL_STYLE_LABELS) as SocialStyle[]}
-          onToggle={(style) =>
-            setStyles(styles.includes(style) ? styles.filter((s) => s !== style) : [...styles, style])
-          }
-        />
-        <button onClick={() => void save()} disabled={busy || styles.length < 1}>
-          {busy ? "Saving…" : "Save profile"}
-        </button>
-      </section>
-
-      <section className="card">
-        <div className="eyebrow">INTERESTS</div>
-        <h2>Your interests</h2>
-        <div className="interest-grid">
-          {interests.map((i) => {
-            const chosen = selected[i.id] !== undefined;
-            return (
-              <button
-                type="button"
-                key={i.id}
-                className={chosen ? "chip selected" : "chip"}
-                onClick={() =>
-                  setSelected((s) => {
-                    const next = { ...s };
-                    if (chosen) delete next[i.id];
-                    else next[i.id] = 2;
-                    return next;
-                  })
-                }
+    <div className="profile-dashboard">
+      {/* Profile Header Hero */}
+      <div className="card" style={{ marginBottom: 28, padding: "28px 32px", background: "linear-gradient(135deg, var(--surface) 0%, var(--surface-sunken) 100%)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+            <div style={{ position: "relative" }}>
+              <div
+                style={{
+                  width: 84,
+                  height: 84,
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, #6366F1 0%, #A855F7 100%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#fff",
+                  fontSize: "2rem",
+                  fontWeight: 800,
+                  boxShadow: "0 8px 24px rgba(99, 102, 241, 0.35)",
+                  overflow: "hidden",
+                }}
               >
-                {i.name}
-              </button>
-            );
-          })}
-        </div>
-        <p className="muted">{Object.keys(selected).length} selected</p>
-      </section>
-
-      <section className="card">
-        <div className="eyebrow">PROMPTS</div>
-        <h2>Prompt answers</h2>
-        <div className="prompt-list">
-          {prompts.slice(0, 6).map((p) => (
-            <div className="prompt-row" key={p.id}>
-              <label htmlFor={`p-${p.id}`}>{p.prompt}</label>
-              <textarea
-                id={`p-${p.id}`}
-                value={answers[p.id] ?? ""}
-                onChange={(e) => setAnswers((a) => ({ ...a, [p.id]: e.target.value }))}
-                maxLength={240}
-                rows={2}
-              />
-            </div>
-          ))}
-        </div>
-        <button onClick={() => void save()} disabled={busy}>
-          Save prompts
-        </button>
-      </section>
-
-      <section className="card">
-        <div className="eyebrow">MEDIA</div>
-        <h2>Profile photos</h2>
-        <p className="muted">Up to 6 images, max 5 MB each. Images are cropped square before upload.</p>
-        <div className="media-grid">
-          {profile.media.map((m) => (
-            <div className="media-card" key={m.id}>
-              {mediaUrls[m.id] ? (
-                <img src={mediaUrls[m.id]} alt="Your profile" />
-              ) : (
-                <div className="media-placeholder">Loading…</div>
-              )}
-              <button className="secondary" onClick={() => void removeImage(m.id)}>
-                Remove
-              </button>
-            </div>
-          ))}
-          <label className="upload-tile">
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void addImage(file);
-                e.currentTarget.value = "";
-              }}
-              disabled={profile.media.length >= 6}
-            />
-            <span>＋ Add photo</span>
-          </label>
-        </div>
-      </section>
-
-      <section className="card">
-        <div className="eyebrow">PRIVACY</div>
-        <h2>Who can reach you?</h2>
-        <PrivacyEditor privacy={privacy} setPrivacy={setPrivacy} />
-        <button onClick={() => void save()} disabled={busy}>
-          Save privacy
-        </button>
-      </section>
-
-      <section className="card" style={{ border: "1px solid var(--danger)" }}>
-        <div className="eyebrow" style={{ color: "var(--danger)" }}>PRIVACY & DATA DELETION</div>
-        <h2>Delete account and personal data</h2>
-        <p className="muted">
-          Permanently anonymizes your account, removes your profile photos, prompt answers, interests, group memberships and ends all sessions.
-        </p>
-        <button
-          type="button"
-          className="secondary compact"
-          style={{ color: "var(--danger)", borderColor: "var(--danger)" }}
-          onClick={async () => {
-            if (!window.confirm("Are you sure you want to permanently delete your account and data?")) return;
-            try {
-              await getSafetyClient().deleteAccount();
-              await getAuth().signOut();
-              window.location.reload();
-            } catch (e) {
-              setError(errorMessage(e));
-            }
-          }}
-        >
-          Delete my account
-        </button>
-      </section>
-
-      <section className="card preview">
-        <div className="eyebrow">PREVIEW</div>
-        <h2>{displayName || "Your display name"}</h2>
-        <p>{bio || "Add a short bio so people can understand you."}</p>
-        <div className="tag-row">
-          {Object.keys(selected).slice(0, 8).map((id) => {
-            const i = interests.find((x) => x.id === id);
-            return i ? <span className="tag" key={id}>{i.name}</span> : null;
-          })}
-        </div>
-        {Object.entries(answers)
-          .filter(([, a]) => a.trim())
-          .slice(0, 3)
-          .map(([id, answer]) => {
-            const p = prompts.find((x) => x.id === id);
-            return p ? (
-              <div className="preview-prompt" key={id}>
-                <strong>{p.prompt}</strong>
-                <p>{answer}</p>
+                {profile.media?.[0] && mediaUrls[profile.media[0].id] ? (
+                  <img src={mediaUrls[profile.media[0].id]} alt={profile.displayName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : (
+                  <img src="/images/avatar_kuda.jpg" alt={profile.displayName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                )}
               </div>
-            ) : null;
-          })}
-      </section>
+            </div>
+            <div>
+              <span className="eyebrow">PROFILE STUDIO</span>
+              <h1 style={{ fontSize: "1.75rem", margin: "2px 0 6px" }}>{profile.displayName || "Your Space"}</h1>
+              <p className="muted" style={{ margin: 0 }}>
+                {Object.keys(selected).length} passions · {styles.length} social paces · Campus Discoverable
+              </p>
+            </div>
+          </div>
+          <button onClick={() => void save()} disabled={busy || styles.length < 1}>
+            {busy ? "Saving changes…" : "Save all changes"}
+          </button>
+        </div>
+        {message && (
+          <div className="notice ok" role="status" style={{ marginTop: 18, marginBottom: 0 }}>
+            <span>✓ {message}</span>
+          </div>
+        )}
+        {error && (
+          <div className="notice err" role="alert" style={{ marginTop: 18, marginBottom: 0 }}>
+            <span>{error}</span>
+          </div>
+        )}
+      </div>
 
-      {message && <div className="notice ok" role="status"><span>{message}</span></div>}
-      {error && <div className="notice err" role="alert"><span>{error}</span></div>}
+      <div className="profile-dashboard-grid">
+        {/* Left Column: Live Interactive Card Preview */}
+        <div className="profile-col-main">
+          <div className="live-preview-box">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <span className="eyebrow">LIVE CAMPUS PREVIEW</span>
+              <span className="muted" style={{ fontSize: "0.78rem" }}>Real-time student card</span>
+            </div>
+
+            <article className="profile-card" style={{ margin: 0 }}>
+              <div className="profile-card-cover" style={{ height: 240 }}>
+                {profile.media?.[0] && mediaUrls[profile.media[0].id] ? (
+                  <img src={mediaUrls[profile.media[0].id]} alt={displayName} />
+                ) : (
+                  <img src="/images/avatar_kuda.jpg" alt={displayName} />
+                )}
+                <div className="profile-card-scrim" />
+                <div className="profile-card-cover-badges">
+                  <span className="social-style-tag">
+                    {styles.map((s) => SOCIAL_STYLE_LABELS[s]).join(" · ") || "Low pressure"}
+                  </span>
+                  <span className="social-style-tag" style={{ background: "rgba(16, 185, 129, 0.85)" }}>
+                    Verified Student
+                  </span>
+                </div>
+              </div>
+
+              <div className="profile-card-body">
+                <div className="profile-name-row">
+                  <div className="profile-card-name">{displayName || "Your Name"}</div>
+                  <span className="muted" style={{ fontSize: "0.82rem" }}>NUST · Bulawayo</span>
+                </div>
+
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent)", fontSize: "0.78rem", fontWeight: 700, marginBottom: 12 }}>
+                  <span>{moodStatus}</span>
+                </div>
+
+                <p className="profile-card-bio">
+                  {bio.trim() || "Add a bio in the editor to share your favorite campus spots, studies, or what you enjoy talking about!"}
+                </p>
+
+                <div className="shared-interests-row">
+                  {interests
+                    .filter((i) => selected[i.id])
+                    .slice(0, 6)
+                    .map((i) => (
+                      <span key={i.id} className="shared-chip highlight">
+                        {i.name}
+                      </span>
+                    ))}
+                  {Object.keys(selected).length === 0 && (
+                    <span className="muted" style={{ fontSize: "0.82rem" }}>Select passions on the right to show them here</span>
+                  )}
+                </div>
+
+                {activePrompt && answers[activePrompt.id] && (
+                  <div className="prompt-quote-box">
+                    <div className="prompt-question">✦ {activePrompt.prompt}</div>
+                    <p className="prompt-answer">"{answers[activePrompt.id]}"</p>
+                  </div>
+                )}
+
+                <div className="profile-card-footer">
+                  <span className="muted" style={{ fontSize: "0.82rem" }}>Active now</span>
+                  <button className="compact secondary" type="button">
+                    Say hi 👋
+                  </button>
+                </div>
+              </div>
+            </article>
+
+            {/* Quick Mood Bar */}
+            <div className="card" style={{ marginTop: 20, padding: 18 }}>
+              <span className="eyebrow">QUICK VIBE STATUS</span>
+              <p className="muted" style={{ fontSize: "0.82rem", margin: "2px 0 10px" }}>
+                Let classmates know what you are currently up for:
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {[
+                  "🌿 Low-pressure hangout",
+                  "🎧 In the zone / Music",
+                  "💻 Late-night code",
+                  "☕ Coffee & Library",
+                  "⚽ Game night & Sports",
+                  "🎨 Creative flow",
+                ].map((mood) => (
+                  <button
+                    key={mood}
+                    type="button"
+                    className={`compact ${moodStatus === mood ? "" : "secondary"}`}
+                    onClick={() => setMoodStatus(mood)}
+                    style={{ fontSize: "0.78rem" }}
+                  >
+                    {mood}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Identity, Passions, Prompts, Photos, Privacy, Devices */}
+        <div className="profile-col-side">
+          {/* Identity & Bio */}
+          <section className="card">
+            <span className="eyebrow">IDENTITY & BIO</span>
+            <h2>Personal Details</h2>
+            <Field label="Display name" id="editDisplayName" value={displayName} setValue={setDisplayName} />
+            <div className="field">
+              <label htmlFor="editBio">Bio & Campus Vibe</label>
+              <textarea
+                id="editBio"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                maxLength={280}
+                rows={3}
+                placeholder="Share your major, hobbies, music taste, and low-pressure connection style..."
+              />
+              <p className="counter">{bio.length}/280</p>
+            </div>
+            <ChoiceSet
+              title="Social Pace & Connection Style"
+              values={styles}
+              options={Object.keys(SOCIAL_STYLE_LABELS) as SocialStyle[]}
+              onToggle={(style) =>
+                setStyles(styles.includes(style) ? styles.filter((s) => s !== style) : [...styles, style])
+              }
+            />
+          </section>
+
+          {/* Interests Selector */}
+          <section className="card">
+            <div className="card-header">
+              <div>
+                <span className="eyebrow">MATCHING PASSIONS</span>
+                <h2>Your interests</h2>
+                <p className="muted">{Object.keys(selected).length} selected</p>
+              </div>
+            </div>
+            <CategorizedInterests
+              interests={interests}
+              selected={selected}
+              onToggle={(id) =>
+                setSelected((s) => {
+                  const next = { ...s };
+                  if (s[id] !== undefined) delete next[id];
+                  else next[id] = 2;
+                  return next;
+                })
+              }
+            />
+          </section>
+
+          {/* Prompt Answers */}
+          <section className="card">
+            <div className="card-header">
+              <div className="card-title-group">
+                <span className="eyebrow">CONVERSATION STARTERS</span>
+                <h2>Prompt answers</h2>
+                <p className="muted">These prompt answers help other members break the ice with genuine depth.</p>
+              </div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {prompts.slice(0, 6).map((p) => (
+                <div key={p.id} className="prompt-quote-box">
+                  <div className="prompt-question">✦ {p.prompt}</div>
+                  <textarea
+                    id={`p-${p.id}`}
+                    value={answers[p.id] ?? ""}
+                    onChange={(e) => setAnswers((a) => ({ ...a, [p.id]: e.target.value }))}
+                    maxLength={240}
+                    rows={2}
+                    placeholder="Write your answer..."
+                    style={{ background: "transparent", border: "1px solid var(--line)" }}
+                  />
+                  <p className="counter">{(answers[p.id] ?? "").length}/240</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Media Photos */}
+          <section className="card">
+            <div className="card-header">
+              <div>
+                <span className="eyebrow">MEDIA</span>
+                <h2>Profile Photos</h2>
+                <p className="muted">Up to 6 photos. Square crop.</p>
+              </div>
+            </div>
+            <div className="photo-upload-grid">
+              {profile.media.map((m) => (
+                <div className="photo-tile" key={m.id}>
+                  {mediaUrls[m.id] ? (
+                    <img src={mediaUrls[m.id]} alt="Profile photo" />
+                  ) : (
+                    <img src="/images/avatar_kuda.jpg" alt="Profile photo" />
+                  )}
+                  <button className="photo-tile-delete" onClick={() => void removeImage(m.id)} title="Remove photo">
+                    ✕
+                  </button>
+                </div>
+              ))}
+              {profile.media.length < 6 && (
+                <label className="photo-tile photo-tile-add">
+                  <span style={{ fontSize: "1.5rem" }}>+</span>
+                  <span>Add photo</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) void addImage(f);
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+          </section>
+
+          {/* Privacy Settings */}
+          <section className="card">
+            <span className="eyebrow">CONTROLS</span>
+            <h2>Privacy & Reachability</h2>
+            <p className="muted">Adjust who can find and message you on the platform.</p>
+            <PrivacyEditor privacy={privacy} setPrivacy={setPrivacy} />
+          </section>
+
+          {/* Active Devices & Security */}
+          <Devices sessions={sessions} revoke={revoke} />
+
+          {/* Danger Zone: Account Deletion */}
+          <section className="card" style={{ borderColor: "rgba(239, 68, 68, 0.3)" }}>
+            <span className="eyebrow" style={{ color: "var(--danger)" }}>DATA PRIVACY & REMOVAL</span>
+            <h2>Delete Account and Personal Data</h2>
+            <p className="muted">
+              Permanently anonymizes your account, removes your profile photos, prompt answers, interests, group memberships and ends all active sessions.
+            </p>
+            <button
+              type="button"
+              className="danger compact"
+              onClick={async () => {
+                if (!window.confirm("Are you sure you want to permanently delete your account and data? This cannot be undone.")) return;
+                try {
+                  await getSafetyClient().deleteAccount();
+                  await getAuth().signOut();
+                  window.location.reload();
+                } catch (e) {
+                  setError(errorMessage(e));
+                }
+              }}
+            >
+              Delete my account
+            </button>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CategorizedInterests({
+  interests,
+  selected,
+  onToggle,
+}: {
+  interests: Interest[];
+  selected: Record<string, 1 | 2 | 3>;
+  onToggle: (id: string) => void;
+}) {
+  const categories: { title: string; names: string[] }[] = [
+    {
+      title: "Campus & Ambition",
+      names: ["Study Groups", "Accounting", "Finance", "Programming", "Artificial Intelligence", "Cybersecurity", "Debate", "Student Life", "Languages", "Business", "Investing", "Entrepreneurship"],
+    },
+    {
+      title: "Music & Culture",
+      names: ["Afrobeats", "Amapiano", "Hip Hop", "R&B", "Gospel", "Church / Faith Communities", "Volunteering"],
+    },
+    {
+      title: "Sports & Fitness",
+      names: ["Football", "Basketball", "Running", "Gym", "Tennis", "Fitness"],
+    },
+    {
+      title: "Arts & Entertainment",
+      names: ["Anime", "Manga", "Cosplay", "Photography", "Drawing", "Design", "Writing", "Movies", "Series", "Documentaries", "Books"],
+    },
+    {
+      title: "Gaming & Lifestyle",
+      names: ["Gaming", "FIFA / EA FC", "Call of Duty", "Minecraft", "Mobile Gaming", "Cooking", "Baking", "Trying Restaurants", "Cars", "Fashion", "Travel", "Road Trips", "Nature"],
+    },
+  ];
+
+  const matchedIds = new Set<string>();
+
+  return (
+    <div>
+      {categories.map((cat) => {
+        const catInterests = interests.filter((i) => cat.names.includes(i.name));
+        catInterests.forEach((i) => matchedIds.add(i.id));
+        if (catInterests.length === 0) return null;
+
+        return (
+          <div key={cat.title} className="interest-category-block">
+            <h4 style={{ margin: "0 0 8px", fontSize: "0.78rem" }}>{cat.title}</h4>
+            <div className="interest-chips-wrap">
+              {catInterests.map((i) => {
+                const chosen = selected[i.id] !== undefined;
+                return (
+                  <button
+                    type="button"
+                    key={i.id}
+                    className={`interest-chip-btn ${chosen ? "selected" : ""}`}
+                    onClick={() => onToggle(i.id)}
+                  >
+                    <span>{chosen ? "✓" : "+"}</span>
+                    <span>{i.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+
+      {interests.filter((i) => !matchedIds.has(i.id)).length > 0 && (
+        <div className="interest-category-block">
+          <h4 style={{ margin: "0 0 8px", fontSize: "0.78rem" }}>Other Passions</h4>
+          <div className="interest-chips-wrap">
+            {interests
+              .filter((i) => !matchedIds.has(i.id))
+              .map((i) => {
+                const chosen = selected[i.id] !== undefined;
+                return (
+                  <button
+                    type="button"
+                    key={i.id}
+                    className={`interest-chip-btn ${chosen ? "selected" : ""}`}
+                    onClick={() => onToggle(i.id)}
+                  >
+                    <span>{chosen ? "✓" : "+"}</span>
+                    <span>{i.name}</span>
+                  </button>
+                );
+              })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -938,24 +1195,60 @@ function ChoiceSet({
   onToggle,
 }: {
   title: string;
-  values: string[];
+  values: SocialStyle[];
   options: SocialStyle[];
-  onToggle: (value: SocialStyle) => void;
+  onToggle: (option: SocialStyle) => void;
 }) {
+  const STYLE_ICONS: Record<SocialStyle, string> = {
+    small_group: "👥",
+    one_to_one: "💬",
+    text_first: "✍️",
+    voice_first: "🎙️",
+    low_pressure: "🌿",
+  };
+
+  const STYLE_DESCRIPTIONS: Record<SocialStyle, string> = {
+    small_group: "Hangouts with small friendly groups",
+    one_to_one: "Direct, focused 1-on-1 conversations",
+    text_first: "Chat via messages before meeting",
+    voice_first: "Quick voice notes and calls",
+    low_pressure: "Respond on your own time without rush",
+  };
+
   return (
-    <div className="choice-set">
-      <h3>{title}</h3>
-      <div className="choice-grid">
-        {options.map((option) => (
-          <label key={option} className="check">
-            <input
-              type="checkbox"
-              checked={values.includes(option)}
-              onChange={() => onToggle(option)}
-            />
-            <span>{SOCIAL_STYLE_LABELS[option]}</span>
-          </label>
-        ))}
+    <div style={{ marginTop: 20 }}>
+      <label>{title}</label>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10, marginTop: 8 }}>
+        {options.map((option) => {
+          const active = values.includes(option);
+          return (
+            <div
+              key={option}
+              onClick={() => onToggle(option)}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 12,
+                padding: "12px 14px",
+                borderRadius: "var(--radius-md)",
+                background: active ? "var(--accent-soft)" : "var(--surface-sunken)",
+                border: active ? "1.5px solid var(--accent)" : "1px solid var(--line)",
+                cursor: "pointer",
+                transition: "all var(--dur-fast)",
+              }}
+            >
+              <span style={{ fontSize: "1.3rem" }}>{STYLE_ICONS[option]}</span>
+              <div>
+                <span style={{ display: "block", fontWeight: 650, fontSize: "0.9rem", color: active ? "var(--accent)" : "var(--text)" }}>
+                  {SOCIAL_STYLE_LABELS[option]}
+                </span>
+                <span style={{ display: "block", fontSize: "0.76rem", color: "var(--text-muted)", marginTop: 2 }}>
+                  {STYLE_DESCRIPTIONS[option]}
+                </span>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -969,17 +1262,24 @@ function PrivacyEditor({
   setPrivacy: (value: Profile["privacy"]) => void;
 }) {
   return (
-    <div className="privacy-grid">
-      <label className="check">
-        <input
-          type="checkbox"
-          checked={privacy.discoverable}
-          onChange={(e) => setPrivacy({ ...privacy, discoverable: e.target.checked })}
-        />
-        <span>Allow my profile to be discoverable</span>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <label className="switch-row">
+        <div className="switch-label-group">
+          <span className="switch-title">Discoverable in Search & Feed</span>
+          <span className="switch-desc">Allow compatible students to discover your profile and say hi.</span>
+        </div>
+        <div className="toggle-switch">
+          <input
+            type="checkbox"
+            checked={privacy.discoverable}
+            onChange={(e) => setPrivacy({ ...privacy, discoverable: e.target.checked })}
+          />
+          <span className="toggle-slider" />
+        </div>
       </label>
+
       <div className="field">
-        <label htmlFor="messagePermission">Who can message me?</label>
+        <label htmlFor="messagePermission">Who can send you direct messages?</label>
         <select
           id="messagePermission"
           value={privacy.messagePermission}
@@ -987,60 +1287,107 @@ function PrivacyEditor({
         >
           {PRIVACY_OPTIONS.messagePermission.map((v) => (
             <option key={v} value={v}>
-              {v === "everyone" ? "Everyone" : v === "connections" ? "Connections only" : "Nobody"}
+              {v === "everyone" ? "Everyone (with suggested openers)" : v === "connections" ? "Mutual connections only" : "Nobody (read-only)"}
             </option>
           ))}
         </select>
       </div>
-      <div className="field">
-        <label htmlFor="storyVisibility">Story visibility</label>
-        <select
-          id="storyVisibility"
-          value={privacy.storyVisibility}
-          onChange={(e) => setPrivacy({ ...privacy, storyVisibility: e.target.value as typeof privacy.storyVisibility })}
-        >
-          {PRIVACY_OPTIONS.visibility.map((v) => (
-            <option key={v} value={v}>{v}</option>
-          ))}
-        </select>
-      </div>
-      <div className="field">
-        <label htmlFor="activityVisibility">Activity visibility</label>
-        <select
-          id="activityVisibility"
-          value={privacy.activityVisibility}
-          onChange={(e) => setPrivacy({ ...privacy, activityVisibility: e.target.value as typeof privacy.activityVisibility })}
-        >
-          {PRIVACY_OPTIONS.visibility.map((v) => (
-            <option key={v} value={v}>{v}</option>
-          ))}
-        </select>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div className="field">
+          <label htmlFor="storyVisibility">Stories & Moments</label>
+          <select
+            id="storyVisibility"
+            value={privacy.storyVisibility}
+            onChange={(e) => setPrivacy({ ...privacy, storyVisibility: e.target.value as typeof privacy.storyVisibility })}
+          >
+            {PRIVACY_OPTIONS.visibility.map((v) => (
+              <option key={v} value={v}>
+                {v === "public" ? "Everyone" : v === "connections" ? "Connections only" : "Private"}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="activityVisibility">Activity status</label>
+          <select
+            id="activityVisibility"
+            value={privacy.activityVisibility}
+            onChange={(e) => setPrivacy({ ...privacy, activityVisibility: e.target.value as typeof privacy.activityVisibility })}
+          >
+            {PRIVACY_OPTIONS.visibility.map((v) => (
+              <option key={v} value={v}>
+                {v === "public" ? "Everyone" : v === "connections" ? "Connections only" : "Private"}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
     </div>
   );
 }
 
+function parseUserAgent(ua?: string): { name: string; browser: string; icon: string } {
+  if (!ua) return { name: "Current Device", browser: "Web Browser", icon: "💻" };
+  const isMobile = /iPhone|iPad|Android|Mobile/i.test(ua);
+  let browser = "Browser";
+  if (/Edg/i.test(ua)) browser = "Microsoft Edge";
+  else if (/Chrome/i.test(ua)) browser = "Google Chrome";
+  else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = "Apple Safari";
+  else if (/Firefox/i.test(ua)) browser = "Mozilla Firefox";
+
+  let os = "Desktop";
+  if (/Windows/i.test(ua)) os = "Windows PC";
+  else if (/Macintosh|Mac OS/i.test(ua)) os = "Mac";
+  else if (/iPhone/i.test(ua)) os = "iPhone";
+  else if (/iPad/i.test(ua)) os = "iPad";
+  else if (/Android/i.test(ua)) os = "Android Phone";
+  else if (/Linux/i.test(ua)) os = "Linux PC";
+
+  return { name: os, browser, icon: isMobile ? "📱" : "💻" };
+}
+
 function Devices({ sessions, revoke }: { sessions: DeviceSession[]; revoke: (id: string) => void }) {
   return (
-    <section className="card device-card" style={{ marginTop: 24 }}>
-      <div className="eyebrow">SESSIONS</div>
-      <h2>Your devices</h2>
-      <p className="muted">You can sign out another device without ending this session.</p>
-      <ul className="device-list">
-        {sessions.map((s) => (
-          <li key={s.id}>
-            <span>
-              {(s.userAgent ?? "Unknown device").slice(0, 70)}
-              {s.current ? " · this device" : ""}
-            </span>
-            {!s.current && (
-              <button className="secondary compact" onClick={() => revoke(s.id)}>
-                Sign out
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
+    <section className="card" style={{ marginTop: 24 }}>
+      <div className="card-header">
+        <div>
+          <span className="eyebrow">SECURITY</span>
+          <h2>Active Devices</h2>
+          <p className="muted">Manage where your account is signed in.</p>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {sessions.map((s) => {
+          const info = parseUserAgent(s.userAgent ?? undefined);
+          return (
+            <div className="device-card-item" key={s.id}>
+              <div className="device-info">
+                <div className="device-icon-box">{info.icon}</div>
+                <div>
+                  <div style={{ fontWeight: 650, fontSize: "0.92rem", color: "var(--text)" }}>
+                    {info.name}
+                    {s.current && (
+                      <span style={{ marginLeft: 8, fontSize: "0.72rem", padding: "2px 8px", borderRadius: "999px", background: "var(--success-soft)", color: "var(--success)", fontWeight: 700 }}>
+                        This device
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                    {info.browser} · Active session
+                  </div>
+                </div>
+              </div>
+              {!s.current && (
+                <button className="secondary compact" onClick={() => revoke(s.id)}>
+                  Sign out
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </section>
   );
 }
