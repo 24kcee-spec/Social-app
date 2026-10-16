@@ -3,7 +3,7 @@
 import type { Interest, Profile, PromptDefinition, SocialStyle } from "@sp/types";
 import type { OnboardingInput } from "@sp/validation";
 import { AuthClientError, type DeviceSession, type Me } from "@sp/auth-client";
-import { type ProfileClient } from "@sp/profile-client";
+import { type ProfileClient, parseShareUrl, validateSafeRedirect } from "@sp/profile-client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { errorMessage, getAuth, isConfigured } from "../lib/auth";
 import { Connections } from "./connections";
@@ -337,6 +337,25 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
     void tick();
     const t = setInterval(tick, 45_000);
     return () => clearInterval(t);
+  }, []);
+
+  // Cross-device continuity: restore intended destination after authentication
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const next = params.get("next");
+    const safeNext = validateSafeRedirect(next);
+    if (!safeNext) return;
+
+    const parsed = parseShareUrl(safeNext);
+    if (parsed) {
+      if (parsed.targetType === "group" || parsed.targetType === "event") {
+        setTab("community");
+      } else if (parsed.targetType === "profile") {
+        setTab("discover");
+      }
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, []);
 
   async function signOut() {

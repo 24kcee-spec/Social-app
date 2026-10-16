@@ -1,6 +1,6 @@
 import type { BlockedUser, DiscoveryCard, SocialStyle } from "@sp/types";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { errorMessage } from "./auth";
 import { getDiscoveryClient } from "./discovery";
 import { getSignedMediaUrl } from "./profile";
@@ -156,6 +156,16 @@ export function Discover() {
     } catch (err) {
       setError(errorMessage(err));
     }
+  };
+
+  const shareCard = async (card: DiscoveryCard) => {
+    try {
+      await Share.share({
+        title: `${card.displayName} on Social App`,
+        message: `Meet ${card.displayName} on Social App: https://social-app.local/share/profile/${card.userId}`,
+        url: `https://social-app.local/share/profile/${card.userId}`,
+      });
+    } catch {}
   };
 
   return (
@@ -342,6 +352,13 @@ export function Discover() {
                   secondary
                   compact
                   onPress={() => toggle(card)}
+                />
+
+                <Button
+                  label="Share"
+                  secondary
+                  compact
+                  onPress={() => void shareCard(card)}
                 />
 
                 <Button

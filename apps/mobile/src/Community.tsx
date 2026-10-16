@@ -1,7 +1,7 @@
 import type { Activity, CommunityEvent, EventAttendee, GroupMember, GroupSummary } from "@sp/types";
 import { mergeEventMessages, newClientTag, type EventThreadMessage } from "@sp/profile-client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
 import { errorMessage } from "./auth";
 import { getCommunityClient } from "./communityClient";
 import { useTheme } from "./theme";
@@ -17,7 +17,13 @@ const fmt = (iso: string) =>
     minute: "2-digit",
   });
 
-export function Community() {
+export function Community({
+  initialTarget,
+  onClearTarget,
+}: {
+  initialTarget?: { targetType: "group" | "event" | "profile"; id: string } | null;
+  onClearTarget?: () => void;
+} = {}) {
   const { colors, radius, space, type, shadow } = useTheme();
   const client = getCommunityClient();
 
@@ -68,6 +74,27 @@ export function Community() {
       setError(errorMessage(err));
     }
   }
+
+  useEffect(() => {
+    if (!initialTarget) return;
+    if (initialTarget.targetType === "group") {
+      setOpenGroupId(initialTarget.id);
+      onClearTarget?.();
+    } else if (initialTarget.targetType === "event") {
+      setOpenEventId(initialTarget.id);
+      onClearTarget?.();
+    }
+  }, [initialTarget, onClearTarget]);
+
+  const shareItem = async (type: "group" | "event", id: string, title: string) => {
+    try {
+      await Share.share({
+        title,
+        message: `Check out "${title}" on Social App: https://social-app.local/share/${type}/${id}`,
+        url: `https://social-app.local/share/${type}/${id}`,
+      });
+    } catch {}
+  };
 
   const openEvent = events.find((e) => e.id === openEventId) ?? null;
   const openGroup = groups.find((g) => g.id === openGroupId) ?? null;
@@ -251,6 +278,12 @@ export function Community() {
 
                 <View style={[styles.actionsRow, { marginTop: space[3] }]}>
                   <Button label="Open" compact onPress={() => setOpenEventId(e.id)} />
+                  <Button
+                    label="Share"
+                    secondary
+                    compact
+                    onPress={() => void shareItem("event", e.id, e.title)}
+                  />
                   {e.myStatus ? (
                     <Button
                       label="Cancel RSVP"
@@ -334,6 +367,12 @@ export function Community() {
 
               <View style={[styles.actionsRow, { marginTop: space[3] }]}>
                 <Button label="Open" compact onPress={() => setOpenGroupId(g.id)} />
+                <Button
+                  label="Share"
+                  secondary
+                  compact
+                  onPress={() => void shareItem("group", g.id, g.name)}
+                />
                 {g.role === null ? (
                   <Button
                     label={g.memberCount >= g.capacity ? "Group full" : "Join"}

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { errorMessage } from "../lib/auth";
 import { getCommunityClient } from "../lib/community";
 import { ReportModal } from "./report-modal";
+import { ShareModal } from "./share-modal";
 
 const POLL_MS = 8000;
 const fmt = (iso: string) => new Date(iso).toLocaleString([], { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -25,6 +26,7 @@ export function Community() {
   const [creating, setCreating] = useState<"group" | "event" | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sharing, setSharing] = useState<{ targetType: "group" | "event"; id: string; title: string; description?: string; area?: string } | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -82,6 +84,21 @@ export function Community() {
           <p>{e.going} of {e.capacity} going{e.myStatus === "waitlisted" ? " · you are on the waitlist" : e.myStatus === "going" ? " · you are going" : ""}</p>
           <div className="card-actions">
             <button className="secondary compact" onClick={() => setOpenEventId(e.id)}>Open</button>
+            <button
+              type="button"
+              className="secondary compact"
+              onClick={() =>
+                setSharing({
+                  targetType: "event",
+                  id: e.id,
+                  title: e.title,
+                  description: e.description,
+                  area: e.generalArea,
+                })
+              }
+            >
+              Share
+            </button>
             {e.myStatus ? <button className="link" onClick={() => void act(() => client.cancelRsvp(e.id))}>Cancel RSVP</button>
               : <button onClick={() => void act(() => client.rsvp(e.id))}>{e.going >= e.capacity ? "Join waitlist" : "I'm going"}</button>}
           </div>
@@ -93,10 +110,35 @@ export function Community() {
           {g.description && <p>{g.description}</p>}
           <div className="card-actions">
             <button className="secondary compact" onClick={() => setOpenGroupId(g.id)}>Open</button>
+            <button
+              type="button"
+              className="secondary compact"
+              onClick={() =>
+                setSharing({
+                  targetType: "group",
+                  id: g.id,
+                  title: g.name,
+                  description: g.description,
+                  area: g.generalArea,
+                })
+              }
+            >
+              Share
+            </button>
             {g.role === null && <button onClick={() => void act(() => client.joinGroup(g.id))} disabled={g.memberCount >= g.capacity}>{g.memberCount >= g.capacity ? "Full" : "Join"}</button>}
             {g.role === "member" || g.role === "moderator" ? <button className="link" onClick={() => void act(() => client.leaveGroup(g.id))}>Leave</button> : null}
           </div>
         </div>))}
+      {sharing && (
+        <ShareModal
+          targetType={sharing.targetType}
+          targetId={sharing.id}
+          title={sharing.title}
+          description={sharing.description}
+          areaOrLocation={sharing.area}
+          onClose={() => setSharing(null)}
+        />
+      )}
     </div>
   );
 }

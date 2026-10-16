@@ -14,10 +14,31 @@ module.exports = {
     slug: "social-app",
     version: "0.0.1",
     orientation: "portrait",
-    userInterfaceStyle: "automatic",
+    scheme: "socialapp",
     plugins: [["expo-image-picker", { photosPermission: "Allow Social app to use your photos for your profile." }]],
-    ios: { supportsTablet: false, bundleIdentifier: "app.social.dev" },
-    android: { package: "app.social.dev" },
+    ios: {
+      supportsTablet: false,
+      bundleIdentifier: "app.social.dev",
+      associatedDomains: ["applinks:social-app.local"],
+    },
+    android: {
+      package: "app.social.dev",
+      intentFilters: [
+        {
+          action: "VIEW",
+          autoVerify: true,
+          data: [
+            { scheme: "socialapp" },
+            {
+              scheme: "https",
+              host: "social-app.local",
+              pathPrefix: "/share",
+            },
+          ],
+          category: ["BROWSABLE", "DEFAULT"],
+        },
+      ],
+    },
     extra: {
       supabaseUrl: process.env.SUPABASE_URL ?? "",
       supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY ?? "",

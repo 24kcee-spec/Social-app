@@ -17,6 +17,9 @@ const STYLE_LABELS: Record<SocialStyle, string> = {
 
 const PAGE = 12;
 
+import { ReportModal } from "./report-modal";
+import { ShareModal } from "./share-modal";
+
 export function Discover() {
   const client = getDiscoveryClient();
   const [people, setPeople] = useState<DiscoveryCard[]>([]);
@@ -29,6 +32,7 @@ export function Discover() {
   const [open, setOpen] = useState<string | null>(null);
   const [blocks, setBlocks] = useState<BlockedUser[] | null>(null);
   const [greeting, setGreeting] = useState<string | null>(null);
+  const [sharingProfile, setSharingProfile] = useState<{ id: string; displayName: string; bio?: string } | null>(null);
   const seen = useRef<Set<string>>(new Set());
 
   const loadPhotos = useCallback(async (cards: DiscoveryCard[]) => {
@@ -337,6 +341,20 @@ export function Discover() {
                     {isOpen ? "Show less" : "View profile"}
                   </button>
 
+                  <button
+                    type="button"
+                    className="secondary compact"
+                    onClick={() =>
+                      setSharingProfile({
+                        id: card.userId,
+                        displayName: card.displayName,
+                        bio: card.bio,
+                      })
+                    }
+                  >
+                    Share
+                  </button>
+
                   <button className="secondary compact" onClick={() => skip(card)}>
                     Not now
                   </button>
@@ -353,6 +371,16 @@ export function Discover() {
             );
           })}
         </div>
+      )}
+
+      {sharingProfile && (
+        <ShareModal
+          targetType="profile"
+          targetId={sharingProfile.id}
+          title={sharingProfile.displayName}
+          description={sharingProfile.bio}
+          onClose={() => setSharingProfile(null)}
+        />
       )}
 
       {/* Pagination */}

@@ -1,5 +1,5 @@
 import { AuthClientError, type Me } from "@sp/auth-client";
-import type { Interest, Profile, PromptDefinition, SocialStyle } from "@sp/types";
+import type { Interest, Profile, PromptDefinition, ShareTargetType, SocialStyle } from "@sp/types";
 import type { OnboardingInput } from "@sp/validation";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -25,7 +26,7 @@ import { Messages } from "./src/Messages";
 import { deleteProfileImage, getProfileClient, getSignedMediaUrl, pickAndUploadProfileImage } from "./src/profile";
 import { ThemeProvider, useTheme, type ThemePreference } from "./src/theme";
 import { Avatar, Banner, BottomNav, Button, Chip, Field, type NavTab } from "./src/ui";
-import type { ProfileClient } from "@sp/profile-client";
+import { parseShareUrl, type ProfileClient } from "@sp/profile-client";
 
 const STYLES: { id: SocialStyle; label: string }[] = [
   { id: "small_group", label: "Small groups" },
@@ -55,6 +56,26 @@ export default function App() {
 function AppContent() {
   const { colors, isDark } = useTheme();
   const [phase, setPhase] = useState<Phase>({ kind: "loading" });
+  const [pendingTarget, setPendingTarget] = useState<{ targetType: ShareTargetType; id: string } | null>(null);
+
+  // Deep linking: cold-start and warm-start URL handlers
+  useEffect(() => {
+    Linking.getInitialURL()
+      .then((url) => {
+        if (url) {
+          const target = parseShareUrl(url);
+          if (target) setPendingTarget(target);
+        }
+      })
+      .catch(() => undefined);
+
+    const sub = Linking.addEventListener("url", (event) => {
+      const target = parseShareUrl(event.url);
+      if (target) setPendingTarget(target);
+    });
+
+    return () => sub.remove();
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -107,7 +128,14 @@ function AppContent() {
         </ScrollView>
       )}
 
-      {phase.kind === "signedIn" && <ProfileHome me={phase.me} onSignOut={() => setPhase({ kind: "signedOut" })} />}
+      {phase.kind === "signedIn" && (
+        <ProfileHome
+          me={phase.me}
+          onSignOut={() => setPhase({ kind: "signedOut" })}
+          pendingTarget={pendingTarget}
+          onClearPendingTarget={() => setPendingTarget(null)}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -294,7 +322,17 @@ function AuthForm() {
    Authenticated Shell with Bottom Navigation
    ========================================================================== */
 
-function ProfileHome({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
+function ProfileHome({
+  me,
+  onSignOut,
+  pendingTarget,
+  onClearPendingTarget,
+}: {
+  me: Me;
+  onSignOut: () => void;
+  pendingTarget?: { targetType: ShareTargetType; id: string } | null;
+  onClearPendingTarget?: () => void;
+}) {
   const { colors, radius, space, type } = useTheme();
   const client = useMemo<ProfileClient>(() => getProfileClient(), []);
 
@@ -307,6 +345,17 @@ function ProfileHome({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
   const [pendingIn, setPendingIn] = useState(0);
   const [unread, setUnread] = useState(0);
   const [chatWith, setChatWith] = useState<string | null>(null);
+
+  // Cross-device deep link destination restoration
+  useEffect(() => {
+    if (!pendingTarget) return;
+    if (pendingTarget.targetType === "group" || pendingTarget.targetType === "event") {
+      setTab("community");
+    } else if (pendingTarget.targetType === "profile") {
+      setTab("discover");
+      onClearPendingTarget?.();
+    }
+  }, [pendingTarget, onClearPendingTarget]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -443,7 +492,7 @@ function ProfileHome({ me, onSignOut }: { me: Me; onSignOut: () => void }) {
                 onOpened={() => setChatWith(null)}
               />
             ) : tab === "community" ? (
-              <Community />
+              <Community initialTarget={pendingTarget} onClearTarget={onClearPendingTarget} />
             ) : (
               <Editor
                 profile={profile}
