@@ -149,7 +149,7 @@ function AuthForm() {
     <div className="auth-wrapper">
       <div className="auth-card-editorial">
         <header>
-          <div className="auth-brand-badge">✦ Social Connection</div>
+          <div className="auth-brand-badge">✦ Social</div>
           <h1>{mode === "signin" ? "Welcome back" : mode === "signup" ? "Join the community" : "Reset your password"}</h1>
           <p className="muted">
             {mode === "signin"
@@ -443,17 +443,10 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
           <div className="user-bar">
             <div className="user-badge-chip">
               <div className="user-avatar-circle">
-                {profile?.media?.[0]?.thumbnailPath ? (
-                  <img src="/images/avatar_kuda.jpg" alt="Profile" />
-                ) : (
-                  <span>{profile?.displayName?.charAt(0).toUpperCase() ?? "U"}</span>
-                )}
+                <span>{profile?.displayName?.charAt(0).toUpperCase() ?? "U"}</span>
               </div>
               <div className="user-chip-text">
                 <span className="user-chip-name">{profile?.displayName ?? "Member"}</span>
-                <span className="user-chip-campus">
-                  {me.email?.includes("@students.nust.ac.zw") ? "NUST Student" : me.email ? me.email.split("@")[0] : "Verified"}
-                </span>
               </div>
             </div>
             <button className="secondary compact" onClick={() => void signOut()}>
@@ -807,7 +800,7 @@ function ProfileEditor({
                 {profile.media?.[0] && mediaUrls[profile.media[0].id] ? (
                   <img src={mediaUrls[profile.media[0].id]} alt={profile.displayName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
-                  <img src="/images/avatar_kuda.jpg" alt={profile.displayName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <span className="profile-card-initial">{profile.displayName.charAt(0).toUpperCase()}</span>
                 )}
               </div>
             </div>
@@ -849,7 +842,7 @@ function ProfileEditor({
                 {profile.media?.[0] && mediaUrls[profile.media[0].id] ? (
                   <img src={mediaUrls[profile.media[0].id]} alt={displayName} />
                 ) : (
-                  <img src="/images/avatar_kuda.jpg" alt={displayName} />
+                  <span className="profile-card-initial">{(displayName || "?").charAt(0).toUpperCase()}</span>
                 )}
                 <div className="profile-card-scrim" />
                 <div className="profile-card-cover-badges">
@@ -1031,7 +1024,7 @@ function ProfileEditor({
                   {mediaUrls[m.id] ? (
                     <img src={mediaUrls[m.id]} alt="Profile photo" />
                   ) : (
-                    <img src="/images/avatar_kuda.jpg" alt="Profile photo" />
+                    <span className="profile-card-initial">📷</span>
                   )}
                   <button className="photo-tile-delete" onClick={() => void removeImage(m.id)} title="Remove photo">
                     ✕
@@ -1266,7 +1259,7 @@ function PrivacyEditor({
       <label className="switch-row">
         <div className="switch-label-group">
           <span className="switch-title">Discoverable in Search & Feed</span>
-          <span className="switch-desc">Allow compatible students to discover your profile and say hi.</span>
+          <span className="switch-desc">Allow compatible people to discover your profile and say hi.</span>
         </div>
         <div className="toggle-switch">
           <input

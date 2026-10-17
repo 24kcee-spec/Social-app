@@ -113,7 +113,7 @@ export function Community() {
       {/* Header */}
       <div className="discover-header-bar">
         <div>
-          <span className="eyebrow">✦ CAMPUS & LOCAL SPACES</span>
+          <span className="eyebrow">✦ LOCAL SPACES</span>
           <h1 style={{ margin: "2px 0 0" }}>Community & Events</h1>
           <div className="discover-philosophy" style={{ marginTop: 8 }}>
             <span>Small groups, authentic campus meetups, and low-key events. No exact addresses published publicly.</span>

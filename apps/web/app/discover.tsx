@@ -158,46 +158,19 @@ export function Discover() {
 
   return (
     <section aria-label="Discover people" className="discover-page-head">
-      {/* Hero Welcome Banner */}
-      <div className="hero-banner">
-        <div className="hero-banner-inner">
-          <div className="hero-content">
-            <span className="eyebrow">✦ CURATED CONNECTIONS</span>
-            <h1>Discover your campus circle</h1>
-            <p className="muted" style={{ maxWidth: 480 }}>
-              Matched purely on shared interests, favorite hobbies, and social pace. No algorithms optimizing for doomscrolling or vanity metrics.
-            </p>
-            <div style={{ display: "flex", gap: 10, marginTop: 18, flexWrap: "wrap" }}>
-              <button
-                className={`compact ${filterStyle === "all" ? "" : "secondary"}`}
-                onClick={() => setFilterStyle("all")}
-              >
-                All introductions
-              </button>
-              <button
-                className={`compact ${filterStyle === "shared" ? "" : "secondary"}`}
-                onClick={() => setFilterStyle("shared")}
-              >
-                Shared passions
-              </button>
-              <button
-                className={`compact ${filterStyle === "low_pressure" ? "" : "secondary"}`}
-                onClick={() => setFilterStyle("low_pressure")}
-              >
-                🌿 Low pressure
-              </button>
-              <button
-                className={`compact ${filterStyle === "small_group" ? "" : "secondary"}`}
-                onClick={() => setFilterStyle("small_group")}
-              >
-                👥 Small groups
-              </button>
-            </div>
-          </div>
-          <div className="hero-image-wrap">
-            <img src="/images/hero_community.jpg" alt="Campus community" />
-          </div>
+      <div className="discover-header-bar">
+        <div>
+          <span className="eyebrow">✦ FOR YOU</span>
+          <h1 style={{ margin: "2px 0 0" }}>Discover people</h1>
+          <p className="muted" style={{ margin: "6px 0 0", maxWidth: 520 }}>
+            Matched on shared interests and social pace. No popularity contests, just people you will click with.
+          </p>
         </div>
+      </div>
+      <div className="filter-chips" role="group" aria-label="Filter introductions">
+        {([["all", "All"], ["shared", "Shared passions"], ["low_pressure", "🌿 Low pressure"], ["small_group", "👥 Small groups"]] as const).map(([k, label]) => (
+          <button key={k} className={`chip-btn ${filterStyle === k ? "on" : ""}`} aria-pressed={filterStyle === k} onClick={() => setFilterStyle(k)}>{label}</button>
+        ))}
       </div>
 
       {/* Notifications */}
@@ -212,6 +185,23 @@ export function Discover() {
         <div className="notice ok" role="status">
           <span>✓ {notice}</span>
           <button className="link" onClick={() => setNotice(null)} style={{ marginLeft: "auto" }}>Dismiss</button>
+        </div>
+      )}
+
+      {!loading && people.length > 0 && (
+        <div className="stories-row" aria-label="Fresh introductions">
+          {people.slice(0, 12).map((p) => (
+            <button
+              key={p.userId}
+              className="story"
+              onClick={() => document.getElementById(`card-${p.userId}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
+            >
+              <span className="story-ring">
+                {photos[p.userId] ? <img src={photos[p.userId]} alt="" /> : <span>{p.displayName.charAt(0).toUpperCase()}</span>}
+              </span>
+              <span className="story-name">{p.displayName.split(" ")[0]}</span>
+            </button>
+          ))}
         </div>
       )}
 
@@ -231,9 +221,9 @@ export function Discover() {
         <div>
           <div className="empty-state-card" style={{ marginBottom: 36 }}>
             <div className="empty-state-icon">✦</div>
-            <h2>You're all caught up on new introductions!</h2>
+            <h2>You're all caught up!</h2>
             <p className="muted" style={{ maxWidth: 520, margin: "0 auto 18px" }}>
-              You've explored everyone currently matching your interests and privacy settings. As more classmates join or when you add new passions in your profile, new matches will appear here.
+              You've explored everyone currently matching your interests and privacy settings. As more people join or when you add new passions in your profile, new matches will appear here.
             </p>
             <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
               <button className="secondary compact" onClick={() => void load()}>
@@ -242,201 +232,12 @@ export function Discover() {
             </div>
           </div>
 
-          {/* Interactive Community Spotlight Showcase */}
-          <div style={{ marginBottom: 20 }}>
-            <span className="eyebrow">CAMPUS SPOTLIGHT · ACTIVE MEMBERS</span>
-            <h2>Get inspired by how others connect</h2>
-            <p className="muted">See how fellow students share their energy with conversation starters and prompt cards.</p>
-          </div>
-
-          <div className="discover-grid">
-            {/* Spotlight Student 1: Maya */}
-            <article className="profile-card">
-              <div className="profile-card-cover">
-                <img src="/images/avatar_maya.jpg" alt="Maya Lin" />
-                <div className="profile-card-scrim" />
-                <div className="profile-card-cover-badges">
-                  <span className="social-style-tag">🌿 Low pressure · Small groups</span>
-                  <span className="social-style-tag" style={{ background: "rgba(16, 185, 129, 0.85)" }}>Verified Student</span>
-                </div>
-              </div>
-
-              <div className="profile-card-body">
-                <div className="profile-name-row">
-                  <div className="profile-card-name">Maya Lin</div>
-                  <span className="muted" style={{ fontSize: "0.82rem" }}>NUST · Bulawayo</span>
-                </div>
-                <p className="profile-card-bio">
-                  Architecture & Design student. Passionate about urban photography, Afrobeats playlists, and low-key coffee study dates.
-                </p>
-
-                <div className="shared-interests-row">
-                  <span className="shared-chip highlight">Afrobeats</span>
-                  <span className="shared-chip highlight">Design</span>
-                  <span className="shared-chip highlight">Photography</span>
-                  <span className="shared-chip">Study Groups</span>
-                  <span className="shared-chip">Nature</span>
-                </div>
-
-                <div className="prompt-quote-box">
-                  <div className="prompt-question">✦ My ideal weekend looks like...</div>
-                  <p className="prompt-answer">"Browsing local art galleries, listening to Amapiano on repeat, and sketching downtown buildings."</p>
-                </div>
-
-                <div className="profile-card-footer">
-                  <span className="muted" style={{ fontSize: "0.82rem" }}>Active this week</span>
-                  <button
-                    className="compact"
-                    onClick={() =>
-                      setNotice("Maya will see your interest! Connect your live Supabase database to exchange real-time messages.")
-                    }
-                  >
-                    Say hi
-                  </button>
-                </div>
-              </div>
-            </article>
-
-            {/* Spotlight Student 2: Liam */}
-            <article className="profile-card">
-              <div className="profile-card-cover">
-                <img src="/images/avatar_kuda.jpg" alt="Liam Ncube" />
-                <div className="profile-card-scrim" />
-                <div className="profile-card-cover-badges">
-                  <span className="social-style-tag">💬 One-to-one · Text-first</span>
-                  <span className="social-style-tag" style={{ background: "rgba(99, 102, 241, 0.85)" }}>NUST Campus</span>
-                </div>
-              </div>
-
-              <div className="profile-card-body">
-                <div className="profile-name-row">
-                  <div className="profile-card-name">Liam Ncube</div>
-                  <span className="muted" style={{ fontSize: "0.82rem" }}>Computer Science</span>
-                </div>
-                <p className="profile-card-bio">
-                  Building tech products and studying AI. Huge fan of weekend football, FIFA tournaments, and exploring tech startups in Zimbabwe.
-                </p>
-
-                <div className="shared-interests-row">
-                  <span className="shared-chip highlight">Artificial Intelligence</span>
-                  <span className="shared-chip highlight">FIFA / EA FC</span>
-                  <span className="shared-chip highlight">Programming</span>
-                  <span className="shared-chip">Football</span>
-                  <span className="shared-chip">Investing</span>
-                </div>
-
-                <div className="prompt-quote-box">
-                  <div className="prompt-question">✦ I can talk about this for hours...</div>
-                  <p className="prompt-answer">"Building mobile apps for Africa, modern fintech, and whether Manchester City will win the treble again."</p>
-                </div>
-
-                <div className="profile-card-footer">
-                  <span className="muted" style={{ fontSize: "0.82rem" }}>Active today</span>
-                  <button
-                    className="compact"
-                    onClick={() =>
-                      setNotice("Liam will see your greeting! Connect your live Supabase database to start chatting.")
-                    }
-                  >
-                    Say hi
-                  </button>
-                </div>
-              </div>
-            </article>
-
-            {/* Spotlight Student 3: Tariro */}
-            <article className="profile-card">
-              <div className="profile-card-cover">
-                <img src="/images/avatar_tariro.jpg" alt="Tariro Mpofu" />
-                <div className="profile-card-scrim" />
-                <div className="profile-card-cover-badges">
-                  <span className="social-style-tag">🎧 Low pressure · Music first</span>
-                  <span className="social-style-tag" style={{ background: "rgba(244, 63, 94, 0.85)" }}>Verified Student</span>
-                </div>
-              </div>
-
-              <div className="profile-card-body">
-                <div className="profile-name-row">
-                  <div className="profile-card-name">Tariro Mpofu</div>
-                  <span className="muted" style={{ fontSize: "0.82rem" }}>Media & Communications</span>
-                </div>
-                <p className="profile-card-bio">
-                  Podcasting on campus life, searching for the best matcha lattes, and curating warm Sunday afternoon Spotify playlists.
-                </p>
-
-                <div className="shared-interests-row">
-                  <span className="shared-chip highlight">Afrobeats</span>
-                  <span className="shared-chip highlight">Amapiano</span>
-                  <span className="shared-chip highlight">Photography</span>
-                  <span className="shared-chip">Books</span>
-                  <span className="shared-chip">Fashion</span>
-                </div>
-
-                <div className="prompt-quote-box">
-                  <div className="prompt-question">✦ The best way to get to know me is...</div>
-                  <p className="prompt-answer">"Share your top 3 songs of the month, or invite me to an outdoor campus walk when it's sunny."</p>
-                </div>
-
-                <div className="profile-card-footer">
-                  <span className="muted" style={{ fontSize: "0.82rem" }}>Active 20m ago</span>
-                  <button
-                    className="compact"
-                    onClick={() =>
-                      setNotice("Tariro will see your note! Connect your live database to exchange messages.")
-                    }
-                  >
-                    Say hi
-                  </button>
-                </div>
-              </div>
-            </article>
-
-            {/* Spotlight Student 4: Farai */}
-            <article className="profile-card">
-              <div className="profile-card-cover">
-                <img src="/images/avatar_farai.jpg" alt="Farai Moyo" />
-                <div className="profile-card-scrim" />
-                <div className="profile-card-cover-badges">
-                  <span className="social-style-tag">👥 Small groups · Creative</span>
-                  <span className="social-style-tag" style={{ background: "rgba(16, 185, 129, 0.85)" }}>Design Club Lead</span>
-                </div>
-              </div>
-
-              <div className="profile-card-body">
-                <div className="profile-name-row">
-                  <div className="profile-card-name">Farai Moyo</div>
-                  <span className="muted" style={{ fontSize: "0.82rem" }}>Industrial Design</span>
-                </div>
-                <p className="profile-card-bio">
-                  Graphic design, Figma prototyping, and street photography. Always down to trade sketchbook ideas or go for coffee.
-                </p>
-
-                <div className="shared-interests-row">
-                  <span className="shared-chip highlight">Design</span>
-                  <span className="shared-chip highlight">Drawing</span>
-                  <span className="shared-chip highlight">Photography</span>
-                  <span className="shared-chip">Artificial Intelligence</span>
-                  <span className="shared-chip">Road Trips</span>
-                </div>
-
-                <div className="prompt-quote-box">
-                  <div className="prompt-question">✦ A fun fact about me...</div>
-                  <p className="prompt-answer">"I've designed posters for 4 campus music festivals and can identify almost any font in 2 seconds."</p>
-                </div>
-
-                <div className="profile-card-footer">
-                  <span className="muted" style={{ fontSize: "0.82rem" }}>Active today</span>
-                  <button
-                    className="compact"
-                    onClick={() =>
-                      setNotice("Farai will see your greeting! Connect your live database to exchange messages.")
-                    }
-                  >
-                    Say hi
-                  </button>
-                </div>
-              </div>
-            </article>
+          <div className="card invite-card">
+            <h2>Grow your circle</h2>
+            <p className="muted">The best introductions come from real friends. Invite someone, or add more interests and prompts so we can match you better.</p>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button onClick={() => { const t = "Join me on Social, a calm place to meet people who share your interests."; if (navigator.share) { void navigator.share({ title: "Social", text: t, url: window.location.origin }).catch(() => undefined); } else { void navigator.clipboard?.writeText(`${t} ${window.location.origin}`); setNotice("Invite link copied."); } }}>Invite a friend</button>
+            </div>
           </div>
         </div>
       ) : (
@@ -448,12 +249,12 @@ export function Discover() {
             const photoUrl = photos[card.userId];
 
             return (
-              <article className="profile-card" key={card.userId}>
+              <article className="profile-card" id={`card-${card.userId}`} key={card.userId}>
                 <div className="profile-card-cover">
                   {photoUrl ? (
                     <img src={photoUrl} alt={card.displayName} />
                   ) : (
-                    <img src="/images/avatar_maya.jpg" alt={card.displayName} />
+                    <span className="profile-card-initial">{card.displayName.charAt(0).toUpperCase()}</span>
                   )}
                   <div className="profile-card-scrim" />
                   <div className="profile-card-cover-badges">

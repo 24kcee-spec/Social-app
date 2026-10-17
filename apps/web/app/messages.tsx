@@ -183,7 +183,7 @@ export function Messages({
                   >
                     <Avatar
                       name={c.other.displayName}
-                      url={photos[c.other.userId] ?? "/images/avatar_maya.jpg"}
+                      url={photos[c.other.userId]}
                       size={44}
                     />
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -242,7 +242,7 @@ export function Messages({
             {openConversation ? (
               <Thread
                 conversation={openConversation}
-                photo={photos[openConversation.other.userId] ?? "/images/avatar_kuda.jpg"}
+                photo={photos[openConversation.other.userId]}
                 onBack={() => {
                   setOpenId(null);
                   void load();

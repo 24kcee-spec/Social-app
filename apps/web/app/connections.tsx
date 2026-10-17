@@ -188,7 +188,7 @@ export function Connections({
                 {incoming.map((r) => (
                   <div className="card" key={r.id} style={{ display: "flex", flexDirection: "column" }}>
                     <div style={{ display: "flex", gap: 14, alignItems: "center", marginBottom: 14 }}>
-                      <Avatar person={r.other} url={photos[r.other.userId] ?? "/images/avatar_maya.jpg"} />
+                      <Avatar person={r.other} url={photos[r.other.userId]} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <h3 style={{ margin: 0 }}>{r.other.displayName}</h3>
                         {r.other.bio && (
@@ -252,7 +252,7 @@ export function Connections({
                 {connections.map((c) => (
                   <div className="card" key={c.other.userId} style={{ display: "flex", flexDirection: "column" }}>
                     <div style={{ display: "flex", gap: 14, alignItems: "center", marginBottom: 12 }}>
-                      <Avatar person={c.other} url={photos[c.other.userId] ?? "/images/avatar_kuda.jpg"} />
+                      <Avatar person={c.other} url={photos[c.other.userId]} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <h3 style={{ margin: 0 }}>{c.other.displayName}</h3>
                         <p className="muted" style={{ margin: "2px 0 0", fontSize: "0.82rem" }}>
