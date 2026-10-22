@@ -13,6 +13,9 @@ import { Messages } from "./messages";
 import { getMessagingClient } from "../lib/messaging";
 import { getSafetyClient } from "../lib/safety";
 import { deleteProfileImage, getProfileClient, getSignedMediaUrl, uploadProfileImage } from "../lib/profile";
+import { AccountMenu } from "./account-menu";
+import { MyProfileView } from "./my-profile-view";
+import { SettingsOverview, type ThemePreference } from "./settings-overview";
 
 const SOCIAL_STYLE_LABELS: Record<SocialStyle, string> = {
   small_group: "Small groups",
@@ -336,6 +339,9 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<"discover" | "connections" | "messages" | "community" | "profile">("discover");
+  const [shellView, setShellView] = useState<"app" | "settings" | "viewProfile">("app");
+  const [focusSection, setFocusSection] = useState<string | null>(null);
+  const [themePreference, setThemePreference] = useState<ThemePreference>("system");
   const [pendingIn, setPendingIn] = useState(0);
   const [unread, setUnread] = useState(0);
   const [chatWith, setChatWith] = useState<string | null>(null);
@@ -359,6 +365,44 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
   useEffect(() => {
     void loadProfile();
   }, [loadProfile]);
+
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("social-app-theme");
+      if (saved === "system" || saved === "light" || saved === "dark") setThemePreference(saved);
+    } catch {
+      // Private browsing or storage restrictions should not prevent app use.
+    }
+  }, []);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (themePreference === "system") root.removeAttribute("data-theme");
+    else root.dataset.theme = themePreference;
+    try {
+      window.localStorage.setItem("social-app-theme", themePreference);
+    } catch {
+      // The selected appearance still applies for this session.
+    }
+  }, [themePreference]);
+
+  useEffect(() => {
+    if (shellView !== "app" || tab !== "profile" || !focusSection) return;
+    document.getElementById(focusSection)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setFocusSection(null);
+  }, [shellView, tab, focusSection, profile]);
+
+  function navigateTab(nextTab: "discover" | "connections" | "messages" | "community" | "profile") {
+    setShellView("app");
+    setFocusSection(null);
+    setTab(nextTab);
+  }
+
+  function openProfileSection(sectionId: string) {
+    setShellView("app");
+    setFocusSection(sectionId);
+    setTab("profile");
+  }
 
   // Keep the Messages tab badge warm even while looking at other tabs.
   useEffect(() => {
@@ -414,13 +458,13 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
       {/* Top Header */}
       <header className="app-header" role="banner">
         <div className="app-header-inner">
-          <div className="brand-group" onClick={() => setTab("discover")}>
+          <button type="button" className="brand-group brand-home-button" onClick={() => navigateTab("discover")} aria-label="Go to Discover">
             <div className="brand-mark-glow" aria-hidden="true">S</div>
             <div className="brand-text-wrap">
               <span className="brand-title">Social</span>
               <span className="brand-tagline">Low-pressure connection</span>
             </div>
-          </div>
+          </button>
 
           {profile?.onboardingCompleted && (
             <nav className="nav-pill-bar" aria-label="Main Navigation">
@@ -428,7 +472,7 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
                 role="tab"
                 aria-selected={tab === "discover"}
                 className={`nav-pill-btn ${tab === "discover" ? "active" : ""}`}
-                onClick={() => setTab("discover")}
+                onClick={() => navigateTab("discover")}
               >
                 <span>🧭</span>
                 <span>Discover</span>
@@ -437,7 +481,7 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
                 role="tab"
                 aria-selected={tab === "connections"}
                 className={`nav-pill-btn ${tab === "connections" ? "active" : ""}`}
-                onClick={() => setTab("connections")}
+                onClick={() => navigateTab("connections")}
               >
                 <span>🤝</span>
                 <span>Connections</span>
@@ -447,7 +491,7 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
                 role="tab"
                 aria-selected={tab === "messages"}
                 className={`nav-pill-btn ${tab === "messages" ? "active" : ""}`}
-                onClick={() => setTab("messages")}
+                onClick={() => navigateTab("messages")}
               >
                 <span>💬</span>
                 <span>Messages</span>
@@ -457,7 +501,7 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
                 role="tab"
                 aria-selected={tab === "community"}
                 className={`nav-pill-btn ${tab === "community" ? "active" : ""}`}
-                onClick={() => setTab("community")}
+                onClick={() => navigateTab("community")}
               >
                 <span>🎈</span>
                 <span>Community</span>
@@ -466,7 +510,7 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
                 role="tab"
                 aria-selected={tab === "profile"}
                 className={`nav-pill-btn ${tab === "profile" ? "active" : ""}`}
-                onClick={() => setTab("profile")}
+                onClick={() => navigateTab("profile")}
               >
                 <span>👤</span>
                 <span>Profile</span>
@@ -475,17 +519,14 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
           )}
 
           <div className="user-bar">
-            <div className="user-badge-chip">
-              <div className="user-avatar-circle">
-                <span>{profile?.displayName?.charAt(0).toUpperCase() ?? "U"}</span>
-              </div>
-              <div className="user-chip-text">
-                <span className="user-chip-name">{profile?.displayName ?? "Member"}</span>
-              </div>
-            </div>
-            <button className="secondary compact" onClick={() => void signOut()}>
-              Sign out
-            </button>
+            <AccountMenu
+              displayName={profile?.displayName ?? "Member"}
+              email={me.email}
+              onViewProfile={() => setShellView("viewProfile")}
+              onEditProfile={() => openProfileSection("profile-details")}
+              onOpenSettings={() => setShellView("settings")}
+              onSignOut={() => void signOut()}
+            />
           </div>
         </div>
       </header>
@@ -507,6 +548,25 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
           </div>
         ) : profile && !profile.onboardingCompleted ? (
           <Onboarding profile={profile} interests={interests} prompts={prompts} client={client} onDone={setProfile} />
+        ) : profile && shellView === "settings" ? (
+          <SettingsOverview
+            me={me}
+            sessions={sessions}
+            theme={themePreference}
+            onThemeChange={setThemePreference}
+            onBack={() => setShellView("app")}
+            onEditProfile={() => openProfileSection("profile-details")}
+            onOpenPrivacy={() => openProfileSection("privacy-settings")}
+            onOpenSessions={() => openProfileSection("account-sessions")}
+            onOpenAccountData={() => openProfileSection("account-data")}
+            onOpenNotifications={() => navigateTab("messages")}
+          />
+        ) : profile && shellView === "viewProfile" ? (
+          <MyProfileView
+            profile={profile}
+            onBack={() => setShellView("app")}
+            onEdit={() => openProfileSection("profile-details")}
+          />
         ) : profile ? (
           tab === "discover" ? (
             <Discover />
@@ -966,7 +1026,7 @@ function ProfileEditor({
         {/* Right Column: Identity, Passions, Prompts, Photos, Privacy, Devices */}
         <div className="profile-col-side">
           {/* Identity & Bio */}
-          <section className="card">
+          <section className="card" id="profile-details" tabIndex={-1}>
             <span className="eyebrow">IDENTITY & BIO</span>
             <h2>Personal Details</h2>
             <Field label="Display name" id="editDisplayName" value={displayName} setValue={setDisplayName} />
@@ -1084,7 +1144,7 @@ function ProfileEditor({
           </section>
 
           {/* Privacy Settings */}
-          <section className="card">
+          <section className="card" id="privacy-settings" tabIndex={-1}>
             <span className="eyebrow">CONTROLS</span>
             <h2>Privacy & Reachability</h2>
             <p className="muted">Adjust who can find and message you on the platform.</p>
@@ -1095,7 +1155,7 @@ function ProfileEditor({
           <Devices sessions={sessions} revoke={revoke} />
 
           {/* Danger Zone: Account Deletion */}
-          <section className="card" style={{ borderColor: "rgba(239, 68, 68, 0.3)" }}>
+          <section className="card" id="account-data" tabIndex={-1} style={{ borderColor: "rgba(239, 68, 68, 0.3)" }}>
             <span className="eyebrow" style={{ color: "var(--danger)" }}>DATA PRIVACY & REMOVAL</span>
             <h2>Delete Account and Personal Data</h2>
             <p className="muted">
@@ -1376,7 +1436,7 @@ function parseUserAgent(ua?: string): { name: string; browser: string; icon: str
 
 function Devices({ sessions, revoke }: { sessions: DeviceSession[]; revoke: (id: string) => void }) {
   return (
-    <section className="card" style={{ marginTop: 24 }}>
+    <section className="card" id="account-sessions" tabIndex={-1} style={{ marginTop: 24 }}>
       <div className="card-header">
         <div>
           <span className="eyebrow">SECURITY</span>
