@@ -583,7 +583,7 @@ function ProfileHome({
             accessibilityRole="button"
             accessibilityLabel="Close account menu"
             onPress={() => setAccountMenuOpen(false)}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
           />
           <View style={{
             width: "100%",
