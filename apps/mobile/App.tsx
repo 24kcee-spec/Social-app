@@ -8,6 +8,7 @@ import {
   Alert,
   Image,
   Linking,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -342,6 +343,8 @@ function ProfileHome({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<NavTab>("discover");
+  const [shellView, setShellView] = useState<"app" | "settings" | "viewProfile">("app");
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [pendingIn, setPendingIn] = useState(0);
   const [unread, setUnread] = useState(0);
   const [chatWith, setChatWith] = useState<string | null>(null);
@@ -444,6 +447,10 @@ function ProfileHome({
           <Text style={[styles.headerTitle, { color: colors.text, fontSize: type.title.size }]}>
             {!profile.onboardingCompleted
               ? "Complete Profile"
+              : shellView === "settings"
+              ? "Settings"
+              : shellView === "viewProfile"
+              ? "Your profile"
               : tab === "discover"
               ? "Discover"
               : tab === "connections"
@@ -456,7 +463,38 @@ function ProfileHome({
           </Text>
         </View>
 
-        <Button label="Sign out" secondary compact onPress={handleSignOut} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Open account menu for ${profile.displayName || "member"}`}
+          accessibilityHint="Opens profile, settings and sign-out options"
+          onPress={() => setAccountMenuOpen(true)}
+          style={({ pressed }) => ({
+            minHeight: 44,
+            maxWidth: 150,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+            paddingHorizontal: 8,
+            borderWidth: 1,
+            borderColor: colors.line,
+            borderRadius: 24,
+            backgroundColor: colors.surfaceSunken,
+            opacity: pressed ? 0.75 : 1,
+          })}
+        >
+          <View style={{
+            width: 32, height: 32, borderRadius: 16,
+            alignItems: "center", justifyContent: "center",
+            backgroundColor: colors.accentSoft,
+          }}>
+            <Text style={{ color: colors.accent, fontWeight: "800" }}>
+              {profile.displayName.trim().charAt(0).toUpperCase() || "S"}
+            </Text>
+          </View>
+          <Text numberOfLines={1} style={{ maxWidth: 78, color: colors.text, fontSize: 12, fontWeight: "700" }}>
+            {profile.displayName || "Account"} ⌄
+          </Text>
+        </Pressable>
       </View>
 
       {error ? <Banner tone="error">{error}</Banner> : null}
@@ -475,7 +513,21 @@ function ProfileHome({
           </ScrollView>
         ) : (
           <ScrollView contentContainerStyle={styles.scroll}>
-            {tab === "discover" ? (
+            {shellView === "settings" ? (
+              <MobileSettingsOverview
+                me={me}
+                onBack={() => setShellView("app")}
+                onEditProfile={() => { setShellView("app"); setTab("profile"); }}
+                onOpenNotifications={() => { setShellView("app"); setTab("messages"); }}
+                onViewProfile={() => setShellView("viewProfile")}
+              />
+            ) : shellView === "viewProfile" ? (
+              <MobileMyProfileView
+                profile={profile}
+                onBack={() => setShellView("app")}
+                onEdit={() => { setShellView("app"); setTab("profile"); }}
+              />
+            ) : tab === "discover" ? (
               <Discover />
             ) : tab === "connections" ? (
               <Connections
@@ -508,14 +560,216 @@ function ProfileHome({
       </View>
 
       {/* Bottom Navigation (Only visible when onboarding is complete) */}
-      {profile.onboardingCompleted ? (
+      {profile.onboardingCompleted && shellView === "app" ? (
         <BottomNav
           currentTab={tab}
-          onSelectTab={setTab}
+          onSelectTab={(nextTab) => { setShellView("app"); setTab(nextTab); }}
           pendingConnectionsCount={pendingIn}
           unreadMessagesCount={unread}
         />
       ) : null}
+
+      <Modal
+        visible={accountMenuOpen}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setAccountMenuOpen(false)}
+      >
+        <View style={{ flex: 1, justifyContent: "flex-start", alignItems: "flex-end", padding: 16, paddingTop: 70, backgroundColor: "rgba(8,12,22,0.48)" }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Close account menu"
+            onPress={() => setAccountMenuOpen(false)}
+            style={StyleSheet.absoluteFillObject}
+          />
+          <View style={{
+            width: "100%",
+            maxWidth: 360,
+            padding: 16,
+            gap: 10,
+            borderWidth: 1,
+            borderColor: colors.line,
+            borderRadius: radius.lg,
+            backgroundColor: colors.surface,
+          }}>
+            <Text style={{ color: colors.text, fontSize: 18, fontWeight: "800" }}>Your account</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 13, marginBottom: 4 }}>{me.email || "Email not available"}</Text>
+            <Button label="View my profile" secondary onPress={() => { setAccountMenuOpen(false); setShellView("viewProfile"); }} />
+            <Button label="Edit profile" secondary onPress={() => { setAccountMenuOpen(false); setShellView("app"); setTab("profile"); }} />
+            <Button label="Settings" onPress={() => { setAccountMenuOpen(false); setShellView("settings"); }} />
+            <Button label="Sign out" danger secondary onPress={() => { setAccountMenuOpen(false); handleSignOut(); }} />
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+/* ==========================================================================
+   Settings Overview (mobile)
+   ========================================================================== */
+
+function MobileSettingsOverview({
+  me,
+  onBack,
+  onEditProfile,
+  onOpenNotifications,
+  onViewProfile,
+}: {
+  me: Me;
+  onBack: () => void;
+  onEditProfile: () => void;
+  onOpenNotifications: () => void;
+  onViewProfile: () => void;
+}) {
+  const { colors, radius, space, type, preference, setPreference, shadow } = useTheme();
+  return (
+    <View style={{ gap: space[3] }}>
+      <View style={{ marginBottom: space[2], flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.eyebrow, { color: colors.accent }]}>YOUR SPACE</Text>
+          <Text style={[styles.h1, { color: colors.text, fontSize: type.title.size }]}>Settings</Text>
+          <Text style={[styles.muted, { color: colors.textMuted }]}>Manage your profile, privacy, notifications and appearance.</Text>
+        </View>
+        <Button label="Back" secondary compact onPress={onBack} />
+      </View>
+
+      <View style={[styles.card, { padding: space[4], borderRadius: radius.md, borderColor: colors.line, backgroundColor: colors.surface }, shadow[1]]}>
+        <Text style={[styles.eyebrow, { color: colors.accent }]}>SIGNED IN</Text>
+        <Text style={[styles.h2, { color: colors.text }]}>{me.email || "Email not available"}</Text>
+        <Text style={[styles.muted, { color: colors.textMuted }]}>Account status: {me.status}</Text>
+      </View>
+
+      <MobileSettingRow
+        title="View my profile"
+        description="See the saved profile details other members can read."
+        onPress={onViewProfile}
+      />
+      <MobileSettingRow
+        title="Profile & privacy"
+        description="Edit your bio, interests, photos, conversation prompts and discovery permissions."
+        onPress={onEditProfile}
+      />
+      <MobileSettingRow
+        title="Notifications"
+        description="Open Messages to manage the notification preferences currently supported."
+        onPress={onOpenNotifications}
+      />
+
+      <View style={[styles.card, { padding: space[4], borderRadius: radius.md, borderColor: colors.line, backgroundColor: colors.surface }, shadow[1]]}>
+        <Text style={[styles.eyebrow, { color: colors.accent }]}>PERSONALISE</Text>
+        <Text style={[styles.h2, { color: colors.text }]}>Appearance</Text>
+        <Text style={[styles.muted, { color: colors.textMuted }]}>System follows your device setting. Your selection is saved on this device.</Text>
+        <View style={[styles.themeRow, { marginTop: space[3] }]}>
+          {(["system", "light", "dark"] as ThemePreference[]).map((mode) => (
+            <Chip
+              key={mode}
+              label={mode === "system" ? "◐ System" : mode === "light" ? "☀ Light" : "☾ Dark"}
+              selected={preference === mode}
+              onPress={() => setPreference(mode)}
+            />
+          ))}
+        </View>
+      </View>
+
+      <View style={[styles.card, { padding: space[4], borderRadius: radius.md, borderColor: colors.line, backgroundColor: colors.surface }, shadow[1]]}>
+        <Text style={[styles.eyebrow, { color: colors.accent }]}>HELP & SAFETY</Text>
+        <Text style={[styles.h2, { color: colors.text }]}>Keep your space comfortable</Text>
+        <Text style={[styles.muted, { color: colors.textMuted }]}>Use Report and Block where available on profiles, connections, messages, groups and events. Account deletion and active-session management are not yet available from this mobile settings screen.</Text>
+      </View>
+    </View>
+  );
+}
+
+function MobileSettingRow({ title, description, onPress }: { title: string; description: string; onPress: () => void }) {
+  const { colors, radius, space, shadow } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.card,
+        {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: space[3],
+          padding: space[4],
+          borderRadius: radius.md,
+          borderColor: colors.line,
+          backgroundColor: colors.surface,
+          opacity: pressed ? 0.78 : 1,
+        },
+        shadow[1],
+      ]}
+    >
+      <View style={{ flex: 1, gap: 4 }}>
+        <Text style={{ color: colors.text, fontWeight: "800", fontSize: 15 }}>{title}</Text>
+        <Text style={{ color: colors.textMuted, fontSize: 13, lineHeight: 19 }}>{description}</Text>
+      </View>
+      <Text style={{ color: colors.accent, fontSize: 18 }}>→</Text>
+    </Pressable>
+  );
+}
+
+function MobileMyProfileView({ profile, onBack, onEdit }: { profile: Profile; onBack: () => void; onEdit: () => void }) {
+  const { colors, radius, space, type, shadow } = useTheme();
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    if (!profile.media[0]) { setMediaUrl(null); return () => { active = false; }; }
+    void getSignedMediaUrl(profile.media[0].thumbnailPath)
+      .then((url) => { if (active) setMediaUrl(url); })
+      .catch(() => { if (active) setMediaUrl(null); });
+    return () => { active = false; };
+  }, [profile.media]);
+
+  const socialLabels: Record<SocialStyle, string> = {
+    small_group: "Small groups",
+    one_to_one: "One-to-one",
+    text_first: "Text-first",
+    voice_first: "Voice-first",
+    low_pressure: "Low pressure",
+  };
+  return (
+    <View style={{ gap: space[3] }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.eyebrow, { color: colors.accent }]}>PROFILE PREVIEW</Text>
+          <Text style={[styles.h1, { color: colors.text, fontSize: type.title.size }]}>Your profile</Text>
+        </View>
+        <Button label="Back" secondary compact onPress={onBack} />
+      </View>
+      <View style={[styles.card, { padding: space[4], borderRadius: radius.md, borderColor: colors.line, backgroundColor: colors.surface, gap: space[3] }, shadow[1]]}>
+        {mediaUrl ? (
+          <Image source={{ uri: mediaUrl }} accessibilityLabel={`${profile.displayName} profile photo`} style={{ width: "100%", aspectRatio: 1, maxHeight: 320, borderRadius: radius.md }} />
+        ) : (
+          <View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: colors.accentSoft, alignItems: "center", justifyContent: "center", alignSelf: "center" }}>
+            <Text style={{ color: colors.accent, fontSize: 32, fontWeight: "800" }}>{profile.displayName.trim().charAt(0).toUpperCase() || "S"}</Text>
+          </View>
+        )}
+        <Text style={[styles.h1, { color: colors.text, fontSize: type.title.size }]}>{profile.displayName}</Text>
+        <Text style={[styles.muted, { color: colors.textMuted }]}>{profile.bio || "No bio added yet."}</Text>
+        <Text style={[styles.h2, { color: colors.text, marginTop: space[2] }]}>How I like to connect</Text>
+        <View style={styles.chipsRow}>
+          {profile.socialStyles.map((style) => <Chip key={style} label={socialLabels[style]} selected />)}
+          {!profile.socialStyles.length ? <Text style={[styles.muted, { color: colors.textMuted }]}>No connection preferences added yet.</Text> : null}
+        </View>
+        <Text style={[styles.h2, { color: colors.text, marginTop: space[2] }]}>Interests</Text>
+        <View style={styles.chipsRow}>
+          {profile.interests.map((interest) => <Chip key={interest.id} label={interest.name} selected={false} />)}
+          {!profile.interests.length ? <Text style={[styles.muted, { color: colors.textMuted }]}>No interests added yet.</Text> : null}
+        </View>
+        <Text style={[styles.h2, { color: colors.text, marginTop: space[2] }]}>Conversation starters</Text>
+        {profile.prompts.filter((p) => p.answer.trim()).map((p) => (
+          <View key={p.promptId} style={{ padding: space[3], borderRadius: radius.sm, borderWidth: 1, borderColor: colors.line, gap: 4 }}>
+            <Text style={{ color: colors.accent, fontWeight: "800" }}>{p.prompt}</Text>
+            <Text style={{ color: colors.text }}>{p.answer}</Text>
+          </View>
+        ))}
+        {!profile.prompts.some((p) => p.answer.trim()) ? <Text style={[styles.muted, { color: colors.textMuted }]}>Add a prompt answer to help others start a conversation.</Text> : null}
+        <Button label="Edit profile" onPress={onEdit} style={{ marginTop: space[2] }} />
+      </View>
     </View>
   );
 }
