@@ -1,4 +1,4 @@
-import { AuthClientError, type Me } from "@sp/auth-client";
+import { AuthClientError, type DeviceSession, type Me } from "@sp/auth-client";
 import type { Interest, Profile, PromptDefinition, ShareTargetType, SocialStyle } from "@sp/types";
 import type { OnboardingInput } from "@sp/validation";
 import { StatusBar } from "expo-status-bar";
@@ -25,6 +25,7 @@ import { Discover } from "./src/Discover";
 import { getMessagingClient } from "./src/messagingClient";
 import { Messages } from "./src/Messages";
 import { deleteProfileImage, getProfileClient, getSignedMediaUrl, pickAndUploadProfileImage } from "./src/profile";
+import { getSafetyClient } from "./src/safetyClient";
 import { ThemeProvider, useTheme, type ThemePreference } from "./src/theme";
 import { Avatar, Banner, BottomNav, Button, Chip, Field, type NavTab } from "./src/ui";
 import { parseShareUrl, type ProfileClient } from "@sp/profile-client";
@@ -520,6 +521,7 @@ function ProfileHome({
                 onEditProfile={() => { setShellView("app"); setTab("profile"); }}
                 onOpenNotifications={() => { setShellView("app"); setTab("messages"); }}
                 onViewProfile={() => setShellView("viewProfile")}
+                onSignOut={onSignOut}
               />
             ) : shellView === "viewProfile" ? (
               <MobileMyProfileView
@@ -616,21 +618,97 @@ function MobileSettingsOverview({
   onEditProfile,
   onOpenNotifications,
   onViewProfile,
+  onSignOut,
 }: {
   me: Me;
   onBack: () => void;
   onEditProfile: () => void;
   onOpenNotifications: () => void;
   onViewProfile: () => void;
+  onSignOut: () => void;
 }) {
   const { colors, radius, space, type, preference, setPreference, shadow } = useTheme();
+  const [sessions, setSessions] = useState<DeviceSession[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(true);
+  const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [securityError, setSecurityError] = useState<string | null>(null);
+
+  const loadSessions = useCallback(async () => {
+    setSessionsLoading(true);
+    setSecurityError(null);
+    try {
+      setSessions(await auth.listSessions());
+    } catch (err) {
+      setSecurityError(errorMessage(err));
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadSessions();
+  }, [loadSessions]);
+
+  const confirmRevokeSession = (session: DeviceSession) => {
+    Alert.alert(
+      "Sign out this device?",
+      "That device will need to sign in again to use this account.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign out",
+          style: "destructive",
+          onPress: async () => {
+            setRevokingSessionId(session.id);
+            setSecurityError(null);
+            try {
+              await auth.revokeSession(session.id);
+              await loadSessions();
+            } catch (err) {
+              setSecurityError(errorMessage(err));
+            } finally {
+              setRevokingSessionId(null);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const confirmDeleteAccount = () => {
+    Alert.alert(
+      "Delete account and personal data?",
+      "This permanently deletes your Social account and cannot be undone. Make sure you really want to continue.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete account",
+          style: "destructive",
+          onPress: async () => {
+            setDeletingAccount(true);
+            setSecurityError(null);
+            try {
+              await getSafetyClient().deleteAccount();
+              await auth.signOut().catch(() => undefined);
+              onSignOut();
+            } catch (err) {
+              setSecurityError(errorMessage(err));
+              setDeletingAccount(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <View style={{ gap: space[3] }}>
       <View style={{ marginBottom: space[2], flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.eyebrow, { color: colors.accent }]}>YOUR SPACE</Text>
           <Text style={[styles.h1, { color: colors.text, fontSize: type.title.size }]}>Settings</Text>
-          <Text style={[styles.muted, { color: colors.textMuted }]}>Manage your profile, privacy, notifications and appearance.</Text>
+          <Text style={[styles.muted, { color: colors.textMuted }]}>Manage your profile, privacy, account security, notifications and appearance.</Text>
         </View>
         <Button label="Back" secondary compact onPress={onBack} />
       </View>
@@ -657,6 +735,68 @@ function MobileSettingsOverview({
         onPress={onOpenNotifications}
       />
 
+      <View style={[styles.card, { padding: space[4], borderRadius: radius.md, borderColor: colors.line, backgroundColor: colors.surface, gap: space[3] }, shadow[1]]}>
+        <View style={{ gap: 4 }}>
+          <Text style={[styles.eyebrow, { color: colors.accent }]}>SECURITY</Text>
+          <Text style={[styles.h2, { color: colors.text }]}>Account & security</Text>
+          <Text style={[styles.muted, { color: colors.textMuted }]}>Review where your account is signed in and end sessions you no longer recognize.</Text>
+        </View>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+          <Text style={{ color: colors.text, fontWeight: "700", flex: 1 }}>Active sessions</Text>
+          <Button label={sessionsLoading ? "Loading…" : "Refresh"} compact secondary onPress={() => void loadSessions()} disabled={sessionsLoading || revokingSessionId !== null} />
+        </View>
+        {securityError ? <Banner tone="error">{securityError}</Banner> : null}
+        {sessionsLoading ? (
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8 }}>
+            <ActivityIndicator color={colors.accent} />
+            <Text style={[styles.muted, { color: colors.textMuted }]}>Loading active sessions…</Text>
+          </View>
+        ) : sessions.length ? (
+          <View style={{ gap: space[2] }}>
+            {sessions.map((session) => (
+              <View key={session.id} style={{ borderWidth: 1, borderColor: colors.line, borderRadius: radius.sm, padding: space[3], gap: 8 }}>
+                <View style={{ gap: 3 }}>
+                  <Text style={{ color: colors.text, fontWeight: "700" }}>
+                    {session.current ? "This device" : "Signed-in device"}
+                  </Text>
+                  <Text style={[styles.muted, { color: colors.textMuted, fontSize: 12 }]} numberOfLines={2}>
+                    {session.userAgent || "Device details unavailable"}
+                  </Text>
+                  <Text style={[styles.muted, { color: colors.textMuted, fontSize: 12 }]}>
+                    Last active {new Date(session.lastSeenAt).toLocaleString()}
+                  </Text>
+                </View>
+                {!session.current ? (
+                  <Button
+                    label={revokingSessionId === session.id ? "Signing out…" : "Sign out this device"}
+                    secondary
+                    danger
+                    compact
+                    disabled={revokingSessionId !== null || deletingAccount}
+                    onPress={() => confirmRevokeSession(session)}
+                  />
+                ) : (
+                  <Text style={{ color: colors.accent, fontSize: 12, fontWeight: "700" }}>Current session</Text>
+                )}
+              </View>
+            ))}
+          </View>
+        ) : (
+          <Text style={[styles.muted, { color: colors.textMuted }]}>No active sessions were returned.</Text>
+        )}
+        <View style={{ borderTopWidth: 1, borderTopColor: colors.line, paddingTop: space[3], gap: 8 }}>
+          <Text style={[styles.h2, { color: colors.text }]}>Delete account</Text>
+          <Text style={[styles.muted, { color: colors.textMuted }]}>Permanently delete your Social account and personal data. This cannot be undone.</Text>
+          <Button
+            label={deletingAccount ? "Deleting account…" : "Delete my account"}
+            danger
+            secondary
+            onPress={confirmDeleteAccount}
+            disabled={deletingAccount || revokingSessionId !== null}
+          />
+        </View>
+      </View>
+
       <View style={[styles.card, { padding: space[4], borderRadius: radius.md, borderColor: colors.line, backgroundColor: colors.surface }, shadow[1]]}>
         <Text style={[styles.eyebrow, { color: colors.accent }]}>PERSONALISE</Text>
         <Text style={[styles.h2, { color: colors.text }]}>Appearance</Text>
@@ -676,12 +816,11 @@ function MobileSettingsOverview({
       <View style={[styles.card, { padding: space[4], borderRadius: radius.md, borderColor: colors.line, backgroundColor: colors.surface }, shadow[1]]}>
         <Text style={[styles.eyebrow, { color: colors.accent }]}>HELP & SAFETY</Text>
         <Text style={[styles.h2, { color: colors.text }]}>Keep your space comfortable</Text>
-        <Text style={[styles.muted, { color: colors.textMuted }]}>Use Report and Block where available on profiles, connections, messages, groups and events. Account deletion and active-session management are not yet available from this mobile settings screen.</Text>
+        <Text style={[styles.muted, { color: colors.textMuted }]}>Use Report and Block where available on profiles, connections, messages, groups and events. You can manage your current sessions and account-removal request here.</Text>
       </View>
     </View>
   );
 }
-
 function MobileSettingRow({ title, description, onPress }: { title: string; description: string; onPress: () => void }) {
   const { colors, radius, space, shadow } = useTheme();
   return (
