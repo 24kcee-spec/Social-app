@@ -7,7 +7,7 @@ describe("poolConfig", () => {
   });
   it("uses TLS for remote databases and strips sslmode from the URL", () => {
     const c = poolConfig("postgresql://u:p@aws-0-eu.pooler.supabase.com:5432/postgres?sslmode=require");
-    expect(c.ssl).toEqual({ rejectUnauthorized: false });
+    expect(c.ssl).toEqual({ rejectUnauthorized: true });
     expect(c.connectionString).not.toContain("sslmode");
   });
 });
