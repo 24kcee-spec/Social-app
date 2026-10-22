@@ -33,20 +33,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Ambient glow orb behind app */
-body::before {
-  content: "";
-  position: fixed;
-  top: -150px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 900px;
-  height: 500px;
-  background: radial-gradient(circle at 50% 30%, rgba(99, 102, 241, 0.15), transparent 70%);
-  pointer-events: none;
-  z-index: 0;
-}
-
 /* Skip link for accessibility */
 .skip-link {
   position: absolute;
@@ -176,20 +162,20 @@ p {
   width: 36px;
   height: 36px;
   border-radius: 12px;
-  background: var(--accent-gradient);
+  background: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
   font-size: 1.25rem;
   font-weight: 800;
-  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.45);
+  box-shadow: 0 4px 16px rgba(31, 79, 216, 0.45);
   animation: pulse-subtle 4s ease-in-out infinite;
 }
 
 @keyframes pulse-subtle {
-  0%, 100% { transform: scale(1); box-shadow: 0 4px 16px rgba(99, 102, 241, 0.45); }
-  50% { transform: scale(1.04); box-shadow: 0 6px 22px rgba(139, 92, 246, 0.6); }
+  0%, 100% { transform: scale(1); box-shadow: 0 4px 16px rgba(31, 79, 216, 0.45); }
+  50% { transform: scale(1.04); box-shadow: 0 6px 22px rgba(31, 79, 216, 0.6); }
 }
 
 .brand-text-wrap {
@@ -202,9 +188,9 @@ p {
   font-size: 1.25rem;
   font-weight: 850;
   letter-spacing: -0.04em;
-  background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  background: none;
+  -webkit-background-clip: initial;
+  -webkit-text-fill-color: currentColor;
 }
 
 .brand-tagline {
@@ -251,7 +237,7 @@ p {
 .nav-pill-btn.active {
   color: #fff;
   background: var(--accent-gradient);
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 4px 14px rgba(31, 79, 216, 0.35);
 }
 
 .nav-pill-btn.active span {
@@ -457,14 +443,14 @@ button, .button {
   color: #fff;
   background: var(--accent-gradient);
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 4px 14px rgba(31, 79, 216, 0.3);
   transition: all var(--dur-fast) cubic-bezier(0.16, 1, 0.3, 1);
   text-decoration: none;
 }
 
 button:hover:not(:disabled) {
   transform: translateY(-1.5px);
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.45);
+  box-shadow: 0 6px 20px rgba(31, 79, 216, 0.45);
 }
 
 button:active:not(:disabled) {
@@ -497,7 +483,7 @@ button.compact {
 }
 
 button.danger {
-  background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+  background: var(--danger);
   color: #fff;
   box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
 }
@@ -554,7 +540,7 @@ button.link:hover {
    ========================================================================== */
 
 .hero-banner {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(168, 85, 247, 0.08) 50%, rgba(16, 185, 129, 0.06) 100%);
+  background: linear-gradient(135deg, rgba(31, 79, 216, 0.12) 0%, rgba(31, 79, 216, 0.08) 50%, rgba(16, 185, 129, 0.06) 100%);
   border: 1px solid var(--accent-line);
   border-radius: var(--radius-xl);
   padding: 28px 36px;
@@ -827,7 +813,7 @@ button.link:hover {
 .live-card-hero {
   height: 190px;
   position: relative;
-  background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #EC4899 100%);
+  background: var(--accent);
   display: flex;
   align-items: flex-end;
   padding: 20px;
@@ -955,7 +941,7 @@ button.link:hover {
   background: var(--accent-gradient);
   color: #fff;
   border-color: transparent;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 2px 8px rgba(31, 79, 216, 0.35);
 }
 
 /* ==========================================================================
@@ -1220,7 +1206,7 @@ button.link:hover {
   padding: 10px 16px;
   max-width: 72%;
   margin-left: auto;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 2px 8px rgba(31, 79, 216, 0.25);
   font-size: 0.92rem;
 }
 

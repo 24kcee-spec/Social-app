@@ -66,7 +66,7 @@ export default function Home() {
     return (
       <div className="auth-wrapper">
         <div className="auth-card-editorial" style={{ textAlign: "center" }}>
-          <div className="brand-mark" style={{ margin: "0 auto 16px" }}>✦</div>
+          <div className="brand-mark" style={{ margin: "0 auto 16px" }}>S</div>
           <h2>Loading your space…</h2>
           <p className="muted">Retrieving your account details.</p>
         </div>
@@ -149,7 +149,7 @@ function AuthForm() {
     <div className="auth-wrapper">
       <div className="auth-card-editorial">
         <header>
-          <div className="auth-brand-badge">✦ Social</div>
+          <div className="auth-brand-badge">S · SOCIAL</div>
           <h1>{mode === "signin" ? "Welcome back" : mode === "signup" ? "Join the community" : "Reset your password"}</h1>
           <p className="muted">
             {mode === "signin"
@@ -381,7 +381,7 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
       <header className="app-header" role="banner">
         <div className="app-header-inner">
           <div className="brand-group" onClick={() => setTab("discover")}>
-            <div className="brand-mark-glow" aria-hidden="true">✦</div>
+            <div className="brand-mark-glow" aria-hidden="true">S</div>
             <div className="brand-text-wrap">
               <span className="brand-title">Social</span>
               <span className="brand-tagline">Low-pressure connection</span>
