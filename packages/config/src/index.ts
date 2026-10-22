@@ -18,9 +18,6 @@ const apiEnvSchema = z
     if (env.APP_ENV !== "local" && !env.SUPABASE_URL) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["SUPABASE_URL"], message: "Required when APP_ENV is staging or production" });
     }
-    if (env.APP_ENV !== "local" && !env.SUPABASE_PUBLISHABLE_KEY) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["SUPABASE_PUBLISHABLE_KEY"], message: "Required when APP_ENV is staging or production" });
-    }
   });
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>;

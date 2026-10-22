@@ -18,10 +18,6 @@ describe("loadApiEnv", () => {
     expect(() => loadApiEnv({ SUPABASE_URL: "not-a-url" })).toThrow(/SUPABASE_URL/);
     expect(loadApiEnv({ SUPABASE_URL: "https://abc.supabase.co", SUPABASE_PUBLISHABLE_KEY: "sb_publishable_x" }).SUPABASE_URL).toBe("https://abc.supabase.co");
   });
-  it("requires the publishable key outside local", () => {
-    expect(() => loadApiEnv({ APP_ENV: "production", DATABASE_URL: "postgresql://localhost/db", SUPABASE_URL: "https://abc.supabase.co" })).toThrow(/SUPABASE_PUBLISHABLE_KEY/);
-    expect(loadApiEnv({ APP_ENV: "production", DATABASE_URL: "postgresql://localhost/db", SUPABASE_URL: "https://abc.supabase.co", SUPABASE_PUBLISHABLE_KEY: "sb_publishable_x" }).APP_ENV).toBe("production");
-  });
   it("rejects bad ports and unknown environments", () => {
     expect(() => loadApiEnv({ PORT: "99999" })).toThrow(/PORT/);
     expect(() => loadApiEnv({ APP_ENV: "prod" })).toThrow(/APP_ENV/);

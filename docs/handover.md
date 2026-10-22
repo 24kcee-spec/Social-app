@@ -1,6 +1,6 @@
 # Handover (update after every delivery)
 
-> **Current delivery (22 Oct 2026):** Phase 0 hardening is staged on branch `fix/phase0-runtime-readiness` for local verification; `main` is unchanged. This branch enables remote Postgres certificate validation, makes readiness fail closed when checks/configuration are missing, and requires the Supabase publishable key outside local mode. Do not merge until `pnpm verify`, the web production build, and local API readiness checks have been run and their output reviewed.
+> **Live recovery follow-up (22 Oct 2026):** After the deployment showed a misleading “Supabase configuration required” page, the account-load error UI was corrected to describe API connectivity and offer retry/sign-out actions. The TLS verification change and global production publishable-key requirement were rolled back for operational compatibility. Remote DB certificate verification remains a required security follow-up that must be completed with the correct CA and live connection testing.
 
 
 | Field | Value |

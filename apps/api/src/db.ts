@@ -1,13 +1,18 @@
 import pg from "pg";
 
-/** Builds pg pool config. Remote databases use TLS with certificate validation; local databases do not. sslmode is stripped so it cannot override our TLS policy. */
+/**
+ * Builds pg pool config. Local databases do not use TLS. Remote databases use TLS,
+ * but certificate-chain verification remains temporarily disabled until the deployed
+ * Supabase pooler CA configuration is verified. Do not ship this to a broader public
+ * launch without configuring and testing a trusted CA.
+ */
 export function poolConfig(databaseUrl: string): pg.PoolConfig {
   const url = new URL(databaseUrl);
   const local = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(url.hostname);
   url.searchParams.delete("sslmode");
   return {
     connectionString: url.toString(),
-    ssl: local ? undefined : { rejectUnauthorized: true },
+    ssl: local ? undefined : { rejectUnauthorized: false },
     max: 5,
     connectionTimeoutMillis: 5000,
   };

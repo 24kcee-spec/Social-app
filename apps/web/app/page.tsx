@@ -82,16 +82,29 @@ export default function Home() {
     return (
       <div className="auth-wrapper">
         <div className="auth-card-editorial">
-          <div className="auth-brand-badge">Configuration Notice</div>
-          <h2>Supabase configuration required</h2>
+          <div className="auth-brand-badge">Connection problem</div>
+          <h2>We couldn’t load your account</h2>
           <p className="muted">
-            To connect to your live database, add your credentials to <code>.env</code>:
+            Your session could not reach the Social-app API. Check your connection and try again.
+            If this keeps happening, the API service may be temporarily unavailable.
           </p>
-          <pre className="notice" style={{ background: "var(--surface-sunken)", fontSize: "0.82rem", overflowX: "auto" }}>
-            SUPABASE_URL=...{"\n"}SUPABASE_PUBLISHABLE_KEY=...
-          </pre>
-          <button className="auth-submit-btn secondary" onClick={() => setPhase({ kind: "signedOut" })}>
-            View Auth & Entry Screens →
+          <button
+            className="auth-submit-btn"
+            onClick={() => {
+              setPhase({ kind: "loading" });
+              void load();
+            }}
+          >
+            Try again
+          </button>
+          <button
+            className="auth-submit-btn secondary"
+            onClick={() => {
+              void getAuth().signOut().catch(() => undefined);
+              setPhase({ kind: "signedOut" });
+            }}
+          >
+            Back to sign in
           </button>
         </div>
       </div>

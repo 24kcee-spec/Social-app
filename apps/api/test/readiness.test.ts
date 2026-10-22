@@ -4,11 +4,10 @@ import { createApiConfigurationCheck } from "../src/readiness";
 const validConfig = {
   DATABASE_URL: "postgresql://localhost:5432/social",
   SUPABASE_URL: "https://example.supabase.co",
-  SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test",
 };
 
 describe("API configuration readiness", () => {
-  it("passes when all required API settings are present", async () => {
+  it("passes when database and Supabase URLs are configured", async () => {
     await expect(createApiConfigurationCheck(validConfig)()).resolves.toBeUndefined();
   });
 
@@ -20,7 +19,7 @@ describe("API configuration readiness", () => {
     await expect(createApiConfigurationCheck({ ...validConfig, SUPABASE_URL: undefined })()).rejects.toThrow(/SUPABASE_URL/);
   });
 
-  it("fails when the Supabase publishable key is missing", async () => {
-    await expect(createApiConfigurationCheck({ ...validConfig, SUPABASE_PUBLISHABLE_KEY: undefined })()).rejects.toThrow(/SUPABASE_PUBLISHABLE_KEY/);
+  it("does not require a publishable key for asymmetric JWT verification", async () => {
+    await expect(createApiConfigurationCheck(validConfig)()).resolves.toBeUndefined();
   });
 });
