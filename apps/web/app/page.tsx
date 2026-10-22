@@ -41,8 +41,29 @@ export default function Home() {
     try {
       const auth = getAuth();
       if (!(await auth.isSignedIn())) return setPhase({ kind: "signedOut" });
-      const [me, sessions] = await Promise.all([auth.fetchMe(), auth.listSessions()]);
-      setPhase({ kind: "signedIn", me, sessions });
+      // The account record is essential; session inventory is secondary. Render the app
+      // as soon as /me succeeds, then fill in the session list without blocking the shell.
+      const me = await auth.fetchMe();
+      setPhase({ kind: "signedIn", me, sessions: [] });
+      void auth.listSessions().then((sessions) => {
+        setPhase((current) =>
+          current.kind === "signedIn" && current.me.id === me.id
+            ? { ...current, sessions }
+            : current,
+        );
+      }).catch((sessionsError: unknown) => {
+        // A temporarily unavailable session inventory must not hide the user's account.
+        // An invalid/revoked token is different: return them to the signed-out screen.
+        if (sessionsError instanceof AuthClientError &&
+          (sessionsError.code === "unauthorized" || sessionsError.code === "not_signed_in")) {
+          void auth.signOut().catch(() => undefined);
+          setPhase((current) =>
+            current.kind === "signedIn" && current.me.id === me.id
+              ? { kind: "signedOut" }
+              : current,
+          );
+        }
+      });
     } catch (err) {
       if (err instanceof AuthClientError && (err.code === "unauthorized" || err.code === "not_signed_in")) {
         await getAuth().signOut().catch(() => undefined);
@@ -84,9 +105,9 @@ export default function Home() {
         <div className="auth-card-editorial">
           <div className="auth-brand-badge">Connection problem</div>
           <h2>We couldn’t load your account</h2>
+          <p className="muted" role="alert">{phase.message}</p>
           <p className="muted">
-            Your session could not reach the Social-app API. Check your connection and try again.
-            If this keeps happening, the API service may be temporarily unavailable.
+            Check your connection and try again. If this keeps happening, the API service may be temporarily unavailable.
           </p>
           <button
             className="auth-submit-btn"

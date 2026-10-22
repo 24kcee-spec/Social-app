@@ -77,6 +77,24 @@ describe("auth client", () => {
     const auth = createAuthClient({ supabaseUrl: "https://x.supabase.co", publishableKey: "pk", apiUrl: "http://api", backend: backend(), fetchImpl: async () => { throw new Error("down"); } });
     await expect(auth.fetchMe()).rejects.toMatchObject({ code: "service_unavailable" });
   });
+  it("aborts a stalled API request and reports service_unavailable", async () => {
+    const auth = createAuthClient({
+      supabaseUrl: "https://x.supabase.co",
+      publishableKey: "pk",
+      apiUrl: "http://api",
+      apiTimeoutMs: 5,
+      backend: backend(),
+      fetchImpl: async (_url, init) => new Promise<Response>((_resolve, reject) => {
+        const signal = init?.signal;
+        if (signal?.aborted) {
+          reject(new Error("aborted"));
+          return;
+        }
+        signal?.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+      }),
+    });
+    await expect(auth.fetchMe()).rejects.toMatchObject({ code: "service_unavailable" });
+  });
   it("does not treat generic 404 reset errors as account enumeration", async () => {
     const auth = createAuthClient({ supabaseUrl: "https://x.supabase.co", publishableKey: "pk", apiUrl: "http://api", backend: backend({ resetPasswordForEmail: async () => ({ data: null, error: { status: 400, message: "email not found" } }) }) });
     await expect(auth.requestPasswordReset("nobody@example.com", "http://localhost:3000/reset")).resolves.toBeUndefined();

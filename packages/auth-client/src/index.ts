@@ -72,6 +72,8 @@ export interface AuthClientConfig {
   detectSessionInUrl?: boolean;
   backend?: AuthBackend;
   fetchImpl?: typeof fetch;
+  /** Maximum time to wait for an API response before reporting it unavailable. Defaults to 12 seconds. */
+  apiTimeoutMs?: number;
 }
 
 export interface SupabaseClientConfig {
@@ -116,6 +118,7 @@ export function createAuthClient(config: AuthClientConfig) {
   const backend: AuthBackend = config.backend ?? (supabase.auth as unknown as AuthBackend);
   const doFetch = config.fetchImpl ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
   const api = config.apiUrl.replace(/\/+$/, "");
+  const apiTimeoutMs = config.apiTimeoutMs ?? 12_000;
 
   async function accessToken(): Promise<string> {
     const { data } = await backend.getSession();
@@ -126,14 +129,19 @@ export function createAuthClient(config: AuthClientConfig) {
   async function apiCall<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T | undefined> {
     const token = await accessToken();
     let res: Response;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), apiTimeoutMs);
     try {
       res = await doFetch(`${api}${path}`, {
         method: init.method ?? "GET",
         headers: { authorization: `Bearer ${token}`, ...(init.body === undefined ? {} : { "content-type": "application/json" }) },
         ...(init.body === undefined ? {} : { body: JSON.stringify(init.body) }),
+        signal: controller.signal,
       });
     } catch {
       throw new AuthClientError("service_unavailable");
+    } finally {
+      clearTimeout(timeout);
     }
     if (res.status === 401) throw new AuthClientError("unauthorized");
     if (!res.ok) throw new AuthClientError(res.status >= 500 ? "service_unavailable" : "unknown");
