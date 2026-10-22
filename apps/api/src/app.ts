@@ -35,6 +35,8 @@ export function buildApp(opts: AppOptions = {}): FastifyInstance {
   // Readiness: dependencies are reachable. 503 if any check fails. Error details are never returned to callers.
   app.get("/ready", async (_req, reply): Promise<ReadyResponse> => {
     const results: Record<string, "ok" | "fail"> = {};
+    // An empty check set must never be treated as ready (every([]) is true).
+    if (Object.keys(checks).length === 0) results.configuration = "fail";
     for (const [name, check] of Object.entries(checks)) {
       try {
         await check();

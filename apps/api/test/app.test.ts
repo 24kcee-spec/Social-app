@@ -11,10 +11,10 @@ describe("GET /health", () => {
 });
 
 describe("GET /ready", () => {
-  it("is ready with no checks configured", async () => {
+  it("is not ready when no checks are configured", async () => {
     const res = await buildApp().inject({ method: "GET", url: "/ready" });
-    expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ status: "ready", checks: {} });
+    expect(res.statusCode).toBe(503);
+    expect(res.json()).toEqual({ status: "not_ready", checks: { configuration: "fail" } });
   });
   it("is ready when every check passes", async () => {
     const app = buildApp({ readinessChecks: { database: async () => {} } });

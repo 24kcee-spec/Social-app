@@ -1,5 +1,6 @@
 import { loadApiEnv } from "@sp/config";
 import { buildApp, type ReadinessCheck } from "./app";
+import { createApiConfigurationCheck } from "./readiness";
 import { registerAuth } from "./auth/plugin";
 import { resolveCorsOrigins } from "./cors";
 import { createAuthStore } from "./auth/store";
@@ -25,7 +26,9 @@ import { registerShare } from "./share/plugin";
 loadDotEnv();
 const env = loadApiEnv(process.env);
 
-const readinessChecks: Record<string, ReadinessCheck> = {};
+const readinessChecks: Record<string, ReadinessCheck> = {
+  configuration: createApiConfigurationCheck(env),
+};
 const pool = env.DATABASE_URL ? makePool(env.DATABASE_URL) : undefined;
 if (pool) {
   readinessChecks.database = async () => {

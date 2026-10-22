@@ -116,3 +116,7 @@ Profiles gain a structured `verification_level` column (`unverified`, `email_ver
 
 ## D-038 | 2026-10-12 | User Account Deletion & Right to Be Forgotten
 Under `POST /me/delete-account`, a user can permanently request data erasure. The user status is set to `'deleted'`, personal profile fields are anonymized to "Deleted User" with bio and verification cleared, active sessions in `user_sessions` and push tokens in `device_push_tokens` are deleted, personal photos, prompt answers, interests, group memberships, and event RSVPs are permanently purged.
+
+
+## D-039 | 2026-10-22 | Fail closed on API readiness and remote PostgreSQL TLS
+Remote PostgreSQL connections must use TLS with certificate validation enabled. Use Node.js trusted CA roots; if the selected provider requires a private CA, add that CA to Node's trusted certificates (for example with NODE_EXTRA_CA_CERTS) rather than disabling verification. API readiness must fail when no checks are configured or when database/Supabase configuration needed for authenticated product routes is missing. Staging and production require DATABASE_URL, SUPABASE_URL, and SUPABASE_PUBLISHABLE_KEY before startup.

@@ -1,5 +1,8 @@
 # Handover (update after every delivery)
 
+> **Current delivery (22 Oct 2026):** Phase 0 hardening is staged on branch `fix/phase0-runtime-readiness` for local verification; `main` is unchanged. This branch enables remote Postgres certificate validation, makes readiness fail closed when checks/configuration are missing, and requires the Supabase publishable key outside local mode. Do not merge until `pnpm verify`, the web production build, and local API readiness checks have been run and their output reviewed.
+
+
 | Field | Value |
 |---|---|
 | Current phase | Phase 9 - safety, reporting everywhere, moderation queue, group roles & member moderation, verification levels, and GDPR data deletion. All tests passing (358 passing). |
