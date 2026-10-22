@@ -1,9 +1,18 @@
 // `pnpm --filter @sp/api run setup-check` - checks your .env + Supabase setup. Never prints secret values.
+import { readdir } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { loadApiEnv } from "@sp/config";
+import { compareMigrationLedger } from "./migration-status";
 import { makePool } from "./db";
 import { loadDotEnv } from "./env";
 
 loadDotEnv();
+const migrationsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "migrations");
+const migrationFiles = (await readdir(migrationsDir))
+  .filter((name) => /^\d{4}_[a-z0-9_]+\.sql$/.test(name))
+  .sort();
+
 let bad = 0;
 const ok = (m: string) => console.log(`  OK    ${m}`);
 const fail = (m: string, hint?: string) => { bad++; console.log(`  FAIL  ${m}${hint ? `\n        -> ${hint}` : ""}`); };
@@ -21,6 +30,38 @@ if (env) {
     try {
       await pool.query("select 1");
       ok("Database reachable");
+
+      // Check the ledger explicitly; table-existence checks alone can miss unapplied later phases.
+      const ledger = await pool.query("select to_regclass('public.schema_migrations') as ledger");
+      if (!ledger.rows[0]?.ledger) {
+        fail("Migration ledger table is missing", "Confirm DATABASE_URL points to the intended Supabase project before applying migrations.");
+      } else {
+        const appliedRows = await pool.query<{ name: string }>("select name from public.schema_migrations order by name");
+        const migrationStatus = compareMigrationLedger(migrationFiles, appliedRows.rows.map((row) => row.name));
+        if (migrationStatus.pending.length === 0 && migrationStatus.unknownApplied.length === 0 && !migrationStatus.outOfOrder) {
+          ok(`Migration ledger matches all ${migrationFiles.length} SQL migration files`);
+        } else {
+          if (migrationStatus.pending.length > 0) {
+            fail(
+              `Pending migrations (${migrationStatus.pending.length}): ${migrationStatus.pending.join(", ")}`,
+              "Review every listed file before running pnpm --filter @sp/api run migrate; the command applies all pending migrations, not just one phase.",
+            );
+          }
+          if (migrationStatus.unknownApplied.length > 0) {
+            fail(
+              `Database ledger contains migration names absent from this checkout: ${migrationStatus.unknownApplied.join(", ")}`,
+              "Check whether the database was migrated from a different branch/version before applying anything.",
+            );
+          }
+          if (migrationStatus.outOfOrder) {
+            fail(
+              "Database migration history has a gap: a later migration is recorded after an earlier migration that is missing.",
+              "Inspect schema_migrations and the migration files; do not attempt to repair the ledger by hand.",
+            );
+          }
+        }
+      }
+
       const t = await pool.query("select to_regclass('public.users') as users, to_regclass('public.user_sessions') as sessions, to_regclass('public.profiles') as profiles, to_regclass('public.interests') as interests, to_regclass('public.user_interests') as user_interests, to_regclass('public.prompt_catalog') as prompt_catalog, to_regclass('public.prompt_answers') as prompt_answers, to_regclass('public.profile_media') as profile_media");
       const row = t.rows[0] as Record<string, unknown> | undefined;
       const phase1 = Boolean(row?.users && row?.sessions);
@@ -52,10 +93,14 @@ if (env) {
         const pub = await pool.query("select count(*)::int as count from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'messages'");
         Number(pub.rows[0]?.count) === 1 ? ok("Messages are in the supabase_realtime publication") : fail("Messages are not published to Realtime (live updates will not arrive until the page is refreshed)", "Run docs/supabase-phase5-security.sql in Supabase SQL Editor");
       }
-      const phase6 = (await pool.query("select to_regclass('public.event_messages') as t")).rows[0]?.t;
+      const community = await pool.query("select to_regclass('public.groups') as groups, to_regclass('public.group_members') as group_members, to_regclass('public.activities') as activities, to_regclass('public.group_activities') as group_activities, to_regclass('public.events') as events, to_regclass('public.event_rsvps') as event_rsvps, to_regclass('public.event_messages') as event_messages");
+      const communityTables = community.rows[0] as Record<string, unknown> | undefined;
+      const communityNames = ["groups", "group_members", "activities", "group_activities", "events", "event_rsvps", "event_messages"];
+      const phase6 = communityNames.every((name) => Boolean(communityTables?.[name]));
+      phase6 ? ok("Phase 6 community tables exist (groups, events, RSVPs and event chat)") : fail("Phase 6 community tables are missing", "Review the migration ledger above; do not assume migrate will apply only 0007/0008.");
       if (phase6) {
         const rls6 = await pool.query("select relname from pg_class where relnamespace = 'public'::regnamespace and relname in ('groups','group_members','activities','group_activities','events','event_rsvps','event_messages') and relrowsecurity");
-        rls6.rows.length === 7 ? ok("RLS enabled on all Phase 6 community tables") : fail("RLS is not enabled on all Phase 6 tables (event_messages would be readable with the public key)", "Run: pnpm --filter @sp/api run migrate   (applies 0008_community_hardening.sql)");
+        rls6.rows.length === 7 ? ok("RLS enabled on all Phase 6 community tables") : fail("RLS is not enabled on all Phase 6 tables (event_messages would be readable with the public key)", "Inspect migration 0008_community_hardening.sql and apply only after reviewing the pending list.");
       }
       const phase9 = (await pool.query("select to_regclass('public.reports') as t")).rows[0]?.t;
       if (phase9) {
