@@ -1,41 +1,53 @@
-# Social-app 🚀
+# Social-app
 
-> Better than Instagram and TikTok.
+> A full-stack social platform built as a TypeScript monorepo.
 
-A social platform monorepo built with TypeScript, Next.js, Expo, and Fastify.
+Social-app is the codebase for a social connection product spanning web, mobile, and API layers. The current focus is on the core social experience: profiles, community, discover, connections, messaging, and safer sharing/reporting flows, with a shared design system and domain contracts across apps.
 
-<p align="center">
-  <img src="https://img.shields.io/github/repo-size/24kcee-spec/Social-app" alt="Repo size" />
-  <img src="https://img.shields.io/github/languages/top/24kcee-spec/Social-app" alt="Top language" />
-  <img src="https://img.shields.io/github/license/24kcee-spec/Social-app" alt="License" />
-</p>
+## What this repo includes
 
-Social-app is a full-stack social product in one monorepo. It includes:
-
-- Web app: Next.js frontend
-- Mobile app: Expo + React Native
-- API: Fastify backend
-- Shared packages: config, types, validation, auth, profile tooling
-- Docs and migration assets for product, delivery, and DB work
+- Web app: Next.js + React for the product experience
+- Mobile app: Expo + React Native for Android/iOS coverage
+- API: Fastify backend with health/readiness checks and migration tooling
+- Shared packages: auth, profile helpers, validation, shared types, and design tokens
+- Monorepo tooling: pnpm workspaces and TypeScript project config
 
 ---
 
-## Why this project exists
+## Current architecture
 
-The goal is to create a modern, social-first platform with a clean product experience across web and mobile while keeping the codebase maintainable through a monorepo structure.
-
-It is organized so that:
-
-- the API owns the backend logic
-- the web and mobile apps share common domain contracts
-- shared validation and types reduce drift across products
-- docs are close to the codebase for easier onboarding and delivery
+```text
+Social-app/
+├── apps/
+│   ├── api/            # Fastify backend and server logic
+│   ├── mobile/         # Expo React Native app
+│   └── web/            # Next.js frontend
+├── packages/
+│   ├── auth-client/    # Auth utilities
+│   ├── config/         # Shared config helpers
+│   ├── design-tokens/  # Design tokens and design-system primitives
+│   ├── profile-client/  # Profile-related helpers
+│   ├── types/          # Shared domain types
+│   └── validation/     # Shared validation logic
+├── docs/               # Project docs and delivery notes
+├── DESIGN.md           # Current design system and UI rules
+├── .env.example
+├── .gitignore
+├── .nvmrc
+├── .prettierrc
+├── package.json
+├── pnpm-lock.yaml
+├── pnpm-workspace.yaml
+├── tsconfig.base.json
+├── README.md
+└── scripts/
+```
 
 ---
 
 ## Tech stack
 
-### Frontend
+### Web
 - Next.js
 - React
 - TypeScript
@@ -45,21 +57,23 @@ It is organized so that:
 - React Native
 - TypeScript
 
-### Backend
+### API
 - Fastify
-- TypeScript
-- PostgreSQL / Supabase-style architecture
+- PostgreSQL-ready architecture
+- JWT/JWE support via `jose`
+- `pg` client for database access
 
 ### Shared tooling
 - pnpm workspaces
-- TypeScript workspace config
+- TypeScript
 - Vitest for tests
+- `@sp/design-tokens` for consistent UI primitives
 
 ---
 
 ## Quick start
 
-### 1) Clone the repository
+### 1) Clone the repo
 
 ```bash
 git clone https://github.com/24kcee-spec/Social-app.git
@@ -79,9 +93,9 @@ pnpm install
 cp .env.example .env
 ```
 
-Then update `.env` with the required values such as database and provider settings.
+Then update `.env` with the values required by the API and app configuration.
 
-### 4) Run the API
+### 4) Run the backend
 
 ```bash
 pnpm --filter @sp/api dev
@@ -101,266 +115,78 @@ pnpm --filter @sp/mobile start
 
 ---
 
-## Project structure
-
-```text
-Social-app/
-├── apps/
-│   ├── api/             # Backend server
-│   ├── web/             # Next.js frontend
-│   └── mobile/          # Expo / React Native app
-├── packages/
-│   ├── auth-client/     # Auth client utilities
-│   ├── profile-client/  # Profile-related helpers
-│   ├── config/          # Shared config helpers
-│   ├── types/           # Shared TypeScript types
-│   └── validation/      # Shared validation logic
-├── docs/                # Handover, decisions, SQL, product docs
-├── scripts/             # Smoke & automation scripts
-├── .github/             # GitHub workflows
-├── .env.example
-├── .editorconfig
-├── .gitignore
-├── .nvmrc
-├── .prettierrc
-├── package.json
-├── pnpm-lock.yaml
-├── pnpm-workspace.yaml
-├── tsconfig.base.json
-├── README.md
-├── smoke-next-phase.ps1
-└── ...
-```
-
----
-
-## Monorepo breakdown
-
-### apps/api
-Responsible for backend services, migrations, and API endpoints.
-
-Key commands:
+## Common commands
 
 ```bash
-pnpm --filter @sp/api dev
-pnpm --filter @sp/api migrate
-pnpm --filter @sp/api test
-pnpm --filter @sp/api typecheck
-pnpm --filter @sp/api setup-check
-```
-
-Important files:
-
-- `apps/api/src/server.ts`
-- `apps/api/src/app.ts`
-- `apps/api/src/migrate-cli.ts`
-- `apps/api/src/doctor.ts`
-- `apps/api/migrations/`
-
-### apps/web
-Responsible for the website UI and product pages.
-
-Key commands:
-
-```bash
-pnpm --filter @sp/web dev
-pnpm --filter @sp/web build
-pnpm --filter @sp/web start
-pnpm --filter @sp/web typecheck
-```
-
-Important files:
-
-- `apps/web/app/page.tsx`
-- `apps/web/app/layout.tsx`
-- `apps/web/app/community.tsx`
-- `apps/web/app/messages.tsx`
-- `apps/web/app/discover.tsx`
-
-### apps/mobile
-Responsible for the mobile app experience across devices.
-
-Key commands:
-
-```bash
-pnpm --filter @sp/mobile start
-pnpm --filter @sp/mobile android
-pnpm --filter @sp/mobile ios
-pnpm --filter @sp/mobile typecheck
-```
-
-Important files:
-
-- `apps/mobile/App.tsx`
-- `apps/mobile/src/Community.tsx`
-- `apps/mobile/src/Discover.tsx`
-- `apps/mobile/src/Messages.tsx`
-- `apps/mobile/src/auth.ts`
-
-### packages/*
-These are shared workspace packages used by apps.
-
-- `@sp/auth-client` — auth helpers and Supabase integration
-- `@sp/profile-client` — profile related logic
-- `@sp/config` — config/env helpers
-- `@sp/types` — shared domain types
-- `@sp/validation` — shared validation logic
-
----
-
-## Developer workflow
-
-### Run everything together
-
-```bash
+# install dependencies
 pnpm install
+
+# typecheck all workspaces
+pnpm typecheck
+
+# run tests across the monorepo
+pnpm test
+
+# verify the repo
 pnpm verify
-```
 
-`pnpm verify` runs project-wide typecheck and tests.
-
-### Typical local flow
-
-```bash
-cp .env.example .env
-pnpm install
-pnpm --filter @sp/api migrate
+# run the API
 pnpm --filter @sp/api dev
+
+# run the web app
 pnpm --filter @sp/web dev
+
+# run the mobile app
 pnpm --filter @sp/mobile start
 ```
 
 ---
 
-## Environment variables
+## Product focus right now
 
-Copy the example file:
+This repo is not just a generic starter app. The current implementation is centered around social product flows, including:
 
-```bash
-cp .env.example .env
-```
+- profiles and identity
+- connections and follow logic
+- community and discovery experiences
+- messaging and conversations
+- sharing/reporting actions
+- moderation and safety-oriented UX
+- consistent cross-platform design system
 
-Then set the required values for your local environment. These typically include:
-
-- database connection details
-- Supabase credentials
-- platform/service secrets
-- any app-specific runtime settings
-
-Do not commit `.env` files.
+The design direction is documented in `DESIGN.md`, which defines the actual implementation rules and token system used in the app.
 
 ---
 
-## Testing and quality checks
+## Project structure keys
 
-At the repo root:
-
-```bash
-pnpm verify
-```
-
-This is the main verification command used by the monorepo.
-
-Package-level checks:
-
-```bash
-pnpm --filter @sp/api test
-pnpm --filter @sp/auth-client test
-pnpm --filter @sp/profile-client test
-```
-
----
-
-## Documentation
-
-This repo includes a full documentation set for contributors and maintainers:
-
-- `docs/REPO_MAP.md` — repository map
-- `docs/ARCHITECTURE.md` — architecture overview
-- `docs/BUILD-HANDOVER.md` — build and handover notes
-- `docs/decisions.md` — engineering decisions
-- `docs/handover.md` — project handoff docs
-- `docs/incident-playbook.md` — incident flow
-- `docs/product-definition.md` — product context
-
----
-
-## Features in this repo
-
-The app structure suggests product domains such as:
-
-- profile
-- authentication
-- messaging
-- connections
-- community/social feed
-- discovery
-- safety / moderation
-- sharing/reporting
-
----
-
-## Useful commands
-
-```bash
-# install everything
-pnpm install
-
-# verify project-wide
-pnpm verify
-
-# run API
-pnpm --filter @sp/api dev
-
-# run web app
-pnpm --filter @sp/web dev
-
-# run mobile app
-pnpm --filter @sp/mobile start
-
-# build web
-pnpm --filter @sp/web build
-
-# apply migrations
-pnpm --filter @sp/api migrate
-```
+- `apps/web/` — Next.js frontend and product UI
+- `apps/mobile/` — Expo mobile app
+- `apps/api/` — Fastify backend, DB access, health checks, migrations
+- `packages/design-tokens/` — design system tokens
+- `packages/types/` — shared domain models and DTOs
+- `packages/validation/` — common validation rules
+- `packages/auth-client/` — auth integration helpers
+- `packages/profile-client/` — profile functions and client logic
+- `docs/` — repository and delivery notes
 
 ---
 
 ## Notes
 
-- Node version is defined in `.nvmrc` and package engine settings.
-- The monorepo uses pnpm workspaces for package linking.
-- PowerShell smoke scripts are present in `scripts/` for validation flows.
-- The repo is still in active product-build mode, so docs are intentionally detailed to support onboarding and delivery.
+- The monorepo uses `pnpm` workspaces.
+- Node version is set in `.nvmrc`.
+- The app is actively being built and refined around core social product flows.
+- The repo contains implementation-focused docs and design guidance rather than a placeholder marketing README.
 
 ---
 
 ## Contributing
 
-We welcome contributions. Before opening a PR:
+When making changes, keep the work aligned with the current social product goals and shared contracts across the monorepo.
 
-- run `pnpm verify`
-- keep changes scoped and clear
-- add migration files when the schema changes
-- update docs when architecture or workflow changes
+Recommended checks before submitting work:
 
----
-
-## License
-
-This project is open for development and contribution under the repository default license.
-
----
-
-## Final note
-
-This project is designed to be a full-stack social platform with a clean separation of responsibilities across web, mobile, API, and shared packages.
-
-If you want, I can also turn this into a more premium GitHub landing page version with:
-
-- a hero banner
-- a feature grid
-- a better “why use this” section
-- a stronger product branding tone
-- a shorter, more polished developer-focused version
+```bash
+pnpm verify
+```
