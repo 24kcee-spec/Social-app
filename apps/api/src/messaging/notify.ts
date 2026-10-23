@@ -33,7 +33,7 @@ export interface PushSender {
 export const noopPushSender: PushSender = { send: async () => {} };
 
 /** Lock screens are public: payload text stays generic and contains no personal message content. */
-export const GENERIC_MESSAGE_PUSH = { title: "New message", body: "Open Social to read it" } as const;
+export const GENERIC_MESSAGE_PUSH = { title: "New message", body: "Open the app to read it" } as const;
 export const GENERIC_CONNECTION_PUSH = { title: "New connection request", body: "Open Social to see the details" } as const;
 
 type PushEvent = { senderId: string; recipientId: string };
