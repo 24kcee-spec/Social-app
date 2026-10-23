@@ -22,7 +22,11 @@ function summary(r: Record<string, unknown>, prefix = ""): PersonSummary {
   return { userId: text(r[`${prefix}id`]), displayName: text(r[`${prefix}display_name`]), bio: text(r[`${prefix}bio`] ?? ""), thumbnailPath: r[`${prefix}thumb`] ? text(r[`${prefix}thumb`]) : null };
 }
 
-export function createConnectionsStore(db: SqlRunner, clock: () => Date = () => new Date()) {
+export interface ConnectionRequestHooks {
+  onRequestSent?: (event: { requestId: string; senderId: string; recipientId: string }) => Promise<unknown>;
+}
+
+export function createConnectionsStore(db: SqlRunner, clock: () => Date = () => new Date(), hooks: ConnectionRequestHooks = {}) {
   /** Requests expire quietly after 14 days; done lazily so no scheduler is needed for the pilot. */
   async function expireStale(now: Date) {
     await db.query(`update connection_requests set status = 'expired' where status = 'pending' and expires_at <= $1::timestamptz`, [now.toISOString()]);
@@ -145,6 +149,9 @@ export function createConnectionsStore(db: SqlRunner, clock: () => Date = () => 
           [senderId, recipientId, rendered.kind, rendered.ref, rendered.choice, rendered.text, now.toISOString()]);
         await db.query(`insert into discovery_events (viewer_id, candidate_id, event_type, created_at) values ($1, $2, 'interact', $3::timestamptz)`, [senderId, recipientId, now.toISOString()]);
         await milestone(senderId, "first_request_sent", now);
+        if (hooks.onRequestSent) {
+          await hooks.onRequestSent({ requestId: rows[0]!.id, senderId, recipientId }).catch(() => undefined);
+        }
         return { status: "pending", requestId: rows[0]!.id };
       } catch (err) {
         if ((err as { code?: string }).code === "23505") throw new ConnectionError("already_pending", "There is already an open request between you");
