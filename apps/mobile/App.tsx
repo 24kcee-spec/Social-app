@@ -24,6 +24,7 @@ import { Connections } from "./src/Connections";
 import { Discover } from "./src/Discover";
 import { getMessagingClient } from "./src/messagingClient";
 import { Messages } from "./src/Messages";
+import { NotificationSettingsScreen } from "./src/NotificationSettings";
 import { deleteProfileImage, getProfileClient, getSignedMediaUrl, pickAndUploadProfileImage } from "./src/profile";
 import { getSafetyClient } from "./src/safetyClient";
 import { ThemeProvider, useTheme, type ThemePreference } from "./src/theme";
@@ -344,7 +345,7 @@ function ProfileHome({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<NavTab>("discover");
-  const [shellView, setShellView] = useState<"app" | "settings" | "viewProfile">("app");
+  const [shellView, setShellView] = useState<"app" | "settings" | "viewProfile" | "notifications">("app");
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [pendingIn, setPendingIn] = useState(0);
   const [unread, setUnread] = useState(0);
@@ -450,6 +451,8 @@ function ProfileHome({
               ? "Complete Profile"
               : shellView === "settings"
               ? "Settings"
+              : shellView === "notifications"
+              ? "Notifications"
               : shellView === "viewProfile"
               ? "Your profile"
               : tab === "discover"
@@ -519,10 +522,12 @@ function ProfileHome({
                 me={me}
                 onBack={() => setShellView("app")}
                 onEditProfile={() => { setShellView("app"); setTab("profile"); }}
-                onOpenNotifications={() => { setShellView("app"); setTab("messages"); }}
+                onOpenNotifications={() => setShellView("notifications")}
                 onViewProfile={() => setShellView("viewProfile")}
                 onSignOut={onSignOut}
               />
+            ) : shellView === "notifications" ? (
+              <NotificationSettingsScreen onBack={() => setShellView("settings")} />
             ) : shellView === "viewProfile" ? (
               <MobileMyProfileView
                 profile={profile}
@@ -731,7 +736,7 @@ function MobileSettingsOverview({
       />
       <MobileSettingRow
         title="Notifications"
-        description="Open Messages to manage the notification preferences currently supported."
+        description="Manage new-message and connection-request notification preferences."
         onPress={onOpenNotifications}
       />
 
