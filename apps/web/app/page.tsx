@@ -16,6 +16,7 @@ import { deleteProfileImage, getProfileClient, getSignedMediaUrl, uploadProfileI
 import { AccountMenu } from "./account-menu";
 import { MyProfileView } from "./my-profile-view";
 import { SettingsOverview, type ThemePreference } from "./settings-overview";
+import { NotificationSettingsPage } from "./notification-settings";
 
 const SOCIAL_STYLE_LABELS: Record<SocialStyle, string> = {
   small_group: "Small groups",
@@ -33,7 +34,7 @@ const PRIVACY_OPTIONS = {
 type Mode = "signin" | "signup" | "forgot";
 const APP_TABS = ["discover", "connections", "messages", "community", "profile"] as const;
 type AppTab = (typeof APP_TABS)[number];
-type ShellView = "app" | "settings" | "viewProfile";
+type ShellView = "app" | "settings" | "viewProfile" | "notifications";
 type AppNavigation = { shellView: ShellView; tab: AppTab; focusSection: string | null };
 const PROFILE_EDITOR_SECTIONS = ["profile-details", "privacy-settings", "account-sessions", "account-data"] as const;
 
@@ -48,6 +49,7 @@ function readAppNavigation(search: string): AppNavigation {
   const view = params.get("view");
 
   if (view === "settings") return { shellView: "settings", tab, focusSection: null };
+  if (view === "notifications") return { shellView: "notifications", tab, focusSection: null };
   if (view === "profile-preview") return { shellView: "viewProfile", tab, focusSection: null };
 
   const requestedSection = params.get("section");
@@ -65,6 +67,7 @@ function navigationHref(currentHref: string, navigation: AppNavigation): string 
   url.searchParams.delete("next");
 
   if (navigation.shellView === "settings") url.searchParams.set("view", "settings");
+  if (navigation.shellView === "notifications") url.searchParams.set("view", "notifications");
   if (navigation.shellView === "viewProfile") url.searchParams.set("view", "profile-preview");
   if (navigation.tab !== "discover") url.searchParams.set("tab", navigation.tab);
   if (navigation.focusSection && PROFILE_EDITOR_SECTIONS.includes(navigation.focusSection as (typeof PROFILE_EDITOR_SECTIONS)[number])) {
@@ -678,7 +681,11 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
             onOpenPrivacy={() => openProfileSection("privacy-settings")}
             onOpenSessions={() => openProfileSection("account-sessions")}
             onOpenAccountData={() => openProfileSection("account-data")}
-            onOpenNotifications={() => navigateTab("messages")}
+            onOpenNotifications={() => applyNavigation({ shellView: "notifications", tab, focusSection: null })}
+          />
+        ) : profile && shellView === "notifications" ? (
+          <NotificationSettingsPage
+            onBack={() => applyNavigation({ shellView: "settings", tab, focusSection: null }, "replace")}
           />
         ) : profile && shellView === "viewProfile" ? (
           <MyProfileView

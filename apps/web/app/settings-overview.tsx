@@ -73,7 +73,7 @@ export function SettingsOverview({
         </button>
         <button className="settings-tile" type="button" onClick={onOpenNotifications}>
           <span className="settings-tile-icon" aria-hidden="true">♧</span>
-          <span className="settings-tile-copy"><strong>Notifications</strong><small>Open your message area to manage currently supported notification preferences.</small></span>
+          <span className="settings-tile-copy"><strong>Notifications</strong><small>Manage new-message and connection-request notification preferences.</small></span>
           <span className="settings-tile-arrow" aria-hidden="true">→</span>
         </button>
       </div>
