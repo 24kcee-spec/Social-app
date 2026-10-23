@@ -1,6 +1,6 @@
 "use client";
 
-import type { ConversationView, NotificationSettings } from "@sp/types";
+import type { ConversationView } from "@sp/types";
 import { applyReadWatermark, mergeMessages, newClientTag, type ThreadMessage } from "@sp/profile-client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { errorMessage } from "../lib/auth";
@@ -52,7 +52,6 @@ export function Messages({
   const [conversations, setConversations] = useState<ConversationView[]>([]);
   const [photos, setPhotos] = useState<Record<string, string>>({});
   const [openId, setOpenId] = useState<string | null>(null);
-  const [settings, setSettings] = useState<NotificationSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -60,9 +59,8 @@ export function Messages({
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [list, s] = await Promise.all([client.listConversations(), client.getNotificationSettings()]);
+      const list = await client.listConversations();
       setConversations(list);
-      setSettings(s);
       onUnread?.(list.reduce((n, c) => n + c.unreadCount, 0));
       const people = list.filter((c) => c.other.thumbnailPath);
       const pairs = await Promise.all(
@@ -109,18 +107,6 @@ export function Messages({
       cancelled = true;
     };
   }, [openWithUserId, client]);
-
-  async function toggleSetting(key: keyof NotificationSettings, value: boolean) {
-    if (!settings) return;
-    const next = { ...settings, [key]: value };
-    setSettings(next);
-    try {
-      await client.setNotificationSettings(next);
-    } catch (err) {
-      setSettings(settings);
-      setError(errorMessage(err));
-    }
-  }
 
   const filteredConversations = conversations.filter((c) =>
     c.other.displayName.toLowerCase().includes(search.toLowerCase())
@@ -212,30 +198,7 @@ export function Messages({
             </ul>
 
             {/* Notification settings toggle strip */}
-            {settings && (
-              <div style={{ padding: 14, borderTop: "1px solid var(--line)", background: "var(--surface)" }}>
-                <span className="eyebrow" style={{ fontSize: "0.7rem", marginBottom: 6 }}>NOTIFICATIONS</span>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", fontSize: "0.82rem" }}>
-                    <span>New message alerts</span>
-                    <input
-                      type="checkbox"
-                      checked={settings.messages}
-                      onChange={(e) => void toggleSetting("messages", e.target.checked)}
-                    />
-                  </label>
-                  <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", fontSize: "0.82rem" }}>
-                    <span>When someone says hi</span>
-                    <input
-                      type="checkbox"
-                      checked={settings.connectionRequests}
-                      onChange={(e) => void toggleSetting("connectionRequests", e.target.checked)}
-                    />
-                  </label>
                 </div>
-              </div>
-            )}
-          </div>
 
           {/* Right Pane: Active Chat Thread or Welcome Placeholder */}
           <div className="chat-thread-pane">
