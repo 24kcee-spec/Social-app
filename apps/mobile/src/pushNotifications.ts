@@ -5,6 +5,15 @@ import { Platform } from "react-native";
 import type { PushPlatform } from "@sp/types";
 import { getMessagingClient } from "./messagingClient";
 
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
 const TOKEN_STORAGE_KEY = "@social/push-token";
 export type PushPermissionStatus = "granted" | "undetermined" | "denied" | "unsupported";
 export type PushRegistrationResult = "registered" | "permission-required" | "denied" | "unsupported";
