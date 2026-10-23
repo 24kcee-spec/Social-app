@@ -898,6 +898,7 @@ function ProfileEditor({
   onSaved,
   sessions,
   revoke,
+  onDirtyChange,
 }: {
   profile: Profile;
   interests: Interest[];
@@ -906,6 +907,7 @@ function ProfileEditor({
   onSaved: (profile: Profile) => void;
   sessions: DeviceSession[];
   revoke: (id: string) => void;
+  onDirtyChange: (dirty: boolean) => void;
 }) {
   const [displayName, setDisplayName] = useState(profile.displayName);
   const [bio, setBio] = useState(profile.bio);
@@ -1140,7 +1142,12 @@ function ProfileEditor({
                 }}
               >
                 {profile.media?.[0] && mediaUrls[profile.media[0].id] ? (
-                  <img src={mediaUrls[profile.media[0].id]} alt={profile.displayName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <img
+                    src={mediaUrls[profile.media[0].id]}
+                    alt={profile.displayName}
+                    onError={() => setMediaUrls((current) => ({ ...current, [profile.media[0].id]: "" }))}
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
                 ) : (
                   <span className="profile-card-initial">{profile.displayName.charAt(0).toUpperCase()}</span>
                 )}
@@ -1209,7 +1216,11 @@ function ProfileEditor({
             <article className="profile-card" style={{ margin: 0 }}>
               <div className="profile-card-cover" style={{ height: 240 }}>
                 {profile.media?.[0] && mediaUrls[profile.media[0].id] ? (
-                  <img src={mediaUrls[profile.media[0].id]} alt={displayName} />
+                  <img
+                    src={mediaUrls[profile.media[0].id]}
+                    alt={displayName}
+                    onError={() => setMediaUrls((current) => ({ ...current, [profile.media[0].id]: "" }))}
+                  />
                 ) : (
                   <span className="profile-card-initial">{(displayName || "?").charAt(0).toUpperCase()}</span>
                 )}
@@ -1393,7 +1404,11 @@ function ProfileEditor({
               {profile.media.map((m) => (
                 <div className="photo-tile" key={m.id}>
                   {mediaUrls[m.id] ? (
-                    <img src={mediaUrls[m.id]} alt="Profile photo" />
+                    <img
+                      src={mediaUrls[m.id]}
+                      alt={`Profile photo ${m.sortOrder + 1}`}
+                      onError={() => setMediaUrls((current) => ({ ...current, [m.id]: "" }))}
+                    />
                   ) : (
                     <span className="profile-card-initial">📷</span>
                   )}
