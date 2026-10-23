@@ -13,7 +13,7 @@ import { registerConnections } from "./connections/plugin";
 import { createDiscoveryStore } from "./discovery/store";
 import { registerDiscovery } from "./discovery/plugin";
 import { createMessagingStore } from "./messaging/store";
-import { createMessageNotifier, createExpoPushSender, noopPushSender } from "./messaging/notify";
+import { createConnectionRequestNotifier, createMessageNotifier, createExpoPushSender } from "./messaging/notify";
 import { registerMessaging } from "./messaging/plugin";
 import { loadDotEnv } from "./env";
 import { createCommunityStore } from "./community/store";
@@ -45,10 +45,10 @@ if (pool && env.SUPABASE_URL) {
   const { requireAuth, requireRole } = registerAuth(app, { verify, store });
   registerProfile(app, { requireAuth, store: createProfileStore(db) });
   registerDiscovery(app, { requireAuth, requireRole, store: createDiscoveryStore(db) });
-  registerConnections(app, { requireAuth, requireRole, store: createConnectionsStore(db) });
-  // Push delivery: noopPushSender until real FCM/APNs credentials are wired (pre-pilot step).
-  // The notifier still enforces notification_settings and device tokens, so going live is a one-line swap.
-  const notifier = createMessageNotifier(db, noopPushSender, (msg, err) => app.log.warn({ err }, msg));
+  const pushSender = createExpoPushSender((msg, err) => app.log.warn({ err }, msg), { accessToken: process.env.EXPO_ACCESS_TOKEN });
+  const connectionNotifier = createConnectionRequestNotifier(db, pushSender, (msg, err) => app.log.warn({ err }, msg));
+  registerConnections(app, { requireAuth, requireRole, store: createConnectionsStore(db, undefined, { onRequestSent: connectionNotifier.requestSent }) });
+  const notifier = createMessageNotifier(db, pushSender, (msg, err) => app.log.warn({ err }, msg));
   registerMessaging(app, { requireAuth, store: createMessagingStore(db, undefined, { onMessageSent: notifier.messageSent }) });
   registerCommunity(app, { requireAuth, store: createCommunityStore(db) });
   registerSafety(app, { requireAuth, requireRole, store: createSafetyStore(db) });
