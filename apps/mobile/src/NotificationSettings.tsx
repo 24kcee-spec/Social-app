@@ -1,6 +1,7 @@
 import type { NotificationSettings } from "@sp/types";
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Switch, Text, View } from "react-native";
+import { ActivityIndicator, Linking, Switch, Text, View } from "react-native";
+import { enablePushNotifications, getPushPermissionStatus, type PushPermissionStatus } from "./pushNotifications";
 import { errorMessage } from "./auth";
 import { getMessagingClient } from "./messagingClient";
 import { useTheme } from "./theme";
@@ -14,6 +15,10 @@ export function NotificationSettingsScreen({ onBack }: { onBack: () => void }) {
   const [saving, setSaving] = useState<keyof NotificationSettings | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [pushPermission, setPushPermission] = useState<PushPermissionStatus | "checking">("checking");
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushError, setPushError] = useState<string | null>(null);
+  const [pushNotice, setPushNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -29,7 +34,33 @@ export function NotificationSettingsScreen({ onBack }: { onBack: () => void }) {
 
   useEffect(() => {
     void load();
+    void getPushPermissionStatus().then(setPushPermission).catch((err) => setPushError(errorMessage(err)));
   }, [load]);
+
+  async function enablePhoneAlerts() {
+    setPushBusy(true);
+    setPushError(null);
+    setPushNotice(null);
+    try {
+      const result = await enablePushNotifications();
+      if (result === "registered") {
+        setPushPermission("granted");
+        setPushNotice("Phone alerts are enabled on this device.");
+      } else if (result === "unsupported") {
+        setPushPermission("unsupported");
+      } else if (result === "denied") {
+        setPushPermission("denied");
+        setPushError("Notifications are blocked by your device. Open system settings to allow them.");
+      } else {
+        setPushPermission("undetermined");
+        setPushError("Permission was not granted. You can try again when you are ready.");
+      }
+    } catch (err) {
+      setPushError(errorMessage(err));
+    } finally {
+      setPushBusy(false);
+    }
+  }
 
   async function updatePreference(key: keyof NotificationSettings, value: boolean) {
     if (!settings || saving !== null) return;
@@ -144,13 +175,26 @@ export function NotificationSettingsScreen({ onBack }: { onBack: () => void }) {
           borderColor: colors.line,
           borderRadius: radius.md,
           backgroundColor: colors.surfaceSunken,
-          gap: 5,
+          gap: space[2],
         }}
       >
-        <Text style={{ color: colors.text, fontWeight: "800" }}>About phone alerts</Text>
+        <Text style={{ color: colors.text, fontWeight: "800" }}>Phone alerts on this device</Text>
         <Text style={{ color: colors.textMuted, lineHeight: 20 }}>
-          Your preference choices are stored, but live push delivery is not enabled yet. These settings do not
-          guarantee system notifications on your phone. The Messages area still shows your in-app unread count.
+          {pushPermission === "granted"
+            ? "Device notification permission is enabled. Delivery also depends on the Expo project having valid Android/iOS push credentials."
+            : pushPermission === "unsupported"
+            ? "Phone push registration is supported on the installed Android and iOS app, not in a browser."
+            : "Allow notifications on this device to receive new-message and connection-request alerts."}
+        </Text>
+        {pushError ? <Banner tone="error">{pushError}</Banner> : null}
+        {pushNotice ? <Banner tone="success">{pushNotice}</Banner> : null}
+        {pushPermission === "denied" ? (
+          <Button label="Open device settings" secondary onPress={() => void Linking.openSettings()} disabled={pushBusy} />
+        ) : pushPermission !== "unsupported" ? (
+          <Button label={pushBusy ? "Enabling…" : pushPermission === "granted" ? "Refresh registration" : "Enable phone alerts"} onPress={() => void enablePhoneAlerts()} disabled={pushBusy || pushPermission === "checking"} />
+        ) : null}
+        <Text style={{ color: colors.textMuted, fontSize: 12 }}>
+          Push messages use a generic lock-screen preview. Do not rely on push delivery as the only way to see messages.
         </Text>
       </View>
     </View>
