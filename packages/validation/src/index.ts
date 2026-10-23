@@ -254,3 +254,11 @@ export const updateGroupMemberRoleSchema = z.object({
   role: z.enum(["moderator", "member"]),
 });
 export type UpdateGroupMemberRoleInput = z.infer<typeof updateGroupMemberRoleSchema>;
+
+export const studentVerificationSchema = z.object({
+  studentEmail: z.string().trim().email("Please provide a valid university email"),
+  studentId: z.string().trim().min(3).max(50).optional(),
+  institution: z.string().trim().min(2).max(120).optional(),
+});
+export type StudentVerificationInput = z.infer<typeof studentVerificationSchema>;
+

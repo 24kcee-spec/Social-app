@@ -142,6 +142,7 @@ export interface DiscoveryCard {
   bio: string;
   socialStyles: SocialStyle[];
   messagePermission: MessagePermission;
+  verificationLevel?: VerificationLevel;
   interests: Interest[];
   sharedInterests: Interest[];
   prompts: PromptAnswer[];
@@ -177,6 +178,14 @@ export interface PersonSummary {
   displayName: string;
   bio: string;
   thumbnailPath: string | null;
+  verificationLevel?: VerificationLevel;
+}
+
+export interface StudentVerificationResult {
+  verified: boolean;
+  level: VerificationLevel;
+  message: string;
+  institution?: string;
 }
 
 export interface ConnectionRequestView {

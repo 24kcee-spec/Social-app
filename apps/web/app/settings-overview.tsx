@@ -1,11 +1,12 @@
-"use client";
-
+import { useState } from "react";
 import type { DeviceSession, Me } from "@sp/auth-client";
+import type { Profile } from "@sp/types";
 
 export type ThemePreference = "system" | "light" | "dark";
 
 interface SettingsOverviewProps {
   me: Me;
+  profile?: Profile | null;
   sessions: DeviceSession[];
   theme: ThemePreference;
   onThemeChange: (theme: ThemePreference) => void;
@@ -15,6 +16,7 @@ interface SettingsOverviewProps {
   onOpenSessions: () => void;
   onOpenAccountData: () => void;
   onOpenNotifications: () => void;
+  onVerifyStudent?: (email: string, id?: string, inst?: string) => Promise<void>;
 }
 
 const THEMES: { value: ThemePreference; label: string; icon: string; description: string }[] = [
@@ -25,6 +27,7 @@ const THEMES: { value: ThemePreference; label: string; icon: string; description
 
 export function SettingsOverview({
   me,
+  profile,
   sessions,
   theme,
   onThemeChange,
@@ -34,7 +37,15 @@ export function SettingsOverview({
   onOpenSessions,
   onOpenAccountData,
   onOpenNotifications,
+  onVerifyStudent,
 }: SettingsOverviewProps) {
+  const isStudentVerified = profile?.verificationLevel === "student_verified";
+  const [studentEmail, setStudentEmail] = useState(me.email?.includes(".ac.") || me.email?.includes(".edu") ? me.email : "");
+  const [studentId, setStudentId] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [verifyMsg, setVerifyMsg] = useState<string | null>(null);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+
   return (
     <section className="settings-page" aria-labelledby="settings-title">
       <header className="settings-page-header">
@@ -53,6 +64,75 @@ export function SettingsOverview({
           <p>{me.email || "Email not available"}</p>
           <span className="settings-status">{me.status === "active" ? "Active account" : `Account status: ${me.status}`}</span>
         </div>
+      </section>
+
+      <section className={`verification-status-card ${isStudentVerified ? "verified" : ""}`} aria-labelledby="verification-title">
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span className="eyebrow" style={{ margin: 0 }}>CAMPUS AFFILIATION</span>
+              {isStudentVerified ? (
+                <span className="campus-badge">✓ Campus Verified</span>
+              ) : (
+                <span className="campus-badge" style={{ background: "var(--surface-sunken)", color: "var(--text-muted)", borderColor: "var(--line)" }}>Unverified</span>
+              )}
+            </div>
+            <h2 id="verification-title" style={{ margin: "6px 0 4px" }}>
+              {isStudentVerified ? "National University of Science and Technology (NUST)" : "Verify Student Standing"}
+            </h2>
+            <p className="muted" style={{ margin: 0, fontSize: "0.9rem", maxWidth: 540 }}>
+              {isStudentVerified
+                ? "Your account has official campus-verified student standing. Peers in Discovery, Connections, and Community can see your badge."
+                : "Enter your official student email (@students.nust.ac.zw or recognized academic domain) to unlock your Campus Verified badge and study circles."}
+            </p>
+          </div>
+        </div>
+
+        {!isStudentVerified && onVerifyStudent && (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!studentEmail.trim() || verifying) return;
+              setVerifying(true);
+              setVerifyError(null);
+              setVerifyMsg(null);
+              try {
+                await onVerifyStudent(studentEmail.trim(), studentId.trim() || undefined, "National University of Science and Technology (NUST)");
+                setVerifyMsg("✓ Successfully verified student status! Your Campus Verified badge is now active.");
+              } catch (err: unknown) {
+                setVerifyError(err instanceof Error ? err.message : "Failed to verify. Please make sure you enter a valid university email.");
+              } finally {
+                setVerifying(false);
+              }
+            }}
+            style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, maxWidth: 500 }}
+          >
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <input
+                type="email"
+                placeholder="e.g. n02420280y@students.nust.ac.zw"
+                value={studentEmail}
+                onChange={(e) => setStudentEmail(e.target.value)}
+                required
+                style={{ flex: 1, minWidth: 240, padding: "8px 12px", fontSize: "0.9rem" }}
+              />
+              <input
+                type="text"
+                placeholder="Student ID (e.g. N02420280Y)"
+                value={studentId}
+                onChange={(e) => setStudentId(e.target.value)}
+                style={{ width: 180, padding: "8px 12px", fontSize: "0.9rem" }}
+              />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <button type="submit" disabled={verifying} className="compact" style={{ alignSelf: "flex-start" }}>
+                {verifying ? "Verifying…" : "Verify Student Email"}
+              </button>
+            </div>
+            {verifyMsg && <p className="notice ok" style={{ margin: 0 }}>{verifyMsg}</p>}
+            {verifyError && <p className="notice err" style={{ margin: 0 }}>{verifyError}</p>}
+          </form>
+        )}
       </section>
 
       <div className="settings-tile-grid">

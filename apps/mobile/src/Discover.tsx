@@ -220,9 +220,16 @@ export function Discover() {
               <View style={styles.head}>
                 <Avatar name={card.displayName} url={photos[card.userId]} size="lg" />
                 <View style={styles.headMeta}>
-                  <Text style={[styles.name, { color: colors.text, fontSize: type.title.size }]}>
-                    {card.displayName}
-                  </Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                    <Text style={[styles.name, { color: colors.text, fontSize: type.title.size }]}>
+                      {card.displayName}
+                    </Text>
+                    {card.verificationLevel === "student_verified" ? (
+                      <Badge label="✓ Campus Verified" tone="success" compact />
+                    ) : card.verificationLevel === "trusted" ? (
+                      <Badge label="✓ Verified" tone="accent" compact />
+                    ) : null}
+                  </View>
                   <View style={styles.styleBadgeRow}>
                     {card.socialStyles.map((s) => (
                       <Badge key={s} label={STYLE_LABELS[s]} tone="neutral" compact />

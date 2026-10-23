@@ -174,9 +174,14 @@ export function Messages({
                     />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <span style={{ fontWeight: 650, fontSize: "0.92rem", color: "var(--text)" }}>
-                          {c.other.displayName}
-                        </span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
+                          <span style={{ fontWeight: 650, fontSize: "0.92rem", color: "var(--text)" }}>
+                            {c.other.displayName}
+                          </span>
+                          {c.other.verificationLevel === "student_verified" && (
+                            <span className="campus-badge-dot" title="Campus Verified Student">✓</span>
+                          )}
+                        </div>
                         {c.unreadCount > 0 && <span className="nav-badge">{c.unreadCount}</span>}
                       </div>
                       <p
@@ -364,8 +369,13 @@ function Thread({
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Avatar name={conversation.other.displayName} url={photo} size={42} />
           <div>
-            <div style={{ fontWeight: 700, fontSize: "1.05rem", color: "var(--text)" }}>
-              {conversation.other.displayName}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              <div style={{ fontWeight: 700, fontSize: "1.05rem", color: "var(--text)" }}>
+                {conversation.other.displayName}
+              </div>
+              {conversation.other.verificationLevel === "student_verified" && (
+                <span className="campus-badge" title="Campus Verified Student">✓ Verified</span>
+              )}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span

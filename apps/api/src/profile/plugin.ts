@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { interestSelectionsRequestSchema, onboardingSchema, profileMediaRegistrationSchema, profileUpdateSchema, promptAnswersRequestSchema } from "@sp/validation";
+import { interestSelectionsRequestSchema, onboardingSchema, profileMediaRegistrationSchema, profileUpdateSchema, promptAnswersRequestSchema, studentVerificationSchema } from "@sp/validation";
 import { ProfileMediaLimitError, ProfileValidationError, type ProfileStore } from "./store";
 
 function validationPayload(result: { error: { issues: { path: (string | number)[]; message: string }[] } }) {
@@ -74,4 +74,20 @@ export function registerProfile(app: FastifyInstance, deps: ProfileDeps) {
     if (!UUID_RE.test(req.params.id)) return reply.code(400).send({ error: "bad_request" });
     return (await deps.store.deleteMedia(auth.user.id, req.params.id)) ? reply.code(204).send() : reply.code(404).send({ error: "not_found" });
   });
+
+  app.post<{ Body: unknown }>("/me/verify-student", { preHandler: deps.requireAuth }, async (req, reply) => {
+    const auth = req.auth;
+    if (!auth) return reply.code(401).send({ error: "unauthorized" });
+    const parsed = studentVerificationSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send(validationPayload(parsed));
+    const result = await deps.store.verifyStudent(auth.user.id, parsed.data);
+    return reply.code(result.verified ? 200 : 400).send(result);
+  });
+
+  app.get("/me/verification-status", { preHandler: deps.requireAuth }, async (req, reply) => {
+    const auth = req.auth;
+    if (!auth) return reply.code(401).send({ error: "unauthorized" });
+    return reply.send(await deps.store.getVerificationStatus(auth.user.id));
+  });
 }
+

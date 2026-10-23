@@ -1,5 +1,5 @@
-import type { Interest, Profile, ProfileMedia, PromptDefinition } from "@sp/types";
-import type { InterestSelectionsRequest, OnboardingInput, ProfileMediaRegistrationInput, ProfileUpdateInput, PromptAnswersRequest } from "@sp/validation";
+import type { Interest, Profile, ProfileMedia, PromptDefinition, StudentVerificationResult } from "@sp/types";
+import type { InterestSelectionsRequest, OnboardingInput, ProfileMediaRegistrationInput, ProfileUpdateInput, PromptAnswersRequest, StudentVerificationInput } from "@sp/validation";
 
 export class ProfileApiError extends Error {
   constructor(public readonly status: number, public readonly code: string, message: string, public readonly fields: Record<string, string> = {}) {
@@ -80,6 +80,8 @@ export function createProfileClient(config: ProfileClientConfig) {
       try { payload = (await response.json()) as typeof payload; } catch { /* generic */ }
       throw new ProfileApiError(response.status, payload.error ?? "request_failed", payload.message ?? "We could not remove that image yet.");
     },
+    verifyStudent: (input: StudentVerificationInput) => request<StudentVerificationResult>("/me/verify-student", { method: "POST", body: input }),
+    getVerificationStatus: () => request<StudentVerificationResult>("/me/verification-status"),
   };
 }
 export type ProfileClient = ReturnType<typeof createProfileClient>;

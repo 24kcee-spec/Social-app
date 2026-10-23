@@ -673,6 +673,7 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
         ) : profile && shellView === "settings" ? (
           <SettingsOverview
             me={me}
+            profile={profile}
             sessions={sessions}
             theme={themePreference}
             onThemeChange={setThemePreference}
@@ -682,6 +683,15 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
             onOpenSessions={() => openProfileSection("account-sessions")}
             onOpenAccountData={() => openProfileSection("account-data")}
             onOpenNotifications={() => applyNavigation({ shellView: "notifications", tab, focusSection: null })}
+            onVerifyStudent={async (studentEmail, studentId, institution) => {
+              const res = await client.verifyStudent({ studentEmail, studentId, institution });
+              if (res.verified) {
+                const refreshed = await client.getProfile();
+                setProfile(refreshed);
+              } else {
+                throw new Error(res.message);
+              }
+            }}
           />
         ) : profile && shellView === "notifications" ? (
           <NotificationSettingsPage

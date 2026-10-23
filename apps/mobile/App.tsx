@@ -28,7 +28,7 @@ import { NotificationSettingsScreen } from "./src/NotificationSettings";
 import { deleteProfileImage, getProfileClient, getSignedMediaUrl, pickAndUploadProfileImage } from "./src/profile";
 import { getSafetyClient } from "./src/safetyClient";
 import { ThemeProvider, useTheme, type ThemePreference } from "./src/theme";
-import { Avatar, Banner, BottomNav, Button, Chip, Field, type NavTab } from "./src/ui";
+import { Avatar, Badge, Banner, BottomNav, Button, Chip, Field, type NavTab } from "./src/ui";
 import { parseShareUrl, type ProfileClient } from "@sp/profile-client";
 
 const STYLES: { id: SocialStyle; label: string }[] = [
@@ -520,6 +520,16 @@ function ProfileHome({
             {shellView === "settings" ? (
               <MobileSettingsOverview
                 me={me}
+                profile={profile}
+                onVerifyStudent={async (email, id, inst) => {
+                  const res = await client.verifyStudent({ studentEmail: email, studentId: id, institution: inst });
+                  if (res.verified) {
+                    const refreshed = await client.getProfile();
+                    setProfile(refreshed);
+                  } else {
+                    throw new Error(res.message);
+                  }
+                }}
                 onBack={() => setShellView("app")}
                 onEditProfile={() => { setShellView("app"); setTab("profile"); }}
                 onOpenNotifications={() => setShellView("notifications")}
@@ -619,6 +629,8 @@ function ProfileHome({
 
 function MobileSettingsOverview({
   me,
+  profile,
+  onVerifyStudent,
   onBack,
   onEditProfile,
   onOpenNotifications,
@@ -626,6 +638,8 @@ function MobileSettingsOverview({
   onSignOut,
 }: {
   me: Me;
+  profile?: Profile | null;
+  onVerifyStudent?: (studentEmail: string, studentId?: string, institution?: string) => Promise<void>;
   onBack: () => void;
   onEditProfile: () => void;
   onOpenNotifications: () => void;
@@ -638,6 +652,15 @@ function MobileSettingsOverview({
   const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [securityError, setSecurityError] = useState<string | null>(null);
+
+  const isStudentVerified = profile?.verificationLevel === "student_verified";
+  const [studentEmail, setStudentEmail] = useState(
+    me.email?.includes("@students.") || me.email?.includes(".ac.zw") ? me.email : ""
+  );
+  const [studentId, setStudentId] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [verifyMsg, setVerifyMsg] = useState<string | null>(null);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
 
   const loadSessions = useCallback(async () => {
     setSessionsLoading(true);
@@ -722,6 +745,83 @@ function MobileSettingsOverview({
         <Text style={[styles.eyebrow, { color: colors.accent }]}>SIGNED IN</Text>
         <Text style={[styles.h2, { color: colors.text }]}>{me.email || "Email not available"}</Text>
         <Text style={[styles.muted, { color: colors.textMuted }]}>Account status: {me.status}</Text>
+      </View>
+
+      {/* Campus Verification Card */}
+      <View
+        style={[
+          styles.card,
+          {
+            padding: space[4],
+            borderRadius: radius.md,
+            borderColor: isStudentVerified ? colors.accentLine : colors.line,
+            backgroundColor: colors.surface,
+            gap: space[2],
+          },
+          shadow[1],
+        ]}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <Text style={[styles.eyebrow, { color: colors.accent }]}>CAMPUS VERIFICATION</Text>
+          {isStudentVerified ? (
+            <Badge label="✓ Campus Verified" tone="success" compact />
+          ) : (
+            <Badge label="Unverified" tone="neutral" compact />
+          )}
+        </View>
+
+        <Text style={[styles.h2, { color: colors.text }]}>
+          {isStudentVerified ? "Verified Campus Student" : "Verify Student Standing"}
+        </Text>
+
+        <Text style={[styles.muted, { color: colors.textMuted }]}>
+          {isStudentVerified
+            ? "Your campus status is confirmed. You display the '✓ Campus Verified' badge across Discover, Connections, and Messages."
+            : "Connect your official university or college email (e.g. @students.nust.ac.zw or *.ac.zw) to unlock the Campus Verified badge."}
+        </Text>
+
+        {!isStudentVerified && onVerifyStudent ? (
+          <View style={{ marginTop: space[2], gap: space[2] }}>
+            <Field
+              label="University Email"
+              value={studentEmail}
+              placeholder="e.g. n0241234x@students.nust.ac.zw"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              onChangeText={setStudentEmail}
+            />
+
+            <Field
+              label="Student ID / Reg No (Optional)"
+              value={studentId}
+              placeholder="e.g. N0241234X"
+              autoCapitalize="characters"
+              onChangeText={setStudentId}
+            />
+
+            {verifyMsg ? <Banner tone="success">{verifyMsg}</Banner> : null}
+            {verifyError ? <Banner tone="error">{verifyError}</Banner> : null}
+
+            <Button
+              label={verifying ? "Verifying…" : "Verify Student Status"}
+              disabled={verifying || !studentEmail.trim()}
+              onPress={async () => {
+                if (!studentEmail.trim()) return;
+                setVerifying(true);
+                setVerifyError(null);
+                setVerifyMsg(null);
+                try {
+                  await onVerifyStudent(studentEmail.trim(), studentId.trim() || undefined);
+                  setVerifyMsg("Campus status verified! Your profile now carries the verified badge.");
+                } catch (err) {
+                  setVerifyError(errorMessage(err));
+                } finally {
+                  setVerifying(false);
+                }
+              }}
+            />
+          </View>
+        ) : null}
       </View>
 
       <MobileSettingRow
@@ -892,7 +992,14 @@ function MobileMyProfileView({ profile, onBack, onEdit }: { profile: Profile; on
             <Text style={{ color: colors.accent, fontSize: 32, fontWeight: "800" }}>{profile.displayName.trim().charAt(0).toUpperCase() || "S"}</Text>
           </View>
         )}
-        <Text style={[styles.h1, { color: colors.text, fontSize: type.title.size }]}>{profile.displayName}</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <Text style={[styles.h1, { color: colors.text, fontSize: type.title.size }]}>{profile.displayName}</Text>
+          {profile.verificationLevel === "student_verified" ? (
+            <Badge label="✓ Campus Verified" tone="success" compact />
+          ) : profile.verificationLevel === "trusted" ? (
+            <Badge label="✓ Verified" tone="accent" compact />
+          ) : null}
+        </View>
         <Text style={[styles.muted, { color: colors.textMuted }]}>{profile.bio || "No bio added yet."}</Text>
         <Text style={[styles.h2, { color: colors.text, marginTop: space[2] }]}>How I like to connect</Text>
         <View style={styles.chipsRow}>

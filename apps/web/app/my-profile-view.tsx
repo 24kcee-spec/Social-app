@@ -61,7 +61,15 @@ export function MyProfileView({ profile, onBack, onEdit }: MyProfileViewProps) {
         </div>
         <div className="my-profile-body">
           <span className="eyebrow">MEMBER PROFILE</span>
-          <h2>{profile.displayName}</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", margin: "4px 0 10px" }}>
+            <h2 style={{ margin: 0 }}>{profile.displayName}</h2>
+            {profile.verificationLevel === "student_verified" && (
+              <span className="campus-badge" title="Campus Verified Student">✓ Campus Verified</span>
+            )}
+            {profile.verificationLevel === "trusted" && (
+              <span className="campus-badge trusted" title="Trusted Community Member">★ Trusted</span>
+            )}
+          </div>
           <p className="my-profile-bio">{profile.bio || "No bio added yet."}</p>
 
           <section className="my-profile-section" aria-labelledby="my-profile-style">

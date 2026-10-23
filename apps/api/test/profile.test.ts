@@ -35,6 +35,8 @@ function makeStore(overrides: Partial<ProfileStore> = {}): ProfileStore {
     listPrompts: vi.fn(async (): Promise<PromptDefinition[]> => [{ id: PROMPT_ID, prompt: "My ideal weekend looks like...", category: "Lifestyle", sortOrder: 10, active: true }]),
     addMedia: vi.fn(async () => ({ id: MEDIA_ID, kind: "avatar" as const, storagePath: `${USER_ID}/x.jpg`, thumbnailPath: `${USER_ID}/x-thumb.jpg`, contentType: "image/jpeg", sizeBytes: 1000, width: 1400, height: 1400, sortOrder: 0, createdAt: "2026-10-01T00:00:00.000Z" })),
     deleteMedia: vi.fn(async () => true),
+    verifyStudent: vi.fn(async () => ({ verified: true, level: "student_verified" as const, message: "Verified", institution: "National University of Science and Technology (NUST)" })),
+    getVerificationStatus: vi.fn(async () => ({ verified: true, level: "student_verified" as const, message: "Verified", institution: "National University of Science and Technology (NUST)" })),
     ...overrides,
   };
 }
@@ -232,4 +234,44 @@ describe("profile routes", () => {
     expect(json(res).error).toBe("validation");
   });
 
+  it("handles student verification on /me/verify-student", async () => {
+    const store = makeStore();
+    const { app } = makeAppForTest(store);
+    const res = await app.inject({
+      method: "POST",
+      url: "/me/verify-student",
+      headers: authed,
+      payload: { studentEmail: "n02420280y@students.nust.ac.zw", studentId: "N02420280Y", institution: "NUST" },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(json(res).verified).toBe(true);
+    expect(store.verifyStudent).toHaveBeenCalledWith(USER_ID, {
+      studentEmail: "n02420280y@students.nust.ac.zw",
+      studentId: "N02420280Y",
+      institution: "NUST",
+    });
+  });
+
+  it("returns 400 for invalid email on /me/verify-student", async () => {
+    const store = makeStore();
+    const { app } = makeAppForTest(store);
+    const res = await app.inject({
+      method: "POST",
+      url: "/me/verify-student",
+      headers: authed,
+      payload: { studentEmail: "not-an-email" },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(json(res).error).toBe("validation");
+  });
+
+  it("returns verification status on /me/verification-status", async () => {
+    const store = makeStore();
+    const { app } = makeAppForTest(store);
+    const res = await app.inject({ method: "GET", url: "/me/verification-status", headers: authed });
+    expect(res.statusCode).toBe(200);
+    expect(json(res).verified).toBe(true);
+    expect(store.getVerificationStatus).toHaveBeenCalledWith(USER_ID);
+  });
 });
+

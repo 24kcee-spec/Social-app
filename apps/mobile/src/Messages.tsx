@@ -127,9 +127,16 @@ export function Messages({
                   <Avatar name={c.other.displayName} url={photos[c.other.userId]} size="md" />
                   <View style={{ flex: 1, marginLeft: space[3] }}>
                     <View style={styles.convoTop}>
-                      <Text style={[styles.convoName, { color: colors.text, fontSize: type.bodyStrong.size }]}>
-                        {c.other.displayName}
-                      </Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1 }}>
+                        <Text style={[styles.convoName, { color: colors.text, fontSize: type.bodyStrong.size }]}>
+                          {c.other.displayName}
+                        </Text>
+                        {c.other.verificationLevel === "student_verified" ? (
+                          <Badge label="✓ Campus" tone="success" compact />
+                        ) : c.other.verificationLevel === "trusted" ? (
+                          <Badge label="✓" tone="accent" compact />
+                        ) : null}
+                      </View>
                       {hasUnread ? (
                         <Badge count={c.unreadCount} tone="accent" compact />
                       ) : null}
@@ -287,9 +294,16 @@ function Thread({
         <View style={styles.topbarCenter}>
           <Avatar name={conversation.other.displayName} url={photo} size="sm" />
           <View style={{ marginLeft: 8 }}>
-            <Text style={[styles.threadName, { color: colors.text, fontSize: type.small.size }]}>
-              {conversation.other.displayName}
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Text style={[styles.threadName, { color: colors.text, fontSize: type.small.size }]}>
+                {conversation.other.displayName}
+              </Text>
+              {conversation.other.verificationLevel === "student_verified" ? (
+                <Badge label="✓ Campus Verified" tone="success" compact />
+              ) : conversation.other.verificationLevel === "trusted" ? (
+                <Badge label="✓ Verified" tone="accent" compact />
+              ) : null}
+            </View>
             <Text style={[styles.statusText, { color: status === "live" ? colors.success : colors.textMuted }]}>
               {status === "live" ? "Connected" : status === "closed" ? "Offline" : "Reconnecting…"}
             </Text>

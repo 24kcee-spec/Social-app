@@ -190,7 +190,12 @@ export function Connections({
                     <div style={{ display: "flex", gap: 14, alignItems: "center", marginBottom: 14 }}>
                       <Avatar person={r.other} url={photos[r.other.userId]} />
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <h3 style={{ margin: 0 }}>{r.other.displayName}</h3>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                          <h3 style={{ margin: 0 }}>{r.other.displayName}</h3>
+                          {r.other.verificationLevel === "student_verified" && (
+                            <span className="campus-badge" title="Campus Verified Student">✓ Verified</span>
+                          )}
+                        </div>
                         {r.other.bio && (
                           <p className="muted" style={{ margin: "2px 0 0", fontSize: "0.85rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {r.other.bio}
@@ -254,7 +259,12 @@ export function Connections({
                     <div style={{ display: "flex", gap: 14, alignItems: "center", marginBottom: 12 }}>
                       <Avatar person={c.other} url={photos[c.other.userId]} />
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <h3 style={{ margin: 0 }}>{c.other.displayName}</h3>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                          <h3 style={{ margin: 0 }}>{c.other.displayName}</h3>
+                          {c.other.verificationLevel === "student_verified" && (
+                            <span className="campus-badge" title="Campus Verified Student">✓ Verified</span>
+                          )}
+                        </div>
                         <p className="muted" style={{ margin: "2px 0 0", fontSize: "0.82rem" }}>
                           Connected · Ready to chat
                         </p>

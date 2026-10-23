@@ -270,8 +270,14 @@ export function Discover() {
                 </div>
 
                 <div className="profile-card-body">
-                  <div className="profile-name-row">
+                  <div className="profile-name-row" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                     <div className="profile-card-name">{card.displayName}</div>
+                    {card.verificationLevel === "student_verified" && (
+                      <span className="campus-badge" title="Campus Verified Student">✓ Campus Verified</span>
+                    )}
+                    {card.verificationLevel === "trusted" && (
+                      <span className="campus-badge trusted" title="Trusted Community Member">★ Trusted</span>
+                    )}
                   </div>
 
                   {card.bio && <p className="profile-card-bio">{card.bio}</p>}

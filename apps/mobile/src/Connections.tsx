@@ -185,9 +185,16 @@ export function Connections({
                   <View style={styles.personHeader}>
                     <Avatar name={r.other.displayName} url={photos[r.other.userId]} size="md" />
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.name, { color: colors.text, fontSize: type.bodyStrong.size }]}>
-                        {r.other.displayName}
-                      </Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        <Text style={[styles.name, { color: colors.text, fontSize: type.bodyStrong.size }]}>
+                          {r.other.displayName}
+                        </Text>
+                        {r.other.verificationLevel === "student_verified" ? (
+                          <Badge label="✓ Campus Verified" tone="success" compact />
+                        ) : r.other.verificationLevel === "trusted" ? (
+                          <Badge label="✓ Verified" tone="accent" compact />
+                        ) : null}
+                      </View>
                       {r.other.bio ? (
                         <Text style={[styles.muted, { color: colors.textMuted, fontSize: type.small.size }]} numberOfLines={2}>
                           {r.other.bio}
@@ -283,9 +290,16 @@ export function Connections({
                   <View style={styles.personHeader}>
                     <Avatar name={x.other.displayName} url={photos[x.other.userId]} size="md" />
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.name, { color: colors.text, fontSize: type.bodyStrong.size }]}>
-                        {x.other.displayName}
-                      </Text>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        <Text style={[styles.name, { color: colors.text, fontSize: type.bodyStrong.size }]}>
+                          {x.other.displayName}
+                        </Text>
+                        {x.other.verificationLevel === "student_verified" ? (
+                          <Badge label="✓ Campus Verified" tone="success" compact />
+                        ) : x.other.verificationLevel === "trusted" ? (
+                          <Badge label="✓ Verified" tone="accent" compact />
+                        ) : null}
+                      </View>
                       {x.other.bio ? (
                         <Text style={[styles.muted, { color: colors.textMuted, fontSize: type.small.size }]} numberOfLines={1}>
                           {x.other.bio}

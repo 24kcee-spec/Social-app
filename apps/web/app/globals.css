@@ -1829,3 +1829,55 @@ button.link:hover {
     padding: 14px;
   }
 }
+
+/* Campus Verified Badges */
+.campus-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  background: rgba(31, 79, 216, 0.12);
+  color: var(--accent);
+  border: 1px solid var(--accent-line, rgba(31, 79, 216, 0.3));
+  border-radius: var(--radius-pill, 9999px);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.campus-badge.trusted {
+  background: rgba(234, 179, 8, 0.14);
+  color: #b45309;
+  border-color: rgba(234, 179, 8, 0.35);
+}
+
+.campus-badge-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #ffffff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  margin-left: 4px;
+}
+
+.verification-status-card {
+  border-radius: var(--radius-md);
+  padding: 20px;
+  margin-bottom: 24px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.verification-status-card.verified {
+  border-color: var(--accent-line, rgba(31, 79, 216, 0.3));
+  background: rgba(31, 79, 216, 0.04);
+}
+

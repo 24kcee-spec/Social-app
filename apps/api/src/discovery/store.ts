@@ -1,4 +1,4 @@
-import type { BlockedUser, DiscoveryCard, DiscoveryRelation, DiscoveryEventType, DiscoveryFeed, DiscoveryReason, InterestStrength, MessagePermission, SocialStyle } from "@sp/types";
+import type { BlockedUser, DiscoveryCard, DiscoveryRelation, DiscoveryEventType, DiscoveryFeed, DiscoveryReason, InterestStrength, MessagePermission, SocialStyle, VerificationLevel } from "@sp/types";
 import type { SqlRunner } from "../migrate";
 import { rankCandidates, scoreCandidate, visibleReasons, type ScoredCandidate, type ScoringHistory, type ScoringPerson } from "./scoring";
 
@@ -23,6 +23,7 @@ interface LoadedPerson {
   displayName: string;
   bio: string;
   messagePermission: MessagePermission;
+  verificationLevel?: VerificationLevel;
   prompts: { promptId: string; prompt: string; category: string; answer: string; updatedAt: string }[];
   thumbnailPath: string | null;
   interestRows: { id: string; name: string; category: string; slug: string; sortOrder: number; strength: InterestStrength }[];
@@ -47,7 +48,7 @@ export function createDiscoveryStore(db: SqlRunner, clock: () => Date = () => ne
     if (ids.length === 0) return out;
     const [people, interests, prompts, media] = await Promise.all([
       db.query<Record<string, unknown>>(
-        `select p.user_id::text as id, p.display_name, p.bio, p.social_styles, p.message_permission::text as message_permission, u.created_at, u.last_active_at
+        `select p.user_id::text as id, p.display_name, p.bio, p.social_styles, p.verification_level, p.message_permission::text as message_permission, u.created_at, u.last_active_at
            from profiles p join users u on u.id = p.user_id where p.user_id = any($1::uuid[])`, [ids]),
       db.query<Record<string, unknown>>(
         `select ui.user_id::text as uid, i.id::text as id, i.name, i.category, i.slug, i.sort_order, ui.strength
@@ -63,7 +64,9 @@ export function createDiscoveryStore(db: SqlRunner, clock: () => Date = () => ne
     for (const r of people.rows) {
       out.set(text(r.id), {
         person: { userId: text(r.id), interests: [], socialStyles: ((r.social_styles as SocialStyle[]) ?? []), prompts: [], lastActiveAt: r.last_active_at ? asDate(r.last_active_at) : null, createdAt: asDate(r.created_at) },
-        displayName: text(r.display_name), bio: text(r.bio), messagePermission: r.message_permission as MessagePermission, prompts: [], thumbnailPath: null, interestRows: [],
+        displayName: text(r.display_name), bio: text(r.bio), messagePermission: r.message_permission as MessagePermission,
+        verificationLevel: (r.verification_level as VerificationLevel) || "unverified",
+        prompts: [], thumbnailPath: null, interestRows: [],
       });
     }
     for (const r of interests.rows) {
@@ -131,6 +134,7 @@ export function createDiscoveryStore(db: SqlRunner, clock: () => Date = () => ne
     const interests = loaded.interestRows.map((i) => ({ id: i.id, name: i.name, category: i.category, slug: i.slug, sortOrder: i.sortOrder, strength: i.strength }));
     return {
       userId: loaded.person.userId, displayName: loaded.displayName, bio: loaded.bio, socialStyles: loaded.person.socialStyles, messagePermission: loaded.messagePermission,
+      verificationLevel: loaded.verificationLevel,
       interests, sharedInterests: interests.filter((i) => sharedIds.has(i.id)), prompts: loaded.prompts.slice(0, 3), thumbnailPath: loaded.thumbnailPath, relation,
       score: ranked.score, reasons: visibleReasons(ranked.components),
     };

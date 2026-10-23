@@ -1,4 +1,4 @@
-import type { ConversationView, MessagePage, MessageView, NotificationSettings, PushPlatform } from "@sp/types";
+import type { ConversationView, MessagePage, MessageView, NotificationSettings, PushPlatform, VerificationLevel } from "@sp/types";
 import type { SqlRunner } from "../migrate";
 
 /** Every failure is a typed error so routes map them to a status without string matching. */
@@ -92,7 +92,7 @@ export function createMessagingStore(db: SqlRunner, clock: () => Date = () => ne
     if (!ready[0]?.onboarding_completed) throw new MessagingError("onboarding_required", "Finish your profile before messaging");
     const [x, y] = ordered(me, otherId);
     const { rows: other } = await db.query<Record<string, unknown>>(
-      `select p.user_id::text as id, p.display_name, p.bio from profiles p join users u on u.id = p.user_id
+      `select p.user_id::text as id, p.display_name, p.bio, p.verification_level from profiles p join users u on u.id = p.user_id
         where p.user_id = $2 and u.status = 'active' and not ${PAIR_BLOCKED}`, [me, otherId]);
     if (!other[0] || !(await connectedPair(me, otherId))) throw new MessagingError("not_connected", "You can message people you are connected with");
 
@@ -106,7 +106,7 @@ export function createMessagingStore(db: SqlRunner, clock: () => Date = () => ne
 
     return {
       id,
-      other: { userId: otherId, displayName: text(other[0].display_name), bio: text(other[0].bio ?? ""), thumbnailPath: conv[0]!.thumb ? text(conv[0]!.thumb) : null },
+      other: { userId: otherId, displayName: text(other[0].display_name), bio: text(other[0].bio ?? ""), thumbnailPath: conv[0]!.thumb ? text(conv[0]!.thumb) : null, verificationLevel: other[0].verification_level as VerificationLevel },
       lastMessage: null, unreadCount: 0, createdAt: iso(conv[0]!.created_at),
     };
   }
@@ -115,7 +115,7 @@ export function createMessagingStore(db: SqlRunner, clock: () => Date = () => ne
   async function listConversations(me: string): Promise<ConversationView[]> {
     const { rows } = await db.query<Record<string, unknown>>(
       `select c.id::text as id, c.created_at,
-              o.user_id::text as oid, o.display_name, o.bio,
+              o.user_id::text as oid, o.display_name, o.bio, o.verification_level,
               (select thumbnail_path from profile_media m where m.user_id = o.user_id order by m.sort_order, m.created_at limit 1) as thumb,
               lm.sender_id::text as lm_sender, lm.body as lm_body, lm.created_at as lm_at,
               (select count(*)::int from messages u where u.conversation_id = c.id and u.sender_id <> $1 and u.created_at > cm.last_read_at) as unread
@@ -129,7 +129,7 @@ export function createMessagingStore(db: SqlRunner, clock: () => Date = () => ne
       [me]);
     return rows.map((r) => ({
       id: text(r.id),
-      other: { userId: text(r.oid), displayName: text(r.display_name), bio: text(r.bio ?? ""), thumbnailPath: r.thumb ? text(r.thumb) : null },
+      other: { userId: text(r.oid), displayName: text(r.display_name), bio: text(r.bio ?? ""), thumbnailPath: r.thumb ? text(r.thumb) : null, verificationLevel: r.verification_level as VerificationLevel },
       lastMessage: r.lm_at ? { senderId: text(r.lm_sender), body: text(r.lm_body), createdAt: iso(r.lm_at) } : null,
       unreadCount: Number(r.unread ?? 0),
       createdAt: iso(r.created_at),

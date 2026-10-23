@@ -1,4 +1,4 @@
-import type { ActivationSummary, ConnectionRequestView, ConnectionView, InteractionSettings, IntroKind, PersonSummary, RequestStatus, SendRequestResult, StarterSet } from "@sp/types";
+import type { ActivationSummary, ConnectionRequestView, ConnectionView, InteractionSettings, IntroKind, PersonSummary, RequestStatus, SendRequestResult, StarterSet, VerificationLevel } from "@sp/types";
 import type { IntroInput } from "@sp/validation";
 import type { SqlRunner } from "../migrate";
 import { pickDeterministic, renderIcebreaker, renderThisOrThat } from "./starters";
@@ -19,7 +19,13 @@ const ordered = (a: string, b: string): [string, string] => (a < b ? [a, b] : [b
 const PAIR_BLOCKED = `exists (select 1 from user_blocks b where (b.blocker_id = $1 and b.blocked_id = $2) or (b.blocker_id = $2 and b.blocked_id = $1))`;
 
 function summary(r: Record<string, unknown>, prefix = ""): PersonSummary {
-  return { userId: text(r[`${prefix}id`]), displayName: text(r[`${prefix}display_name`]), bio: text(r[`${prefix}bio`] ?? ""), thumbnailPath: r[`${prefix}thumb`] ? text(r[`${prefix}thumb`]) : null };
+  return {
+    userId: text(r[`${prefix}id`]),
+    displayName: text(r[`${prefix}display_name`]),
+    bio: text(r[`${prefix}bio`] ?? ""),
+    thumbnailPath: r[`${prefix}thumb`] ? text(r[`${prefix}thumb`]) : null,
+    verificationLevel: r[`${prefix}verification_level`] ? (r[`${prefix}verification_level`] as VerificationLevel) : undefined,
+  };
 }
 
 export function createConnectionsStore(db: SqlRunner, clock: () => Date = () => new Date()) {
@@ -179,7 +185,7 @@ export function createConnectionsStore(db: SqlRunner, clock: () => Date = () => 
       const incoming = box === "incoming";
       const { rows } = await db.query<Record<string, unknown>>(
         `select r.id::text as rid, r.status::text as status, r.intro_kind::text as kind, r.intro_text, r.created_at, r.expires_at,
-                o.user_id::text as id, o.display_name, o.bio, (select thumbnail_path from profile_media m where m.user_id = o.user_id order by m.sort_order, m.created_at limit 1) as thumb
+                o.user_id::text as id, o.display_name, o.bio, o.verification_level, (select thumbnail_path from profile_media m where m.user_id = o.user_id order by m.sort_order, m.created_at limit 1) as thumb
            from connection_requests r join profiles o on o.user_id = ${incoming ? "r.sender_id" : "r.recipient_id"}
           where ${incoming ? "r.recipient_id" : "r.sender_id"} = $1 and ${incoming ? "r.status = 'pending'" : `r.status in ('pending', 'accepted', 'declined', 'expired') and r.created_at > $2::timestamptz - interval '${LIMITS.historyDays} days'`}
             and not exists (select 1 from user_blocks b where (b.blocker_id = $1 and b.blocked_id = o.user_id) or (b.blocker_id = o.user_id and b.blocked_id = $1))
@@ -192,7 +198,7 @@ export function createConnectionsStore(db: SqlRunner, clock: () => Date = () => 
 
     async listConnections(userId: string): Promise<ConnectionView[]> {
       const { rows } = await db.query<Record<string, unknown>>(
-        `select c.created_at, o.user_id::text as id, o.display_name, o.bio, (select thumbnail_path from profile_media m where m.user_id = o.user_id order by m.sort_order, m.created_at limit 1) as thumb
+        `select c.created_at, o.user_id::text as id, o.display_name, o.bio, o.verification_level, (select thumbnail_path from profile_media m where m.user_id = o.user_id order by m.sort_order, m.created_at limit 1) as thumb
            from connections c join profiles o on o.user_id = case when c.user_a = $1 then c.user_b else c.user_a end
           where (c.user_a = $1 or c.user_b = $1)
             and not exists (select 1 from user_blocks b where (b.blocker_id = $1 and b.blocked_id = o.user_id) or (b.blocker_id = o.user_id and b.blocked_id = $1))
