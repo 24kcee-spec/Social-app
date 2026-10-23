@@ -1033,21 +1033,20 @@ function ProfileEditor({
     setBusy(true);
     clearFeedback();
     try {
-      await client.updateProfile({
+      let saved = await client.updateProfile({
         displayName: displayName.trim(),
         bio: bio.trim(),
         socialStyles: styles,
         privacy,
       });
-      await client.updateInterests({
+      saved = await client.updateInterests({
         interests: Object.entries(selected).map(([interestId, strength]) => ({ interestId, strength })),
       });
       const chosenAnswers = Object.entries(answers)
         .filter(([, answer]) => answer.trim())
         .slice(0, 3)
         .map(([promptId, answer]) => ({ promptId, answer: answer.trim() }));
-      await client.updatePrompts({ answers: chosenAnswers });
-      const saved = await client.getProfile();
+      saved = await client.updatePrompts({ answers: chosenAnswers });
       onSaved(saved);
       resetDraft(saved);
       setMessage("Profile saved successfully.");
@@ -1144,7 +1143,7 @@ function ProfileEditor({
                 {primaryMedia && mediaUrls[primaryMedia.id] ? (
                   <img
                     src={mediaUrls[primaryMedia.id]}
-                    alt={profile.displayName}
+                    alt={displayName || "Profile photo"}
                     onError={() => setMediaUrls((current) => ({ ...current, [primaryMedia.id]: "" }))}
                     style={{ width: "100%", height: "100%", objectFit: "cover" }}
                   />
