@@ -12,10 +12,12 @@ import { Avatar, Badge, Banner, Button, EmptyState, ReportSheet } from "./ui";
 export function Messages({
   onUnread,
   openWithUserId,
+  openConversationId,
   onOpened,
 }: {
   onUnread?: (total: number) => void;
   openWithUserId?: string | null;
+  openConversationId?: string | null;
   onOpened?: () => void;
 }) {
   const { colors, radius, space, type, shadow } = useTheme();
@@ -77,6 +79,17 @@ export function Messages({
       cancelled = true;
     };
   }, [openWithUserId, client]);
+
+  useEffect(() => {
+    if (!openConversationId || loading || error) return;
+    const destination = conversations.find((conversation) => conversation.id === openConversationId);
+    if (destination) {
+      setOpenId(destination.id);
+    } else {
+      setError("That conversation is no longer available.");
+    }
+    onOpenedRef.current?.();
+  }, [openConversationId, loading, error, conversations]);
 
   const open = conversations.find((c) => c.id === openId) ?? null;
   if (open) {

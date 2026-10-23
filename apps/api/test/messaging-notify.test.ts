@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { runMigrations } from "../src/migrate";
-import { createMessageNotifier, type PushPayload, type PushToken } from "../src/messaging/notify";
+import { createConnectionRequestNotifier, createExpoPushSender, createMessageNotifier, type PushPayload, type PushToken } from "../src/messaging/notify";
 
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "migrations");
 const ID = { A: "a1000000-0000-4000-8000-000000000000", B: "a2000000-0000-4000-8000-000000000000" };
@@ -68,5 +68,104 @@ describe("message notifier", () => {
     const notifier = createMessageNotifier(db, { send: async () => { throw new Error("fcm down"); } }, (msg) => logs.push(msg));
     expect(await notifier.messageSent(EVENT)).toEqual({ sent: 0 });
     expect(logs).toEqual(["push send failed"]);
+  });
+});
+
+
+describe("connection request notifier", () => {
+  it("sends a generic alert when connection-request notifications are enabled", async () => {
+    await db.query(
+      "insert into device_push_tokens (user_id, platform, token) values ($1, 'android', 'ExponentPushToken[device-abc123]')",
+      [ID.B],
+    );
+    const { calls, sender } = recorder();
+    const notifier = createConnectionRequestNotifier(db, sender);
+    expect(await notifier.requestSent({ senderId: ID.A, recipientId: ID.B, requestId: "e0000000-0000-4000-8000-000000000000" }))
+      .toEqual({ sent: 1 });
+    expect(calls[0]!.payload.title).toBe("New connection request");
+    expect(calls[0]!.payload.body).toBe("Open Social to see the details");
+    expect(calls[0]!.payload.data).toEqual({
+      type: "connection_request",
+      requestId: "e0000000-0000-4000-8000-000000000000",
+    });
+    expect(JSON.stringify(calls[0]!.payload)).not.toMatch(/Ann|Ben|example\.com/);
+  });
+
+  it("honors the connection-request preference", async () => {
+    await db.query(
+      "insert into device_push_tokens (user_id, platform, token) values ($1, 'android', 'ExponentPushToken[device-abc123]')",
+      [ID.B],
+    );
+    await db.query(
+      "insert into notification_settings (user_id, connection_requests) values ($1, false)",
+      [ID.B],
+    );
+    const { calls, sender } = recorder();
+    expect(await createConnectionRequestNotifier(db, sender).requestSent({
+      senderId: ID.A, recipientId: ID.B, requestId: "e0000000-0000-4000-8000-000000000000",
+    })).toEqual({ sent: 0 });
+    expect(calls).toHaveLength(0);
+  });
+});
+
+describe("Expo push sender", () => {
+  it("checks tickets and deletes registrations Expo reports as unregistered", async () => {
+    const invalid = "ExponentPushToken[invalid-device-123]";
+    const valid = "ExponentPushToken[valid-device-123]";
+    await db.query(
+      "insert into device_push_tokens (user_id, platform, token) values ($1, 'android', $2), ($1, 'android', $3)",
+      [ID.B, invalid, valid],
+    );
+    const sender = createExpoPushSender(() => {}, {
+      retryDelayMs: 0,
+      fetchImpl: async (_url, init) => {
+        const messages = JSON.parse(String(init.body)) as { to: string }[];
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            data: messages.map((message) => message.to === invalid
+              ? { status: "error", message: "The recipient is not registered", details: { error: "DeviceNotRegistered" } }
+              : { status: "ok", id: "ticket-valid" }),
+          }),
+        };
+      },
+    });
+
+    expect(await createMessageNotifier(db, sender).messageSent(EVENT)).toEqual({ sent: 1 });
+    const { rows } = await db.query<{ token: string }>(
+      "select token from device_push_tokens where user_id = $1",
+      [ID.B],
+    );
+    expect(rows.map((row) => row.token)).toEqual([valid]);
+  });
+
+  it("retries a temporary HTTP error and accepts a valid ticket", async () => {
+    let calls = 0;
+    const sender = createExpoPushSender(() => {}, {
+      retryDelayMs: 0,
+      fetchImpl: async () => {
+        calls += 1;
+        if (calls === 1) return { ok: false, status: 503, json: async () => ({}) };
+        return { ok: true, status: 200, json: async () => ({ data: [{ status: "ok", id: "ticket-1" }] }) };
+      },
+    });
+    const result = await sender.send(
+      [{ platform: "android", token: "ExponentPushToken[valid-device-123]" }],
+      { title: "New message", body: "Open the app to read it", data: { type: "message", conversationId: EVENT.conversationId, messageId: EVENT.messageId } },
+    );
+    expect(calls).toBe(2);
+    expect(result).toEqual({ accepted: 1, invalidTokens: [] });
+  });
+
+  it("does not report success for an HTTP error response", async () => {
+    const sender = createExpoPushSender(() => {}, {
+      retryDelayMs: 0,
+      fetchImpl: async () => ({ ok: false, status: 400, json: async () => ({}) }),
+    });
+    await expect(sender.send(
+      [{ platform: "android", token: "ExponentPushToken[valid-device-123]" }],
+      { title: "New message", body: "Open the app to read it", data: { type: "message", conversationId: EVENT.conversationId, messageId: EVENT.messageId } },
+    )).rejects.toThrow("HTTP 400");
   });
 });

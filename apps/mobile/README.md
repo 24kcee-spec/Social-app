@@ -40,6 +40,12 @@ pnpm dlx eas-cli build --platform android --profile preview
 
 Follow EAS prompts to create Android signing credentials if asked. When the build finishes, open its EAS install link on the Android test phone and install the APK. The phone must have network access to the configured API and Supabase project.
 
+### Push-notification credentials and behavior
+- The Expo project needs valid Android FCM v1 credentials and iOS APNs credentials for the platforms you will test. Configure these with Expo/EAS credentials; do not commit credential JSON or private keys.
+- The mobile app only asks for notification permission when the user taps **Enable phone alerts** in Settings. When permission is already granted, app sign-in quietly re-registers the current Expo push token with the API. Signing out removes that token registration first.
+- The API sends generic push previews for direct messages and new connection requests. It checks Expo HTTP responses and per-device tickets, retries transient HTTP 429/5xx responses, and removes tokens Expo reports as `DeviceNotRegistered`. Successful tickets mean accepted by Expo, not proof of delivery.
+- Optionally set `EXPO_ACCESS_TOKEN` as a **server-only API environment variable** when Expo Push Security is enabled. Never add it to mobile/EAS client variables or the repository. Configure real credentials and verify delivery on physical devices before announcing push as live.
+
 ### Physical-device smoke test
 Use dedicated test accounts and run the repeatable cases in `docs/phase1-live-gate.md`. At minimum verify on the installed APK:
 - Cold start, sign up/sign in, onboarding, sign out, and restart/session persistence.

@@ -2,6 +2,7 @@ import { AuthClientError, type DeviceSession, type Me } from "@sp/auth-client";
 import type { Interest, Profile, PromptDefinition, ShareTargetType, SocialStyle } from "@sp/types";
 import type { OnboardingInput } from "@sp/validation";
 import { StatusBar } from "expo-status-bar";
+import * as Notifications from "expo-notifications";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
@@ -25,6 +26,7 @@ import { Discover } from "./src/Discover";
 import { getMessagingClient } from "./src/messagingClient";
 import { Messages } from "./src/Messages";
 import { NotificationSettingsScreen } from "./src/NotificationSettings";
+import { syncPushTokenIfPermitted, unregisterRegisteredPushToken } from "./src/pushNotifications";
 import { deleteProfileImage, getProfileClient, getSignedMediaUrl, pickAndUploadProfileImage } from "./src/profile";
 import { getSafetyClient } from "./src/safetyClient";
 import { ThemeProvider, useTheme, type ThemePreference } from "./src/theme";
@@ -38,6 +40,10 @@ const STYLES: { id: SocialStyle; label: string }[] = [
   { id: "voice_first", label: "Voice-first" },
   { id: "low_pressure", label: "Low pressure" },
 ];
+
+type PushNavigationTarget =
+  | { type: "message"; conversationId: string }
+  | { type: "connection_request"; requestId: string };
 
 type Mode = "signin" | "signup" | "forgot";
 type Phase =
@@ -60,6 +66,31 @@ function AppContent() {
   const { colors, isDark } = useTheme();
   const [phase, setPhase] = useState<Phase>({ kind: "loading" });
   const [pendingTarget, setPendingTarget] = useState<{ targetType: ShareTargetType; id: string } | null>(null);
+  const [pendingPushTarget, setPendingPushTarget] = useState<PushNavigationTarget | null>(null);
+  const clearPendingPushTarget = useCallback(() => setPendingPushTarget(null), []);
+
+  const handleNotificationResponse = useCallback((response: Notifications.NotificationResponse) => {
+    const data = response.notification.request.content.data as Record<string, unknown>;
+    if (data.type === "message" && typeof data.conversationId === "string") {
+      setPendingPushTarget({ type: "message", conversationId: data.conversationId });
+    } else if (data.type === "connection_request" && typeof data.requestId === "string") {
+      setPendingPushTarget({ type: "connection_request", requestId: data.requestId });
+    }
+    void Notifications.clearLastNotificationResponseAsync().catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    const subscription = Notifications.addNotificationResponseReceivedListener(handleNotificationResponse);
+    void Notifications.getLastNotificationResponseAsync()
+      .then((response) => { if (response) handleNotificationResponse(response); })
+      .catch(() => undefined);
+    return () => subscription.remove();
+  }, [handleNotificationResponse]);
+
+  // Register previously permitted devices quietly; the user controls permission from Settings.
+  useEffect(() => {
+    if (phase.kind === "signedIn") void syncPushTokenIfPermitted().catch(() => undefined);
+  }, [phase]);
 
   // Deep linking: cold-start and warm-start URL handlers
   useEffect(() => {
@@ -137,6 +168,8 @@ function AppContent() {
           onSignOut={() => setPhase({ kind: "signedOut" })}
           pendingTarget={pendingTarget}
           onClearPendingTarget={() => setPendingTarget(null)}
+          pendingPushTarget={pendingPushTarget}
+          onClearPendingPushTarget={clearPendingPushTarget}
         />
       )}
     </SafeAreaView>
@@ -330,11 +363,15 @@ function ProfileHome({
   onSignOut,
   pendingTarget,
   onClearPendingTarget,
+  pendingPushTarget,
+  onClearPendingPushTarget,
 }: {
   me: Me;
   onSignOut: () => void;
   pendingTarget?: { targetType: ShareTargetType; id: string } | null;
   onClearPendingTarget?: () => void;
+  pendingPushTarget?: PushNavigationTarget | null;
+  onClearPendingPushTarget?: () => void;
 }) {
   const { colors, radius, space, type } = useTheme();
   const client = useMemo<ProfileClient>(() => getProfileClient(), []);
@@ -350,6 +387,20 @@ function ProfileHome({
   const [pendingIn, setPendingIn] = useState(0);
   const [unread, setUnread] = useState(0);
   const [chatWith, setChatWith] = useState<string | null>(null);
+  const [pushConversationId, setPushConversationId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!pendingPushTarget) return;
+    setShellView("app");
+    if (pendingPushTarget.type === "message") {
+      setPushConversationId(pendingPushTarget.conversationId);
+      setChatWith(null);
+      setTab("messages");
+    } else {
+      setTab("connections");
+    }
+    onClearPendingPushTarget?.();
+  }, [pendingPushTarget, onClearPendingPushTarget]);
 
   // Cross-device deep link destination restoration
   useEffect(() => {
@@ -404,7 +455,15 @@ function ProfileHome({
         text: "Sign out",
         style: "destructive",
         onPress: () => {
-          auth.signOut().then(onSignOut).catch((err) => setError(errorMessage(err)));
+          void (async () => {
+            try {
+              await unregisterRegisteredPushToken();
+              await auth.signOut();
+              onSignOut();
+            } catch (err) {
+              setError(errorMessage(err));
+            }
+          })();
         },
       },
     ]);
@@ -548,7 +607,8 @@ function ProfileHome({
               <Messages
                 onUnread={setUnread}
                 openWithUserId={chatWith}
-                onOpened={() => setChatWith(null)}
+                openConversationId={pushConversationId}
+                onOpened={() => { setChatWith(null); setPushConversationId(null); }}
               />
             ) : tab === "community" ? (
               <Community initialTarget={pendingTarget} onClearTarget={onClearPendingTarget} />
