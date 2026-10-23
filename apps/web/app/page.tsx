@@ -4,7 +4,7 @@ import type { Interest, Profile, PromptDefinition, SocialStyle } from "@sp/types
 import type { OnboardingInput } from "@sp/validation";
 import { AuthClientError, type DeviceSession, type Me } from "@sp/auth-client";
 import { type ProfileClient, parseShareUrl, validateSafeRedirect } from "@sp/profile-client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { errorMessage, getAuth, isConfigured } from "../lib/auth";
 import { Connections } from "./connections";
 import { Discover } from "./discover";
@@ -31,6 +31,48 @@ const PRIVACY_OPTIONS = {
 };
 
 type Mode = "signin" | "signup" | "forgot";
+const APP_TABS = ["discover", "connections", "messages", "community", "profile"] as const;
+type AppTab = (typeof APP_TABS)[number];
+type ShellView = "app" | "settings" | "viewProfile";
+type AppNavigation = { shellView: ShellView; tab: AppTab; focusSection: string | null };
+const PROFILE_EDITOR_SECTIONS = ["profile-details", "privacy-settings", "account-sessions", "account-data"] as const;
+
+function isAppTab(value: string | null): value is AppTab {
+  return APP_TABS.some((tab) => tab === value);
+}
+
+function readAppNavigation(search: string): AppNavigation {
+  const params = new URLSearchParams(search);
+  const requestedTab = params.get("tab");
+  const tab: AppTab = isAppTab(requestedTab) ? requestedTab : "discover";
+  const view = params.get("view");
+
+  if (view === "settings") return { shellView: "settings", tab, focusSection: null };
+  if (view === "profile-preview") return { shellView: "viewProfile", tab, focusSection: null };
+
+  const requestedSection = params.get("section");
+  if (requestedSection && PROFILE_EDITOR_SECTIONS.includes(requestedSection as (typeof PROFILE_EDITOR_SECTIONS)[number])) {
+    return { shellView: "app", tab: "profile", focusSection: requestedSection };
+  }
+  return { shellView: "app", tab, focusSection: null };
+}
+
+function navigationHref(currentHref: string, navigation: AppNavigation): string {
+  const url = new URL(currentHref);
+  url.searchParams.delete("view");
+  url.searchParams.delete("tab");
+  url.searchParams.delete("section");
+  url.searchParams.delete("next");
+
+  if (navigation.shellView === "settings") url.searchParams.set("view", "settings");
+  if (navigation.shellView === "viewProfile") url.searchParams.set("view", "profile-preview");
+  if (navigation.tab !== "discover") url.searchParams.set("tab", navigation.tab);
+  if (navigation.focusSection && PROFILE_EDITOR_SECTIONS.includes(navigation.focusSection as (typeof PROFILE_EDITOR_SECTIONS)[number])) {
+    url.searchParams.set("section", navigation.focusSection);
+  }
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
 type Phase =
   | { kind: "loading" }
   | { kind: "signedOut" }
@@ -338,9 +380,10 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
   const [prompts, setPrompts] = useState<PromptDefinition[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<"discover" | "connections" | "messages" | "community" | "profile">("discover");
-  const [shellView, setShellView] = useState<"app" | "settings" | "viewProfile">("app");
+  const [tab, setTab] = useState<AppTab>("discover");
+  const [shellView, setShellView] = useState<ShellView>("app");
   const [focusSection, setFocusSection] = useState<string | null>(null);
+  const lastAppNavigation = useRef<AppNavigation>({ shellView: "app", tab: "discover", focusSection: null });
   const [themePreference, setThemePreference] = useState<ThemePreference>("system");
   const [pendingIn, setPendingIn] = useState(0);
   const [unread, setUnread] = useState(0);
@@ -365,6 +408,24 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
   useEffect(() => {
     void loadProfile();
   }, [loadProfile]);
+
+  // Reflect the current screen in the URL and restore it after refresh or browser Back/Forward.
+  useEffect(() => {
+    const restoreNavigation = () => {
+      const navigation = readAppNavigation(window.location.search);
+      lastAppNavigation.current = {
+        shellView: "app",
+        tab: navigation.tab,
+        focusSection: navigation.shellView === "app" ? navigation.focusSection : null,
+      };
+      setShellView(navigation.shellView);
+      setTab(navigation.tab);
+      setFocusSection(navigation.focusSection);
+    };
+    restoreNavigation();
+    window.addEventListener("popstate", restoreNavigation);
+    return () => window.removeEventListener("popstate", restoreNavigation);
+  }, []);
 
   useEffect(() => {
     try {
@@ -392,16 +453,36 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
     setFocusSection(null);
   }, [shellView, tab, focusSection, profile]);
 
-  function navigateTab(nextTab: "discover" | "connections" | "messages" | "community" | "profile") {
-    setShellView("app");
-    setFocusSection(null);
-    setTab(nextTab);
+  function applyNavigation(navigation: AppNavigation, historyMode: "push" | "replace" = "push") {
+    const href = navigationHref(window.location.href, navigation);
+    const historyState = { ...(window.history.state ?? {}), socialAppNavigation: true };
+    if (historyMode === "replace") window.history.replaceState(historyState, "", href);
+    else window.history.pushState(historyState, "", href);
+
+    if (navigation.shellView === "app") lastAppNavigation.current = navigation;
+    setShellView(navigation.shellView);
+    setFocusSection(navigation.focusSection);
+    setTab(navigation.tab);
+  }
+
+  function navigateTab(nextTab: AppTab, historyMode: "push" | "replace" = "push") {
+    applyNavigation({ shellView: "app", tab: nextTab, focusSection: null }, historyMode);
+  }
+
+  function openShellView(nextView: "settings" | "viewProfile") {
+    lastAppNavigation.current = { shellView: "app", tab, focusSection: null };
+    applyNavigation({ shellView: nextView, tab, focusSection: null });
+  }
+
+  function returnToApp() {
+    applyNavigation(lastAppNavigation.current, "replace");
   }
 
   function openProfileSection(sectionId: string) {
-    setShellView("app");
-    setFocusSection(sectionId);
-    setTab("profile");
+    const safeSection = PROFILE_EDITOR_SECTIONS.includes(sectionId as (typeof PROFILE_EDITOR_SECTIONS)[number])
+      ? sectionId
+      : null;
+    applyNavigation({ shellView: "app", tab: "profile", focusSection: safeSection });
   }
 
   // Keep the Messages tab badge warm even while looking at other tabs.
@@ -427,12 +508,10 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
 
     const parsed = parseShareUrl(safeNext);
     if (parsed) {
-      if (parsed.targetType === "group" || parsed.targetType === "event") {
-        setTab("community");
-      } else if (parsed.targetType === "profile") {
-        setTab("discover");
-      }
-      window.history.replaceState({}, document.title, window.location.pathname);
+      const targetTab: AppTab = parsed.targetType === "group" || parsed.targetType === "event"
+        ? "community"
+        : "discover";
+      applyNavigation({ shellView: "app", tab: targetTab, focusSection: null }, "replace");
     }
   }, []);
 
@@ -522,9 +601,9 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
             <AccountMenu
               displayName={profile?.displayName ?? "Member"}
               email={me.email}
-              onViewProfile={() => setShellView("viewProfile")}
+              onViewProfile={() => openShellView("viewProfile")}
               onEditProfile={() => openProfileSection("profile-details")}
-              onOpenSettings={() => setShellView("settings")}
+              onOpenSettings={() => openShellView("settings")}
               onSignOut={() => void signOut()}
             />
           </div>
@@ -554,7 +633,7 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
             sessions={sessions}
             theme={themePreference}
             onThemeChange={setThemePreference}
-            onBack={() => setShellView("app")}
+            onBack={returnToApp}
             onEditProfile={() => openProfileSection("profile-details")}
             onOpenPrivacy={() => openProfileSection("privacy-settings")}
             onOpenSessions={() => openProfileSection("account-sessions")}
@@ -564,7 +643,7 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
         ) : profile && shellView === "viewProfile" ? (
           <MyProfileView
             profile={profile}
-            onBack={() => setShellView("app")}
+            onBack={returnToApp}
             onEdit={() => openProfileSection("profile-details")}
           />
         ) : profile ? (
@@ -575,7 +654,7 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
               onCount={setPendingIn}
               onMessage={(userId) => {
                 setChatWith(userId);
-                setTab("messages");
+                navigateTab("messages");
               }}
             />
           ) : tab === "messages" ? (
