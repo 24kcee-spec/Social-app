@@ -7,7 +7,8 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "config:check": "node scripts/check-build-config.cjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
