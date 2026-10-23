@@ -152,7 +152,7 @@ describe("Expo push sender", () => {
     });
     const result = await sender.send(
       [{ platform: "android", token: "ExponentPushToken[valid-device-123]" }],
-      { title: "New message", body: "Open Social to read it", data: { type: "message", conversationId: EVENT.conversationId, messageId: EVENT.messageId } },
+      { title: "New message", body: "Open the app to read it", data: { type: "message", conversationId: EVENT.conversationId, messageId: EVENT.messageId } },
     );
     expect(calls).toBe(2);
     expect(result).toEqual({ accepted: 1, invalidTokens: [] });
@@ -165,7 +165,7 @@ describe("Expo push sender", () => {
     });
     await expect(sender.send(
       [{ platform: "android", token: "ExponentPushToken[valid-device-123]" }],
-      { title: "New message", body: "Open Social to read it", data: { type: "message", conversationId: EVENT.conversationId, messageId: EVENT.messageId } },
+      { title: "New message", body: "Open the app to read it", data: { type: "message", conversationId: EVENT.conversationId, messageId: EVENT.messageId } },
     )).rejects.toThrow("HTTP 400");
   });
 });
