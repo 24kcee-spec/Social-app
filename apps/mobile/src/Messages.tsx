@@ -1,8 +1,8 @@
 import * as ImagePicker from "expo-image-picker";
-import type { ConversationView, NotificationSettings } from "@sp/types";
+import type { ConversationView } from "@sp/types";
 import { applyReadWatermark, mergeMessages, newClientTag, type ThreadMessage } from "@sp/profile-client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { errorMessage } from "./auth";
 import { getMessagingClient, subscribeToConversation } from "./messagingClient";
 import { getSignedMediaUrl } from "./profile";
@@ -24,16 +24,14 @@ export function Messages({
   const [conversations, setConversations] = useState<ConversationView[]>([]);
   const [photos, setPhotos] = useState<Record<string, string>>({});
   const [openId, setOpenId] = useState<string | null>(null);
-  const [settings, setSettings] = useState<NotificationSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [list, s] = await Promise.all([client.listConversations(), client.getNotificationSettings()]);
+      const list = await client.listConversations();
       setConversations(list);
-      setSettings(s);
       onUnread?.(list.reduce((n, c) => n + c.unreadCount, 0));
       const people = list.filter((c) => c.other.thumbnailPath);
       const pairs = await Promise.all(
@@ -80,18 +78,6 @@ export function Messages({
     };
   }, [openWithUserId, client]);
 
-  const toggle = async (key: keyof NotificationSettings, value: boolean) => {
-    if (!settings) return;
-    const next = { ...settings, [key]: value };
-    setSettings(next);
-    try {
-      await client.setNotificationSettings(next);
-    } catch (err) {
-      setSettings(settings);
-      setError(errorMessage(err));
-    }
-  };
-
   const open = conversations.find((c) => c.id === openId) ?? null;
   if (open) {
     return <Thread conversation={open} photo={photos[open.other.userId]} onBack={() => { setOpenId(null); void load(); }} />;
@@ -100,53 +86,6 @@ export function Messages({
   return (
     <View style={styles.container}>
       {error ? <Banner tone="error">{error}</Banner> : null}
-
-      {/* Notifications settings panel */}
-      {settings ? (
-        <View
-          style={[
-            styles.card,
-            {
-              backgroundColor: colors.surface,
-              borderColor: colors.line,
-              borderRadius: radius.md,
-              padding: space[4],
-            },
-            shadow[1],
-          ]}
-        >
-          <Text style={[styles.sectionTitle, { color: colors.text, fontSize: type.title.size }]}>
-            Notifications
-          </Text>
-          <View style={[styles.settingRow, { marginTop: space[2] }]}>
-            <View style={{ flex: 1, paddingRight: space[2] }}>
-              <Text style={[styles.settingName, { color: colors.text }]}>New messages</Text>
-              <Text style={[styles.muted, { color: colors.textMuted }]}>
-                A gentle notice when someone writes to you.
-              </Text>
-            </View>
-            <Switch
-              value={settings.messages}
-              onValueChange={(v) => void toggle("messages", v)}
-              accessibilityLabel="New message notifications"
-            />
-          </View>
-
-          <View style={[styles.settingRow, { marginTop: space[3] }]}>
-            <View style={{ flex: 1, paddingRight: space[2] }}>
-              <Text style={[styles.settingName, { color: colors.text }]}>Someone says hi</Text>
-              <Text style={[styles.muted, { color: colors.textMuted }]}>
-                When someone would like to connect from Discover.
-              </Text>
-            </View>
-            <Switch
-              value={settings.connectionRequests}
-              onValueChange={(v) => void toggle("connectionRequests", v)}
-              accessibilityLabel="Connection request notifications"
-            />
-          </View>
-        </View>
-      ) : null}
 
       {loading ? (
         <View style={styles.loaderWrap}>
