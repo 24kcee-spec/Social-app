@@ -17,4 +17,6 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @sp/mobile run config:check
+      - run: pnpm --filter @sp/mobile exec expo config --type public
       - run: pnpm verify
