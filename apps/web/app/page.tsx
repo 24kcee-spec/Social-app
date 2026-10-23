@@ -1449,8 +1449,11 @@ function ProfileEditor({
           <section className="card" id="privacy-settings" tabIndex={-1}>
             <span className="eyebrow">CONTROLS</span>
             <h2>Privacy & Reachability</h2>
-            <p className="muted">Adjust who can find and message you on the platform.</p>
-            <PrivacyEditor privacy={privacy} setPrivacy={setPrivacy} />
+            <p className="muted">Adjust who can find and message you on the platform. Save your changes when you are ready.</p>
+            <PrivacyEditor
+              privacy={privacy}
+              setPrivacy={(value) => { setPrivacy(value); clearFeedback(); }}
+            />
           </section>
 
           {/* Active Devices & Security */}
