@@ -126,3 +126,7 @@ The single-page web shell serializes its top-level tab (`tab`), Settings/profile
 
 ## D-041 | 2026-10-23 | Web profile editor separates draft changes from immediate photo operations
 Name, bio, social styles, interest selections, prompt answers and privacy remain drafts until explicit Save; Discard restores the last saved profile baseline. Unsaved drafts guard app navigation and browser exit. Photo upload/removal is an immediate operation because storage objects and media registration are a separate API workflow; the UI must state this clearly and disable concurrent operations. Profile/interest/prompt writes are separate endpoints, not a database transaction, so on partial failure the client rereads server state and keeps the draft for review rather than claiming rollback.
+
+## D-042 | 2026-10-23 | Notification preferences have one dedicated settings home, supported categories only
+The web and mobile Settings screens expose the existing new-message and connection-request preferences through the authenticated notification-settings API. Messages stays focused on conversations. The UI must not imply phone push is live while the API notifier still uses a no-op sender; store user choices, show honest delivery status, and defer further categories and real push delivery until their event hooks, provider configuration, token lifecycle and tests exist.
+
