@@ -1108,6 +1108,7 @@ function ProfileEditor({
   }
 
   const activePrompt = prompts.find((p) => (answers[p.id] ?? "").trim().length > 0);
+  const primaryMedia = profile.media[0];
   const answeredPromptCount = nonEmptyAnswers.length;
   const verificationLabel = profile.verificationLevel === "student_verified"
     ? "Student verified"
@@ -1140,11 +1141,11 @@ function ProfileEditor({
                   overflow: "hidden",
                 }}
               >
-                {profile.media?.[0] && mediaUrls[profile.media[0].id] ? (
+                {primaryMedia && mediaUrls[primaryMedia.id] ? (
                   <img
-                    src={mediaUrls[profile.media[0].id]}
+                    src={mediaUrls[primaryMedia.id]}
                     alt={profile.displayName}
-                    onError={() => setMediaUrls((current) => ({ ...current, [profile.media[0].id]: "" }))}
+                    onError={() => setMediaUrls((current) => ({ ...current, [primaryMedia.id]: "" }))}
                     style={{ width: "100%", height: "100%", objectFit: "cover" }}
                   />
                 ) : (
@@ -1214,11 +1215,11 @@ function ProfileEditor({
 
             <article className="profile-card" style={{ margin: 0 }}>
               <div className="profile-card-cover" style={{ height: 240 }}>
-                {profile.media?.[0] && mediaUrls[profile.media[0].id] ? (
+                {primaryMedia && mediaUrls[primaryMedia.id] ? (
                   <img
-                    src={mediaUrls[profile.media[0].id]}
+                    src={mediaUrls[primaryMedia.id]}
                     alt={displayName}
-                    onError={() => setMediaUrls((current) => ({ ...current, [profile.media[0].id]: "" }))}
+                    onError={() => setMediaUrls((current) => ({ ...current, [primaryMedia.id]: "" }))}
                   />
                 ) : (
                   <span className="profile-card-initial">{(displayName || "?").charAt(0).toUpperCase()}</span>
