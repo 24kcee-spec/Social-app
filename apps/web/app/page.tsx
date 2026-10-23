@@ -556,7 +556,6 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
 
   async function signOut() {
     if (!confirmLeaveProfileEditor()) return;
-    setProfileDirty(false);
     try {
       await getAuth().signOut();
     } catch (err) {
