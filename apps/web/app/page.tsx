@@ -338,6 +338,7 @@ function Field({
   type = "text",
   autoComplete,
   placeholder,
+  maxLength,
 }: {
   label: string;
   id: string;
@@ -347,6 +348,7 @@ function Field({
   type?: string;
   autoComplete?: string;
   placeholder?: string;
+  maxLength?: number;
 }) {
   return (
     <div className="field">
@@ -358,6 +360,7 @@ function Field({
         onChange={(e) => setValue(e.target.value)}
         autoComplete={autoComplete}
         placeholder={placeholder}
+        maxLength={maxLength}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${id}-err` : undefined}
       />
@@ -384,7 +387,14 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
   const [shellView, setShellView] = useState<ShellView>("app");
   const [focusSection, setFocusSection] = useState<string | null>(null);
   const lastAppNavigation = useRef<AppNavigation>({ shellView: "app", tab: "discover", focusSection: null });
+  const currentNavigationRef = useRef<AppNavigation>({ shellView: "app", tab: "discover", focusSection: null });
+  const currentHrefRef = useRef("");
+  const profileEditorDirtyRef = useRef(false);
   const [themePreference, setThemePreference] = useState<ThemePreference>("system");
+
+  const setProfileDirty = useCallback((dirty: boolean) => {
+    profileEditorDirtyRef.current = dirty;
+  }, []);
   const [pendingIn, setPendingIn] = useState(0);
   const [unread, setUnread] = useState(0);
   const [chatWith, setChatWith] = useState<string | null>(null);
@@ -413,6 +423,24 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
   useEffect(() => {
     const restoreNavigation = () => {
       const navigation = readAppNavigation(window.location.search);
+      const previous = currentNavigationRef.current;
+      const leavingEditor = previous.shellView === "app" && previous.tab === "profile"
+        && (navigation.shellView !== "app" || navigation.tab !== "profile");
+
+      if (leavingEditor && profileEditorDirtyRef.current) {
+        const confirmed = window.confirm(
+          "You have unsaved profile changes. Leave without saving? Photo uploads and removals are saved immediately and will not be undone.",
+        );
+        if (!confirmed) {
+          const restoreHref = currentHrefRef.current || navigationHref(window.location.href, previous);
+          window.history.pushState({ ...(window.history.state ?? {}), socialAppNavigation: true }, "", restoreHref);
+          return;
+        }
+        setProfileDirty(false);
+      }
+
+      currentNavigationRef.current = navigation;
+      currentHrefRef.current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
       lastAppNavigation.current = {
         shellView: "app",
         tab: navigation.tab,
@@ -425,7 +453,7 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
     restoreNavigation();
     window.addEventListener("popstate", restoreNavigation);
     return () => window.removeEventListener("popstate", restoreNavigation);
-  }, []);
+  }, [setProfileDirty]);
 
   useEffect(() => {
     try {
@@ -459,17 +487,28 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
     if (historyMode === "replace") window.history.replaceState(historyState, "", href);
     else window.history.pushState(historyState, "", href);
 
+    currentNavigationRef.current = navigation;
+    currentHrefRef.current = href;
     if (navigation.shellView === "app") lastAppNavigation.current = navigation;
     setShellView(navigation.shellView);
     setFocusSection(navigation.focusSection);
     setTab(navigation.tab);
   }
 
+  function confirmLeaveProfileEditor() {
+    if (!(shellView === "app" && tab === "profile") || !profileEditorDirtyRef.current) return true;
+    return window.confirm(
+      "You have unsaved profile changes. Leave without saving? Photo uploads and removals are saved immediately and will not be undone.",
+    );
+  }
+
   function navigateTab(nextTab: AppTab, historyMode: "push" | "replace" = "push") {
+    if (nextTab !== "profile" && !confirmLeaveProfileEditor()) return;
     applyNavigation({ shellView: "app", tab: nextTab, focusSection: null }, historyMode);
   }
 
   function openShellView(nextView: "settings" | "viewProfile") {
+    if (!confirmLeaveProfileEditor()) return;
     lastAppNavigation.current = { shellView: "app", tab, focusSection: null };
     applyNavigation({ shellView: nextView, tab, focusSection: null });
   }
@@ -516,6 +555,7 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
   }, []);
 
   async function signOut() {
+    if (!confirmLeaveProfileEditor()) return;
     try {
       await getAuth().signOut();
     } catch (err) {
@@ -670,6 +710,7 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
               onSaved={setProfile}
               sessions={sessions}
               revoke={revoke}
+              onDirtyChange={setProfileDirty}
             />
           )
         ) : null}
@@ -856,6 +897,7 @@ function ProfileEditor({
   onSaved,
   sessions,
   revoke,
+  onDirtyChange,
 }: {
   profile: Profile;
   interests: Interest[];
@@ -864,12 +906,12 @@ function ProfileEditor({
   onSaved: (profile: Profile) => void;
   sessions: DeviceSession[];
   revoke: (id: string) => void;
+  onDirtyChange: (dirty: boolean) => void;
 }) {
   const [displayName, setDisplayName] = useState(profile.displayName);
   const [bio, setBio] = useState(profile.bio);
   const [styles, setStyles] = useState(profile.socialStyles);
-  const [privacy, setPrivacy] = useState(profile.privacy);
-  const [moodStatus, setMoodStatus] = useState("🌿 Low-pressure hangout");
+  const [privacy, setPrivacy] = useState({ ...profile.privacy });
   const [selected, setSelected] = useState<Record<string, 1 | 2 | 3>>(
     Object.fromEntries(profile.interests.map((i) => [i.id, (i.strength ?? 2) as 1 | 2 | 3]))
   );
@@ -877,75 +919,203 @@ function ProfileEditor({
     Object.fromEntries(profile.prompts.map((p) => [p.promptId, p.answer]))
   );
   const [busy, setBusy] = useState(false);
+  const [mediaBusy, setMediaBusy] = useState(false);
+  const [refreshingMedia, setRefreshingMedia] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
 
+  const selectedDraft = Object.entries(selected)
+    .map(([interestId, strength]) => ({ interestId, strength }))
+    .sort((a, b) => a.interestId.localeCompare(b.interestId));
+  const selectedSaved = profile.interests
+    .map((interest) => ({ interestId: interest.id, strength: interest.strength ?? 2 }))
+    .sort((a, b) => a.interestId.localeCompare(b.interestId));
+  const answersDraft = Object.entries(answers)
+    .filter(([, answer]) => answer.trim())
+    .slice(0, 3)
+    .map(([promptId, answer]) => ({ promptId, answer: answer.trim() }))
+    .sort((a, b) => a.promptId.localeCompare(b.promptId));
+  const answersSaved = profile.prompts
+    .filter((answer) => answer.answer.trim())
+    .map((answer) => ({ promptId: answer.promptId, answer: answer.answer.trim() }))
+    .sort((a, b) => a.promptId.localeCompare(b.promptId));
+  const hasUnsavedChanges =
+    displayName.trim() !== profile.displayName ||
+    bio.trim() !== profile.bio ||
+    JSON.stringify([...styles].sort()) !== JSON.stringify([...profile.socialStyles].sort()) ||
+    JSON.stringify(privacy) !== JSON.stringify(profile.privacy) ||
+    JSON.stringify(selectedDraft) !== JSON.stringify(selectedSaved) ||
+    JSON.stringify(answersDraft) !== JSON.stringify(answersSaved);
+  const nonEmptyAnswers = Object.values(answers).filter((answer) => answer.trim());
+  const validationMessage = displayName.trim().length < 2
+    ? "Your display name must contain at least 2 characters."
+    : displayName.trim().length > 50
+      ? "Your display name must be 50 characters or fewer."
+      : styles.length < 1
+        ? "Choose at least one social style."
+        : selectedDraft.length < 3
+          ? "Choose at least 3 interests."
+          : selectedDraft.length > 12
+            ? "Choose no more than 12 interests."
+            : nonEmptyAnswers.some((answer) => answer.trim().length < 2)
+              ? "Each prompt answer must contain at least 2 characters."
+              : nonEmptyAnswers.length < 1
+                ? "Answer at least one conversation prompt."
+                : nonEmptyAnswers.length > 3
+                  ? "Answer no more than 3 conversation prompts."
+                  : null;
+  const saveValidationMessage = hasUnsavedChanges ? validationMessage : null;
+
   const refreshMedia = useCallback(async () => {
-    const pairs = await Promise.all(
-      profile.media.map(async (m) => [m.id, await getSignedMediaUrl(m.thumbnailPath)] as const)
-    );
-    setMediaUrls(Object.fromEntries(pairs));
+    setRefreshingMedia(true);
+    try {
+      const pairs = await Promise.all(
+        profile.media.map(async (media) => {
+          try {
+            return [media.id, await getSignedMediaUrl(media.thumbnailPath)] as const;
+          } catch {
+            return [media.id, ""] as const;
+          }
+        }),
+      );
+      setMediaUrls(Object.fromEntries(pairs));
+    } finally {
+      setRefreshingMedia(false);
+    }
   }, [profile.media]);
 
   useEffect(() => {
-    void refreshMedia().catch(() => undefined);
+    void refreshMedia();
   }, [refreshMedia]);
 
-  async function save() {
-    setBusy(true);
+  useEffect(() => {
+    onDirtyChange(hasUnsavedChanges);
+  }, [hasUnsavedChanges, onDirtyChange]);
+
+  useEffect(() => () => onDirtyChange(false), [onDirtyChange]);
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warnBeforeLeaving);
+    return () => window.removeEventListener("beforeunload", warnBeforeLeaving);
+  }, [hasUnsavedChanges]);
+
+  function clearFeedback() {
     setError(null);
     setMessage(null);
+  }
+
+  function resetDraft(source: Profile) {
+    setDisplayName(source.displayName);
+    setBio(source.bio);
+    setStyles([...source.socialStyles]);
+    setPrivacy({ ...source.privacy });
+    setSelected(Object.fromEntries(source.interests.map((interest) => [interest.id, (interest.strength ?? 2) as 1 | 2 | 3])));
+    setAnswers(Object.fromEntries(source.prompts.map((prompt) => [prompt.promptId, prompt.answer])));
+  }
+
+  function discardDraft() {
+    if (!hasUnsavedChanges || busy || mediaBusy) return;
+    if (!window.confirm("Discard your unsaved profile details, interests, prompt answers and privacy changes? Photo uploads and removals are saved immediately and will not be undone.")) return;
+    resetDraft(profile);
+    clearFeedback();
+    setMessage("Unsaved profile changes discarded. Photo changes remain saved.");
+    onDirtyChange(false);
+  }
+
+  async function save() {
+    if (busy || mediaBusy || !hasUnsavedChanges || saveValidationMessage) return;
+    setBusy(true);
+    clearFeedback();
     try {
-      let next = await client.updateProfile({
+      let saved = await client.updateProfile({
         displayName: displayName.trim(),
         bio: bio.trim(),
         socialStyles: styles,
         privacy,
       });
-      next = await client.updateInterests({
+      saved = await client.updateInterests({
         interests: Object.entries(selected).map(([interestId, strength]) => ({ interestId, strength })),
       });
       const chosenAnswers = Object.entries(answers)
         .filter(([, answer]) => answer.trim())
-        .slice(0, 6)
+        .slice(0, 3)
         .map(([promptId, answer]) => ({ promptId, answer: answer.trim() }));
-      next = await client.updatePrompts({ answers: chosenAnswers });
-      onSaved(next);
+      saved = await client.updatePrompts({ answers: chosenAnswers });
+      onSaved(saved);
+      resetDraft(saved);
       setMessage("Profile saved successfully.");
+      onDirtyChange(false);
     } catch (err) {
       setError(errorMessage(err));
+      try {
+        const latest = await client.getProfile();
+        onSaved(latest);
+        setMessage("We refreshed the saved profile after the error. Some earlier fields may already have been saved; review your remaining changes before retrying.");
+      } catch {
+        setMessage("One or more save steps may have completed before the error. Refresh the page and check your saved profile before retrying.");
+      }
     } finally {
       setBusy(false);
     }
   }
 
   async function addImage(file: File) {
-    setError(null);
-    setMessage(null);
+    if (busy || mediaBusy || profile.media.length >= 6) return;
+    setMediaBusy(true);
+    clearFeedback();
     try {
       const media = await uploadProfileImage(file, profile.media);
       onSaved({ ...profile, media: [...profile.media, media] });
-      setMessage("Photo uploaded.");
+      setMessage("Photo uploaded and saved immediately.");
     } catch (err) {
       setError(errorMessage(err));
+    } finally {
+      setMediaBusy(false);
     }
   }
 
   async function removeImage(id: string) {
-    const media = profile.media.find((m) => m.id === id);
+    if (busy || mediaBusy) return;
+    const media = profile.media.find((item) => item.id === id);
     if (!media) return;
-    setError(null);
+    if (!window.confirm("Remove this profile photo? This change is saved immediately.")) return;
+    setMediaBusy(true);
+    clearFeedback();
     try {
       await deleteProfileImage(media);
-      onSaved({ ...profile, media: profile.media.filter((m) => m.id !== id) });
-      setMessage("Photo removed.");
+      onSaved({ ...profile, media: profile.media.filter((item) => item.id !== id) });
+      setMessage("Photo removed and saved immediately.");
     } catch (err) {
       setError(errorMessage(err));
+      // The server may have deleted the profile record even if storage cleanup failed.
+      // Refresh the current profile so the editor does not keep a stale media item.
+      try {
+        const latest = await client.getProfile();
+        onSaved(latest);
+      } catch {
+        // Preserve the original actionable error if the follow-up read is also unavailable.
+      }
+    } finally {
+      setMediaBusy(false);
     }
   }
 
   const activePrompt = prompts.find((p) => (answers[p.id] ?? "").trim().length > 0);
+  const primaryMedia = profile.media[0];
+  const answeredPromptCount = nonEmptyAnswers.length;
+  const verificationLabel = profile.verificationLevel === "student_verified"
+    ? "Student verified"
+    : profile.verificationLevel === "trusted"
+      ? "Trusted member"
+      : profile.verificationLevel === "email_verified"
+        ? "Email verified"
+        : null;
 
   return (
     <div className="profile-dashboard">
@@ -970,8 +1140,13 @@ function ProfileEditor({
                   overflow: "hidden",
                 }}
               >
-                {profile.media?.[0] && mediaUrls[profile.media[0].id] ? (
-                  <img src={mediaUrls[profile.media[0].id]} alt={profile.displayName} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                {primaryMedia && mediaUrls[primaryMedia.id] ? (
+                  <img
+                    src={mediaUrls[primaryMedia.id]}
+                    alt={displayName || "Profile photo"}
+                    onError={() => setMediaUrls((current) => ({ ...current, [primaryMedia.id]: "" }))}
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
                 ) : (
                   <span className="profile-card-initial">{profile.displayName.charAt(0).toUpperCase()}</span>
                 )}
@@ -979,15 +1154,29 @@ function ProfileEditor({
             </div>
             <div>
               <span className="eyebrow">PROFILE STUDIO</span>
-              <h1 style={{ fontSize: "1.75rem", margin: "2px 0 6px" }}>{profile.displayName || "Your Space"}</h1>
+              <h1 style={{ fontSize: "1.75rem", margin: "2px 0 6px" }}>{displayName.trim() || "Your Space"}</h1>
               <p className="muted" style={{ margin: 0 }}>
-                {Object.keys(selected).length} passions · {styles.length} social paces · Campus Discoverable
+                {selectedDraft.length} interests · {styles.length} social styles · {privacy.discoverable ? "Discoverable" : "Not discoverable"}
               </p>
             </div>
           </div>
-          <button onClick={() => void save()} disabled={busy || styles.length < 1}>
-            {busy ? "Saving changes…" : "Save all changes"}
-          </button>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+            <button
+              type="button"
+              className="secondary compact"
+              onClick={discardDraft}
+              disabled={!hasUnsavedChanges || busy || mediaBusy}
+            >
+              Discard unsaved edits
+            </button>
+            <button
+              type="button"
+              onClick={() => void save()}
+              disabled={busy || mediaBusy || !hasUnsavedChanges || Boolean(saveValidationMessage)}
+            >
+              {busy ? "Saving changes…" : "Save changes"}
+            </button>
+          </div>
         </div>
         {message && (
           <div className="notice ok" role="status" style={{ marginTop: 18, marginBottom: 0 }}>
@@ -999,6 +1188,19 @@ function ProfileEditor({
             <span>{error}</span>
           </div>
         )}
+        {saveValidationMessage && (
+          <div className="notice err" role="status" style={{ marginTop: 12, marginBottom: 0 }}>
+            <span>{saveValidationMessage}</span>
+          </div>
+        )}
+        {mediaBusy && (
+          <div className="notice" role="status" style={{ marginTop: 12, marginBottom: 0 }}>
+            <span>Processing your photo change… please keep this page open.</span>
+          </div>
+        )}
+        <p className="muted" style={{ marginTop: 12, marginBottom: 0 }}>
+          Profile details, interests, prompts and privacy save when you choose Save changes. Photo uploads and removals are saved immediately.
+        </p>
       </div>
 
       <div className="profile-dashboard-grid">
@@ -1006,14 +1208,18 @@ function ProfileEditor({
         <div className="profile-col-main">
           <div className="live-preview-box">
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <span className="eyebrow">LIVE CAMPUS PREVIEW</span>
-              <span className="muted" style={{ fontSize: "0.78rem" }}>Real-time student card</span>
+              <span className="eyebrow">PROFILE PREVIEW</span>
+              <span className="muted" style={{ fontSize: "0.78rem" }}>Draft changes appear here until saved</span>
             </div>
 
             <article className="profile-card" style={{ margin: 0 }}>
               <div className="profile-card-cover" style={{ height: 240 }}>
-                {profile.media?.[0] && mediaUrls[profile.media[0].id] ? (
-                  <img src={mediaUrls[profile.media[0].id]} alt={displayName} />
+                {primaryMedia && mediaUrls[primaryMedia.id] ? (
+                  <img
+                    src={mediaUrls[primaryMedia.id]}
+                    alt={displayName}
+                    onError={() => setMediaUrls((current) => ({ ...current, [primaryMedia.id]: "" }))}
+                  />
                 ) : (
                   <span className="profile-card-initial">{(displayName || "?").charAt(0).toUpperCase()}</span>
                 )}
@@ -1022,20 +1228,17 @@ function ProfileEditor({
                   <span className="social-style-tag">
                     {styles.map((s) => SOCIAL_STYLE_LABELS[s]).join(" · ") || "Low pressure"}
                   </span>
-                  <span className="social-style-tag" style={{ background: "rgba(16, 185, 129, 0.85)" }}>
-                    Verified Student
-                  </span>
+                  {verificationLabel ? (
+                    <span className="social-style-tag" style={{ background: "rgba(16, 185, 129, 0.85)" }}>
+                      {verificationLabel}
+                    </span>
+                  ) : null}
                 </div>
               </div>
 
               <div className="profile-card-body">
                 <div className="profile-name-row">
                   <div className="profile-card-name">{displayName || "Your Name"}</div>
-                  <span className="muted" style={{ fontSize: "0.82rem" }}>NUST · Bulawayo</span>
-                </div>
-
-                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 10px", borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent)", fontSize: "0.78rem", fontWeight: 700, marginBottom: 12 }}>
-                  <span>{moodStatus}</span>
                 </div>
 
                 <p className="profile-card-bio">
@@ -1064,41 +1267,12 @@ function ProfileEditor({
                 )}
 
                 <div className="profile-card-footer">
-                  <span className="muted" style={{ fontSize: "0.82rem" }}>Active now</span>
-                  <button className="compact secondary" type="button">
-                    Say hi 👋
-                  </button>
+                  <span className="muted" style={{ fontSize: "0.82rem" }}>Preview only · save changes to publish your updated profile</span>
                 </div>
               </div>
             </article>
 
-            {/* Quick Mood Bar */}
-            <div className="card" style={{ marginTop: 20, padding: 18 }}>
-              <span className="eyebrow">QUICK VIBE STATUS</span>
-              <p className="muted" style={{ fontSize: "0.82rem", margin: "2px 0 10px" }}>
-                Let classmates know what you are currently up for:
-              </p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {[
-                  "🌿 Low-pressure hangout",
-                  "🎧 In the zone / Music",
-                  "💻 Late-night code",
-                  "☕ Coffee & Library",
-                  "⚽ Game night & Sports",
-                  "🎨 Creative flow",
-                ].map((mood) => (
-                  <button
-                    key={mood}
-                    type="button"
-                    className={`compact ${moodStatus === mood ? "" : "secondary"}`}
-                    onClick={() => setMoodStatus(mood)}
-                    style={{ fontSize: "0.78rem" }}
-                  >
-                    {mood}
-                  </button>
-                ))}
-              </div>
-            </div>
+
           </div>
         </div>
 
@@ -1108,13 +1282,19 @@ function ProfileEditor({
           <section className="card" id="profile-details" tabIndex={-1}>
             <span className="eyebrow">IDENTITY & BIO</span>
             <h2>Personal Details</h2>
-            <Field label="Display name" id="editDisplayName" value={displayName} setValue={setDisplayName} />
+            <Field
+              label="Display name"
+              id="editDisplayName"
+              value={displayName}
+              setValue={(value) => { setDisplayName(value); clearFeedback(); }}
+              maxLength={50}
+            />
             <div className="field">
               <label htmlFor="editBio">Bio & Campus Vibe</label>
               <textarea
                 id="editBio"
                 value={bio}
-                onChange={(e) => setBio(e.target.value)}
+                onChange={(e) => { setBio(e.target.value); clearFeedback(); }}
                 maxLength={280}
                 rows={3}
                 placeholder="Share your major, hobbies, music taste, and low-pressure connection style..."
@@ -1125,9 +1305,10 @@ function ProfileEditor({
               title="Social Pace & Connection Style"
               values={styles}
               options={Object.keys(SOCIAL_STYLE_LABELS) as SocialStyle[]}
-              onToggle={(style) =>
-                setStyles(styles.includes(style) ? styles.filter((s) => s !== style) : [...styles, style])
-              }
+              onToggle={(style) => {
+                setStyles(styles.includes(style) ? styles.filter((s) => s !== style) : [...styles, style]);
+                clearFeedback();
+              }}
             />
           </section>
 
@@ -1143,14 +1324,20 @@ function ProfileEditor({
             <CategorizedInterests
               interests={interests}
               selected={selected}
-              onToggle={(id) =>
-                setSelected((s) => {
-                  const next = { ...s };
-                  if (s[id] !== undefined) delete next[id];
+              onToggle={(id) => {
+                if (selected[id] === undefined && selectedDraft.length >= 12) {
+                  setError("Choose no more than 12 interests.");
+                  setMessage(null);
+                  return;
+                }
+                setSelected((current) => {
+                  const next = { ...current };
+                  if (current[id] !== undefined) delete next[id];
                   else next[id] = 2;
                   return next;
-                })
-              }
+                });
+                clearFeedback();
+              }}
             />
           </section>
 
@@ -1160,7 +1347,7 @@ function ProfileEditor({
               <div className="card-title-group">
                 <span className="eyebrow">CONVERSATION STARTERS</span>
                 <h2>Prompt answers</h2>
-                <p className="muted">These prompt answers help other members break the ice with genuine depth.</p>
+                <p className="muted">Answer 1–3 prompts. Each answer needs at least 2 characters and can be up to 240 characters. Clear an answer before adding a fourth.</p>
               </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -1170,7 +1357,18 @@ function ProfileEditor({
                   <textarea
                     id={`p-${p.id}`}
                     value={answers[p.id] ?? ""}
-                    onChange={(e) => setAnswers((a) => ({ ...a, [p.id]: e.target.value }))}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      const existingAnswer = (answers[p.id] ?? "").trim();
+                      if (!existingAnswer && value.trim() && answeredPromptCount >= 3) {
+                        setError("You can answer up to 3 prompts. Clear an existing answer before adding another.");
+                        setMessage(null);
+                        return;
+                      }
+                      setAnswers((current) => ({ ...current, [p.id]: value }));
+                      clearFeedback();
+                    }}
+                    disabled={busy || mediaBusy || (answeredPromptCount >= 3 && !(answers[p.id] ?? "").trim())}
                     maxLength={240}
                     rows={2}
                     placeholder="Write your answer..."
@@ -1188,18 +1386,39 @@ function ProfileEditor({
               <div>
                 <span className="eyebrow">MEDIA</span>
                 <h2>Profile Photos</h2>
-                <p className="muted">Up to 6 photos. Square crop.</p>
+                <p className="muted">Up to 6 photos. JPG, PNG or WebP; 5 MB max before cropping. Photo changes save immediately.</p>
               </div>
+              {profile.media.some((media) => !mediaUrls[media.id]) ? (
+                <button
+                  type="button"
+                  className="secondary compact"
+                  onClick={() => void refreshMedia()}
+                  disabled={refreshingMedia || mediaBusy || busy}
+                >
+                  {refreshingMedia ? "Refreshing photo links…" : "Retry loading photos"}
+                </button>
+              ) : null}
             </div>
             <div className="photo-upload-grid">
               {profile.media.map((m) => (
                 <div className="photo-tile" key={m.id}>
                   {mediaUrls[m.id] ? (
-                    <img src={mediaUrls[m.id]} alt="Profile photo" />
+                    <img
+                      src={mediaUrls[m.id]}
+                      alt={`Profile photo ${m.sortOrder + 1}`}
+                      onError={() => setMediaUrls((current) => ({ ...current, [m.id]: "" }))}
+                    />
                   ) : (
                     <span className="profile-card-initial">📷</span>
                   )}
-                  <button className="photo-tile-delete" onClick={() => void removeImage(m.id)} title="Remove photo">
+                  <button
+                    type="button"
+                    className="photo-tile-delete"
+                    onClick={() => void removeImage(m.id)}
+                    disabled={busy || mediaBusy}
+                    aria-label={`Remove profile photo ${m.sortOrder + 1}`}
+                    title="Remove photo"
+                  >
                     ✕
                   </button>
                 </div>
@@ -1210,11 +1429,14 @@ function ProfileEditor({
                   <span>Add photo</span>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                    aria-label="Choose a profile photo"
+                    disabled={busy || mediaBusy || profile.media.length >= 6}
                     style={{ display: "none" }}
                     onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) void addImage(f);
+                      const file = e.currentTarget.files?.[0];
+                      e.currentTarget.value = "";
+                      if (file) void addImage(file);
                     }}
                   />
                 </label>
@@ -1226,8 +1448,11 @@ function ProfileEditor({
           <section className="card" id="privacy-settings" tabIndex={-1}>
             <span className="eyebrow">CONTROLS</span>
             <h2>Privacy & Reachability</h2>
-            <p className="muted">Adjust who can find and message you on the platform.</p>
-            <PrivacyEditor privacy={privacy} setPrivacy={setPrivacy} />
+            <p className="muted">Adjust who can find and message you on the platform. Save your changes when you are ready.</p>
+            <PrivacyEditor
+              privacy={privacy}
+              setPrivacy={(value) => { setPrivacy(value); clearFeedback(); }}
+            />
           </section>
 
           {/* Active Devices & Security */}
