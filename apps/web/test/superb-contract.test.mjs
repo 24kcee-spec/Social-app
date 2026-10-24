@@ -21,6 +21,7 @@ test("superb design system is loaded after legacy polish layers", () => {
   assert.match(layout, /superb-design\.css/);
   assert.match(layout, /superb-pages\.css/);
   assert.match(layout, /superb-components\.css/);
+  assert.match(layout, /plans-polish\.css/);
   assert.match(layout, /<ProductExperience \/>/);
 
   const design = read("app/superb-design.css");
@@ -75,10 +76,14 @@ test("connections support private browser-only organization", () => {
   assert.doesNotMatch(connections, /Campus Verified Student/);
 });
 
-test("plans are a first-class route while reusing the community contract", () => {
+test("plans are a first-class native route while reusing the community contract", () => {
   const config = read("next.config.mjs");
   const manifest = read("app/manifest.ts");
-  assert.match(config, /\["\/plans", "\/\?tab=community"\]/);
+  const plans = read("app/plans/page.tsx");
+  assert.equal(exists("app/plans/page.tsx"), true);
+  assert.doesNotMatch(config, /\["\/plans", "\/\?tab=community"\]/);
+  assert.match(plans, /<Community \/>/);
+  assert.match(plans, /Plans & communities/);
   assert.match(manifest, /name: 'Plans'/);
   assert.match(manifest, /url: '\/plans'/);
 });
