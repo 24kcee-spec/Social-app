@@ -9,14 +9,15 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: '/discover',
     scope: '/',
     display: 'standalone',
-    background_color: '#F7F6F2',
-    theme_color: '#1F4FD8',
+    background_color: '#F6F7FB',
+    theme_color: '#315EE7',
     categories: ['social', 'lifestyle'],
     shortcuts: [
       { name: 'Discover', short_name: 'Discover', url: '/discover' },
       { name: 'Messages', short_name: 'Messages', url: '/messages' },
-      { name: 'Community', short_name: 'Community', url: '/community' },
+      { name: 'Plans', short_name: 'Plans', url: '/plans' },
       { name: 'Settings', short_name: 'Settings', url: '/settings' },
+      { name: 'Help & safety', short_name: 'Help', url: '/help' },
     ],
     icons: [
       { src: '/brand/sidle-mark.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },

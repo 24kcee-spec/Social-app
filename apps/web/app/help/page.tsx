@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "Help & safety",
+  description: "Privacy, reporting, account security and community guidance for Sidle.",
+};
 
 const guidance = [
   {
@@ -7,7 +13,7 @@ const guidance = [
   },
   {
     title: "Report behavior, not popularity",
-    body: "Use Report on profiles, conversations, groups or events when something breaks the community rules or makes the space unsafe. Reporting is separate from blocking, so you can use either or both.",
+    body: "Use Report on profiles, conversations, groups or plans when something breaks the community rules or makes the space unsafe. Reporting is separate from blocking, so you can use either or both.",
   },
   {
     title: "Protect your account",
@@ -15,7 +21,7 @@ const guidance = [
   },
   {
     title: "Keep location details general",
-    body: "Sidle is designed around broad campus or neighborhood context. Avoid posting private home addresses, passwords, financial details or other sensitive information in profiles, messages, groups or events.",
+    body: "Sidle is designed around broad campus or neighborhood context. Avoid posting private home addresses, passwords, financial details or other sensitive information in profiles, messages, groups or plans.",
   },
 ];
 
@@ -52,6 +58,9 @@ export default function HelpPage() {
           <Link className="secondary" href="/settings/account">Active sessions</Link>
           <Link className="secondary" href="/settings/notifications">Notification preferences</Link>
           <Link className="secondary" href="/profile/edit">Edit profile</Link>
+          <Link className="secondary" href="/privacy">Privacy overview</Link>
+          <Link className="secondary" href="/community-guidelines">Community guidance</Link>
+          <Link className="secondary" href="/whats-new">What’s new</Link>
         </div>
       </section>
 

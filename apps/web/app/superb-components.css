@@ -1,0 +1,108 @@
+/* Higher-level Sidle component patterns ----------------------------------- */
+.sidle-avatar-fallback {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--sidle-brand), var(--sidle-violet));
+  color: white;
+  font-weight: 800;
+  font-size: 1.05rem;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--sidle-brand) 20%, transparent);
+}
+
+.sidle-list-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.sidle-list-heading .eyebrow { margin-bottom: 3px; }
+.sidle-list-heading h2 { margin: 0; }
+.sidle-list-heading-wrap { align-items: end; }
+
+.sidle-people-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.sidle-connection-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.sidle-person-row,
+.sidle-name-badges,
+.sidle-card-actions-wide,
+.sidle-connection-tools {
+  display: flex;
+  align-items: center;
+}
+.sidle-person-row { gap: 13px; }
+.sidle-name-badges { gap: 7px; flex-wrap: wrap; }
+.sidle-name-badges h3 { margin: 0; }
+.sidle-card-actions-wide { gap: 9px; margin-top: auto; }
+.sidle-card-actions-wide > * { flex: 1; }
+.sidle-connection-tools { gap: 8px; }
+.sidle-connection-tools input { width: min(250px, 34vw); }
+.sidle-connection-tools select { min-width: 158px; }
+
+.sidle-one-line {
+  margin: 2px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidle-soft-card {
+  padding: 26px !important;
+  text-align: center;
+  background: var(--sidle-panel-muted) !important;
+  box-shadow: none !important;
+}
+.sidle-soft-card p { margin: 0; }
+
+.sidle-private-label-field {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  color: var(--sidle-ink-3);
+  font-size: .76rem;
+  font-weight: 750;
+}
+.sidle-private-label-field select { min-width: 0; width: 100%; }
+
+/* Compact accessibility utility used by new and legacy screens. */
+.sidle-sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+@media (max-width: 820px) {
+  .sidle-people-grid { grid-template-columns: 1fr; }
+  .sidle-list-heading-wrap { align-items: stretch; flex-direction: column; }
+  .sidle-connection-tools { width: 100%; }
+  .sidle-connection-tools input { width: 100%; flex: 1; }
+}
+
+@media (max-width: 520px) {
+  .sidle-connection-tools { align-items: stretch; flex-direction: column; }
+  .sidle-connection-tools select { width: 100%; }
+  .sidle-card-actions-wide { align-items: stretch; flex-direction: column; }
+  .sidle-private-label-field { grid-template-columns: 1fr; gap: 5px; }
+}

@@ -13,6 +13,7 @@ const shellRedirects = [
   ["/connections", "/?tab=connections"],
   ["/messages", "/?tab=messages"],
   ["/community", "/?tab=community"],
+  ["/plans", "/?tab=community"],
   ["/profile", "/?view=profile-preview"],
   ["/profile/edit", "/?tab=profile&section=profile-details"],
   ["/settings", "/?view=settings"],
@@ -45,6 +46,15 @@ export default {
     return shellRedirects;
   },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+    ];
   },
 };

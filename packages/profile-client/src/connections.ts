@@ -1,4 +1,4 @@
-import type { ConnectionRequestView, ConnectionView, InteractionSettings, SendRequestResult, StarterSet } from "@sp/types";
+import type { ActivationSummary, ConnectionRequestView, ConnectionView, InteractionSettings, SendRequestResult, StarterSet } from "@sp/types";
 import type { IntroInput } from "@sp/validation";
 import { ProfileApiError, describeFailure, type ProfileClientConfig } from "./index";
 
@@ -49,6 +49,9 @@ export function createConnectionsClient(config: ProfileClientConfig) {
     removeConnection: async (userId: string): Promise<void> => done(await call(`/connections/${encodeURIComponent(userId)}`, "DELETE")),
     getSettings: async (): Promise<InteractionSettings> => json(await call("/me/interaction-settings", "GET")),
     setLowPressure: async (lowPressureMode: boolean): Promise<InteractionSettings> => json(await call("/me/interaction-settings", "PUT", { lowPressureMode })),
+    /** Admin-only product health funnel. The API remains the authorization boundary. */
+    getActivationSummary: async (sinceDays = 30): Promise<ActivationSummary> =>
+      json(await call(`/admin/activation/summary?sinceDays=${encodeURIComponent(String(sinceDays))}`, "GET")),
   };
 }
 export type ConnectionsClient = ReturnType<typeof createConnectionsClient>;
