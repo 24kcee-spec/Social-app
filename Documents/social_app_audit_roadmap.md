@@ -1,3 +1,5 @@
+> **Historical audit (22 October 2026):** Several findings below have since been implemented or corrected. See [current status](../docs/status.md) for the code-backed status, validation and ordered remaining release gates as of 24 October 2026.
+
 # Social-app — Repository Audit & Phased Build Roadmap
 
 **Repository reviewed:** https://github.com/24kcee-spec/Social-app  

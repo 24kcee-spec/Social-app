@@ -10,11 +10,11 @@ A low-pressure social app that helps people in Bulawayo find compatible people, 
 - Eligibility rule: to be confirmed in decisions.md (D-007) - proposed: university email or invite code.
 
 ## 0.3 MVP (P0 - the only things that ship first)
-Auth, profile, interests, discovery, explainable compatibility, low-pressure mode, connection requests, messaging, groups/activities, sharing, block/report, privacy.
-Everything else (stories, questions, polls, voice notes, events, memory chains, QR, music, monetisation) goes to the backlog until the pilot shows repeat use.
+Auth, profile, interests, discovery, explainable compatibility, low-pressure mode, connection requests, messaging, groups/activities with events and RSVPs, sharing, block/report, privacy.
+Everything else (stories, questions, polls, voice notes, memory chains, QR, music, monetisation) goes to the backlog until the pilot shows repeat use.
 
-## 0.4 Brand placeholder
-Working name: "social-platform". Neutral design. Real brand is chosen after the pilot.
+## 0.4 Brand
+Public name: **Sidle** — “Find your people. At your pace.” Internal repository/package identifiers remain compatible.
 
 ## 0.8 Success metrics (definitions)
 | Metric | Definition | Pilot target (proposed) |
