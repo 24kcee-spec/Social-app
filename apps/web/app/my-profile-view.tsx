@@ -19,9 +19,9 @@ const SOCIAL_STYLE_LABELS: Record<string, string> = {
 };
 
 const VISIBILITY_LABELS: Record<string, string> = {
-  public: "Visible to eligible Sidle members",
-  connections: "Visible to connections",
-  private: "Private profile",
+  public: "Public",
+  connections: "Connections only",
+  private: "Private",
 };
 
 const MESSAGE_LABELS: Record<string, string> = {
@@ -154,10 +154,12 @@ export function MyProfileView({ profile, onBack, onEdit }: MyProfileViewProps) {
           <section className="my-profile-section" aria-labelledby="my-profile-privacy">
             <h3 id="my-profile-privacy">Current privacy boundary</h3>
             <div className="my-profile-chip-list">
-              <span className="my-profile-chip">{VISIBILITY_LABELS[profile.privacy.visibility] ?? profile.privacy.visibility}</span>
+              <span className="my-profile-chip">{profile.privacy.discoverable ? "Included in eligible discovery" : "Hidden from discovery"}</span>
               <span className="my-profile-chip">{MESSAGE_LABELS[profile.privacy.messagePermission] ?? profile.privacy.messagePermission}</span>
+              <span className="my-profile-chip">Stories: {VISIBILITY_LABELS[profile.privacy.storyVisibility] ?? profile.privacy.storyVisibility}</span>
+              <span className="my-profile-chip">Activity: {VISIBILITY_LABELS[profile.privacy.activityVisibility] ?? profile.privacy.activityVisibility}</span>
             </div>
-            <p className="muted" style={{ marginTop: 10 }}>These controls are not public profile claims; they explain the rules currently protecting this profile.</p>
+            <p className="muted" style={{ marginTop: 10 }}>These controls are not public profile claims; they explain the saved rules currently protecting this profile.</p>
           </section>
         </div>
       </article>
