@@ -2,7 +2,7 @@
   "name": "social-platform",
   "private": true,
   "version": "0.0.0",
-  "description": "Social Connection Platform (placeholder name) - monorepo",
+  "description": "Sidle social connection platform monorepo",
   "packageManager": "pnpm@9.15.4",
   "engines": {
     "node": ">=22"
@@ -20,7 +20,8 @@
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r --if-present typecheck || npm run typecheck --workspaces --if-present",
     "test": "pnpm -r --if-present test || npm test --workspaces --if-present",
-    "verify": "pnpm typecheck && pnpm test"
+    "verify:migrations": "node scripts/verify-migrations.mjs",
+    "verify": "pnpm verify:migrations && pnpm typecheck && pnpm test"
   },
   "devDependencies": {
     "prettier": "^3.4.0",
