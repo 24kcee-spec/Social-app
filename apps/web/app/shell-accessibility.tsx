@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 const NAV_EVENT = "sidle:navigation";
+const DEFAULT_TITLE = "Sidle — Find your people. At your pace.";
 
 function navigationLabel() {
   const params = new URLSearchParams(window.location.search);
@@ -27,6 +28,11 @@ function navigationLabel() {
         : tab === "profile"
           ? "Profile"
           : "Discover";
+}
+
+function syncDocumentTitle() {
+  const label = navigationLabel();
+  document.title = label === "Discover" ? DEFAULT_TITLE : `${label} · Sidle`;
 }
 
 function syncPrimaryNavigation() {
@@ -80,6 +86,7 @@ export function ShellAccessibility() {
     };
 
     scheduleSemantics();
+    syncDocumentTitle();
     const observer = new MutationObserver(scheduleSemantics);
     observer.observe(document.body, {
       subtree: true,
@@ -90,9 +97,12 @@ export function ShellAccessibility() {
 
     const announceNavigation = () => {
       scheduleSemantics();
+      syncDocumentTitle();
       focusNavigationTarget();
       requestAnimationFrame(() => setAnnouncement(`${navigationLabel()} opened`));
     };
+    const announceOffline = () => setAnnouncement("Browser is offline. Existing content may remain visible, but new actions need an internet connection.");
+    const announceOnline = () => setAnnouncement("Browser connection restored.");
 
     const originalPushState = window.history.pushState;
     const originalReplaceState = window.history.replaceState;
@@ -109,12 +119,16 @@ export function ShellAccessibility() {
     window.history.replaceState = patchedReplaceState;
     window.addEventListener(NAV_EVENT, announceNavigation);
     window.addEventListener("popstate", announceNavigation);
+    window.addEventListener("offline", announceOffline);
+    window.addEventListener("online", announceOnline);
 
     return () => {
       cancelAnimationFrame(semanticFrame);
       observer.disconnect();
       window.removeEventListener(NAV_EVENT, announceNavigation);
       window.removeEventListener("popstate", announceNavigation);
+      window.removeEventListener("offline", announceOffline);
+      window.removeEventListener("online", announceOnline);
       if (window.history.pushState === patchedPushState) window.history.pushState = originalPushState;
       if (window.history.replaceState === patchedReplaceState) window.history.replaceState = originalReplaceState;
     };
