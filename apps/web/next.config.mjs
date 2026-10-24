@@ -13,7 +13,6 @@ const shellRedirects = [
   ["/connections", "/?tab=connections"],
   ["/messages", "/?tab=messages"],
   ["/community", "/?tab=community"],
-  ["/plans", "/?tab=community"],
   ["/profile", "/?view=profile-preview"],
   ["/profile/edit", "/?tab=profile&section=profile-details"],
   ["/settings", "/?view=settings"],
