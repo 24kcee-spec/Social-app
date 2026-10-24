@@ -55,6 +55,7 @@ export function PrivacySettings({
       setBlocks(await getDiscoveryClient().listBlocks());
     } catch (err) {
       setError(errorMessage(err));
+      setBlocks(null);
     } finally {
       setBlocksLoading(false);
     }
@@ -63,6 +64,11 @@ export function PrivacySettings({
   useEffect(() => {
     void loadBlocks();
   }, [loadBlocks]);
+
+  const updateDraft = (next: Profile['privacy']) => {
+    setPrivacy(next);
+    setNotice(null);
+  };
 
   return (
     <section
@@ -75,12 +81,18 @@ export function PrivacySettings({
         <div>
           <span className="eyebrow">YOUR BOUNDARIES</span>
           <h1 id="privacy-title">Privacy & safety</h1>
-          <p className="muted">Control discovery, message permissions and blocked accounts.</p>
+          <p className="muted">Control discovery, message permissions and blocked accounts. Draft changes are not active until you save them.</p>
         </div>
         <button type="button" className="secondary compact" onClick={onBack} disabled={saving}>
           Back to Settings
         </button>
       </header>
+
+      {dirty && (
+        <p className="notice" role="status" aria-live="polite">
+          You have unsaved privacy changes.
+        </p>
+      )}
       {error && (
         <p className="notice err" role="alert">
           {error}
@@ -91,14 +103,16 @@ export function PrivacySettings({
           {notice}
         </p>
       )}
-      <section className="settings-panel" aria-busy={saving}>
-        <h2>Visibility and contact</h2>
+
+      <section className="settings-panel" aria-labelledby="visibility-contact-title" aria-busy={saving}>
+        <h2 id="visibility-contact-title">Visibility and contact</h2>
+        <p className="muted">These choices affect future discovery and contact checks. Existing blocks always take priority.</p>
         <fieldset
           aria-label="Privacy controls"
           disabled={saving}
           style={{ border: 0, padding: 0, margin: 0 }}
         >
-          {renderControls(privacy, setPrivacy)}
+          {renderControls(privacy, updateDraft)}
         </fieldset>
         <div className="card-actions">
           <button
@@ -136,8 +150,15 @@ export function PrivacySettings({
           </button>
         </div>
       </section>
+
       <section className="settings-panel" aria-labelledby="blocked-title" aria-busy={blocksLoading || unblocking !== null}>
-        <h2 id="blocked-title">Blocked accounts</h2>
+        <div className="settings-panel-heading">
+          <div>
+            <h2 id="blocked-title">Blocked accounts</h2>
+            <p className="muted">Blocking is immediate. Unblocking does not restore a previous connection or conversation permission.</p>
+          </div>
+          {blocks && <span className="settings-status">{blocks.length} blocked</span>}
+        </div>
         {blocks === null ? (
           <>
             <p role="status" aria-live="polite">
@@ -154,7 +175,7 @@ export function PrivacySettings({
         ) : blocks.length === 0 ? (
           <p className="muted">You have no blocked accounts.</p>
         ) : (
-          <ul>
+          <ul className="blocked-account-list">
             {blocks.map((block) => (
               <li key={block.userId}>
                 <span>{block.displayName}</span>{' '}
@@ -172,6 +193,7 @@ export function PrivacySettings({
                       return;
                     setUnblocking(block.userId);
                     setError(null);
+                    setNotice(null);
                     try {
                       await getDiscoveryClient().unblock(block.userId);
                       setBlocks(
