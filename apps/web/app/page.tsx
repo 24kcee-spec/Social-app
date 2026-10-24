@@ -1480,13 +1480,13 @@ function ProfileEditor({
             <span className="eyebrow" style={{ color: "var(--danger)" }}>DATA PRIVACY & REMOVAL</span>
             <h2>Delete Account and Personal Data</h2>
             <p className="muted">
-              Permanently anonymizes your account, removes your profile photos, prompt answers, interests, group memberships and ends all active sessions.
+              Immediately disables app access and removes your profile details, contact information, interests, prompts and memberships. Storage photos and your sign-in account are queued for server cleanup. Past messages and safety reports remain; provider backups follow their retention policy. Delete any groups you own first.
             </p>
             <button
               type="button"
               className="danger compact"
               onClick={async () => {
-                if (!window.confirm("Are you sure you want to permanently delete your account and data? This cannot be undone.")) return;
+                if (!window.confirm("Remove this account? App access ends immediately. Photos and sign-in records are queued for cleanup; historical messages, reports and provider backups are retained as described. This cannot be undone.")) return;
                 try {
                   await getSafetyClient().deleteAccount();
                   await getAuth().signOut();

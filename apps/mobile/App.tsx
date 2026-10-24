@@ -706,7 +706,7 @@ function MobileSettingsOverview({
   const confirmDeleteAccount = () => {
     Alert.alert(
       "Delete account and personal data?",
-      "This permanently deletes your Sidle account and cannot be undone. Make sure you really want to continue.",
+      "This ends app access and removes profile/contact data. Photos and sign-in records are queued for cleanup. Past messages, reports and provider backups remain. Delete any groups you own first. This cannot be undone.",
       [
         { text: "Cancel", style: "cancel" },
         {

@@ -4,6 +4,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { runMigrations } from "../src/migrate";
 import { createSafetyStore, SafetyError } from "../src/safety/store";
+import { createAuthStore } from "../src/auth/store";
 
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "migrations");
 let NOW = new Date("2026-10-12T12:00:00.000Z");
@@ -11,7 +12,7 @@ const U = (n: number) => `a${n}000000-0000-4000-8000-000000000000`;
 const [ALICE, BOB, CHARLIE, DAVE, ADMIN] = [U(1), U(2), U(3), U(4), U(5)];
 
 let db: PGlite;
-const store = (maxPerHour = 5) => createSafetyStore(db, { now: () => NOW, maxReportsPerHour: maxPerHour });
+const store = (maxPerHour = 5) => createSafetyStore(db, { now: () => NOW, maxReportsPerHour: maxPerHour, withTransaction: (work) => db.transaction(work) });
 
 async function person(id: string, name: string) {
   await db.query(`insert into users (id, email, status) values ($1, $2, 'active')`, [id, `${name.toLowerCase()}@example.com`]);
@@ -149,5 +150,25 @@ describe("safety store - data deletion (GDPR)", () => {
 
     const interests = (await db.query(`select * from user_interests where user_id = $1`, [ALICE])).rows;
     expect(interests).toHaveLength(0);
+    expect((await db.query("select email, phone from users where id = $1", [ALICE])).rows[0]).toEqual({ email: `deleted+${ALICE}@account.invalid`, phone: null });
+    expect((await db.query("select completed_at from account_cleanup_jobs where user_id = $1", [ALICE])).rows).toEqual([{ completed_at: null }]);
+    await createAuthStore(db).upsertUser({ userId: ALICE, email: "alice@example.com", phone: null, isAnonymous: false, sessionId: "old-session" });
+    expect((await db.query("select email from users where id = $1", [ALICE])).rows[0]).toEqual({ email: `deleted+${ALICE}@account.invalid` });
+  });
+
+  it("rolls back all deletion work if a cleanup statement fails", async () => {
+    const s = createSafetyStore(db, { withTransaction: (work) => db.transaction(async (tx) => {
+      await work(tx);
+      throw new Error("injected transaction failure");
+    }) });
+    await expect(s.deleteAccount(ALICE)).rejects.toThrow("injected transaction failure");
+    expect((await db.query("select status from users where id = $1", [ALICE])).rows[0]).toEqual({ status: "active" });
+    expect((await db.query("select * from account_cleanup_jobs")).rows).toHaveLength(0);
+  });
+
+  it("requires group owners to resolve ownership before removal", async () => {
+    await db.query("insert into groups (name, general_area, owner_id) values ('Study', 'Campus', $1)", [ALICE]);
+    await expect(store().deleteAccount(ALICE)).rejects.toMatchObject({ code: "conflict" });
+    expect((await db.query("select status from users where id = $1", [ALICE])).rows[0]).toEqual({ status: "active" });
   });
 });

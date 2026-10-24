@@ -21,6 +21,7 @@ import { createCommunityStore } from "./community/store";
 import { registerCommunity } from "./community/plugin";
 import { createSafetyStore } from "./safety/store";
 import { registerSafety } from "./safety/plugin";
+import { createAccountCleanupWorker } from "./safety/cleanup";
 import { createShareStore } from "./share/store";
 import { registerShare } from "./share/plugin";
 
@@ -52,7 +53,33 @@ if (pool && env.SUPABASE_URL) {
   const notifier = createMessageNotifier(db, noopPushSender, (msg, err) => app.log.warn({ err }, msg));
   registerMessaging(app, { requireAuth, store: createMessagingStore(db, undefined, { onMessageSent: notifier.messageSent }) });
   registerCommunity(app, { requireAuth, store: createCommunityStore(db) });
-  registerSafety(app, { requireAuth, requireRole, store: createSafetyStore(db) });
+  const withTransaction = async (work: (tx: typeof db) => Promise<void>) => {
+    const client = await pool.connect();
+    try {
+      await client.query("begin");
+      await work({ exec: (sql) => client.query(sql), query: (sql, params) => client.query(sql, params as unknown[]) as never });
+      await client.query("commit");
+    } catch (err) {
+      await client.query("rollback");
+      throw err;
+    } finally { client.release(); }
+  };
+  registerSafety(app, { requireAuth, requireRole, store: createSafetyStore(db, { withTransaction }) });
+  if (process.env.SUPABASE_SECRET_KEY) {
+    const cleanup = createAccountCleanupWorker(db, { supabaseUrl: env.SUPABASE_URL, secretKey: process.env.SUPABASE_SECRET_KEY });
+    let running = false;
+    const tick = async () => {
+      if (running) return;
+      running = true;
+      try { await cleanup(); } catch { app.log.warn("Account cleanup deferred; check database/Storage/Auth connectivity"); }
+      finally { running = false; }
+    };
+    const timer = setInterval(() => { void tick(); }, 60_000);
+    timer.unref();
+    app.addHook("onClose", async () => { clearInterval(timer); });
+  } else {
+    app.log.warn("SUPABASE_SECRET_KEY missing: external account cleanup jobs will remain pending");
+  }
   registerShare(app, { store: createShareStore(db) });
 } else {
   app.log.warn("DATABASE_URL and/or SUPABASE_URL not set: auth routes (/me, /me/sessions) are NOT registered");

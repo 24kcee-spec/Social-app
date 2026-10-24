@@ -32,14 +32,15 @@ export function createAuthStore(db: SqlRunner) {
            on conflict (id) do update set
              email = coalesce(excluded.email, users.email),
              phone = coalesce(excluded.phone, users.phone),
-             last_active_at = now()`,
+             last_active_at = now()
+           where users.status <> 'deleted'`,
           [c.userId, c.email, c.phone],
         );
       } catch (err) {
         if ((err as { code?: string }).code === "23505") throw new AccountConflictError("email or phone already belongs to another account");
         throw err;
       }
-      await db.query(`insert into user_roles (user_id, role) values ($1, 'user') on conflict do nothing`, [c.userId]);
+      await db.query(`insert into user_roles (user_id, role) select id, 'user'::user_role from users where id = $1 and status <> 'deleted' on conflict do nothing`, [c.userId]);
       const { rows } = await db.query<Record<string, unknown>>(
         `select u.id, u.email, u.phone, u.status::text as status, u.created_at, u.last_active_at,
                 coalesce((select array_agg(r.role::text order by r.role::text) from user_roles r where r.user_id = u.id), '{}') as roles

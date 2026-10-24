@@ -71,3 +71,8 @@ Invoke `POST /admin/reports/:id/resolve`:
   3. `user_sessions` and `device_push_tokens` deleted.
   4. Personal media records (`profile_media`), interests (`user_interests`), and prompt answers (`prompt_answers`) permanently erased.
   5. Group memberships and event RSVPs cancelled.
+
+## Account-removal implementation update — 24 October 2026
+The database phase is transactional. It removes personal profile/contact data, API sessions, interests, prompts, notification preferences and memberships; it releases RSVP seats and queues external cleanup. Owners must delete owned groups before removing their account. The API server retries queued Storage/Auth deletion every minute (failed jobs wait five minutes); it needs server-only `SUPABASE_SECRET_KEY`, reachable Supabase HTTPS and migrations through 0012. Monitor pending `account_cleanup_jobs` and do not claim external erasure until `completed_at` is set. Never put the secret key in web/mobile builds.
+
+Past messages and safety reports retain an anonymized account reference. Provider backups follow the configured provider retention policy; this endpoint does not erase backups. Previously issued signed media URLs may survive until expiry. The pilot operator must publish the actual retention policy and support route before enrollment. Apply `docs/supabase-pilot-security.sql` last so old JWTs cannot continue direct reads/writes after removal or session revocation.

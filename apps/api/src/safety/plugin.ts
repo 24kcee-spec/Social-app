@@ -19,6 +19,8 @@ const STATUS: Record<SafetyError["code"], number> = {
   invalid: 400,
   rate_limited: 429,
   already_reported: 200,
+  conflict: 409,
+  unavailable: 503,
 };
 
 function validationPayload(result: { error: { issues: { path: (string | number)[]; message: string }[] } }) {

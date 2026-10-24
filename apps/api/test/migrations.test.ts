@@ -35,6 +35,7 @@ describe("migration runner", () => {
       "0009_safety_and_moderation.sql",
       "0010_media_messages.sql",
       "0011_academic_email_proof.sql",
+      "0012_account_cleanup_jobs.sql",
     ]);
   });
 });

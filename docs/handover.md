@@ -1,3 +1,5 @@
+> **Account-removal hardening (24 Oct 2026):** Transactional anonymization/contact removal and queued Storage/Auth cleanup added in migration 0012. Server-only `SUPABASE_SECRET_KEY` is required for external cleanup. Apply `docs/supabase-pilot-security.sql` after earlier security SQL to prevent direct-client verification forgery and old-JWT access. Focused database, rollback, cleanup and RLS tests pass; live deployment remains unverified.
+
 > **TLS follow-up (24 Oct 2026):** Remote database certificate verification is now enforced; optional provider CA path is `DATABASE_CA_CERT_PATH`. Three TLS configuration tests pass. This cloud machine times out connecting to PostgreSQL, so deployed TLS connectivity and live migrations remain blocked; verification was not disabled.
 
 > **Academic-email proof fix (24 Oct 2026):** Verification now requires a current provider-confirmed matching primary email and a supported institution domain. Migration `0011_academic_email_proof.sql` invalidates legacy unproven badges. Confirmed by 65 focused tests and all-workspace typechecks; the migration is not yet applied to live Supabase here. Badge wording no longer claims enrollment.
