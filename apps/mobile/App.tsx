@@ -813,6 +813,12 @@ function MobileSettingsOverview({
 
         {!isStudentVerified && onVerifyStudent ? (
           <View style={{ marginTop: space[2], gap: space[2] }}>
+            <Button label="Send email access link" secondary disabled={verifying || !me.email} onPress={async () => {
+              setVerifying(true); setVerifyError(null); setVerifyMsg(null);
+              try { await auth.requestEmailAccessLink(me.email!, `${config.webUrl}/?view=settings`); setVerifyMsg("If available, a sign-in link was sent. Open it on the web app, then confirm your academic email in Settings. The saved badge is shared with this app. Email delivery needs a configured provider."); }
+              catch (err) { setVerifyError(errorMessage(err)); }
+              finally { setVerifying(false); }
+            }} />
             <Field
               label="University Email"
               value={studentEmail}

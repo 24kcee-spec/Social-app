@@ -45,6 +45,7 @@ type BackendResult<T> = Promise<{ data: T; error: BackendError | null }>;
 export interface AuthBackend {
   signUp(args: { email: string; password: string; options?: { data?: Record<string, unknown> } }): BackendResult<{ session: BackendSession | null }>;
   signInWithPassword(args: { email: string; password: string }): BackendResult<unknown>;
+  signInWithOtp?(args: { email: string; options: { shouldCreateUser: false; emailRedirectTo: string } }): BackendResult<unknown>;
   signOut(args?: { scope?: "global" | "local" | "others" }): Promise<{ error: BackendError | null }>;
   resetPasswordForEmail(email: string, options?: { redirectTo?: string }): BackendResult<unknown>;
   updateUser(args: { password: string }): BackendResult<unknown>;
@@ -180,6 +181,15 @@ export function createAuthClient(config: AuthClientConfig) {
       if (!error) return;
       const mapped = mapBackendError(error);
       if (mapped.code === "rate_limited" || mapped.code === "service_unavailable") throw mapped;
+    },
+
+    /** Explicit inbox challenge for an existing account; never creates an account. */
+    async requestEmailAccessLink(email: string, redirectTo: string): Promise<void> {
+      const parsed = passwordResetRequestSchema.safeParse({ email });
+      if (!parsed.success) throw new AuthClientError("validation", fieldErrorsOf(parsed.error.issues));
+      if (!backend.signInWithOtp) throw new AuthClientError("service_unavailable");
+      const { error } = await backend.signInWithOtp({ email: parsed.data.email, options: { shouldCreateUser: false, emailRedirectTo: redirectTo } });
+      if (error && error.code !== "user_not_found" && error.status !== 404) throw mapBackendError(error);
     },
 
     async setNewPassword(password: string): Promise<void> {

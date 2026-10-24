@@ -1,3 +1,5 @@
+> **Live Supabase follow-up:** Migrations 0001–0015 and final policy hardening are applied and verified. See [supabase-live-validation.md](supabase-live-validation.md). Tests now total 427. Hosted API CA rollout, custom SMTP, provider-plan-blocked leaked-password protection and real-device gates remain separately tracked.
+
 # Sidle handover — 24 October 2026
 
 The canonical implementation status, test evidence, configuration requirements and ordered release backlog are in [status.md](status.md). The older build-phase documents are historical and must not override current code or live evidence.
