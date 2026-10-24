@@ -105,10 +105,14 @@ class Supabase:
         for category in ("security", "performance"):
             lints = self.request("/advisors/" + category).get("lints", [])
             advisors[category] = [{"name": lint.get("name"), "level": lint.get("level")} for lint in lints if lint.get("level") in ("ERROR", "WARN")]
+        queue = self.sql("select count(*) filter(where completed_at is null) as pending, count(*) filter(where completed_at is null and created_at < now() - interval '15 minutes') as overdue, count(*) filter(where completed_at is not null) as completed from public.account_cleanup_jobs")[0]
+        schedule = []
+        if self.sql("select to_regclass('cron.job') is not null as installed")[0]["installed"]:
+            schedule = self.sql("select jobname,schedule,active from cron.job where jobname='sidle-account-cleanup'")
         print(json.dumps({"project": self.project, "applied_migrations": len(applied), "pending": pending, "unknown": unknown,
                           "database": security, "ssl_enforced": ssl.get("currentConfig", {}).get("database"),
                           "email_confirmation_required": not auth.get("mailer_autoconfirm", True),
-                          "custom_smtp_configured": bool(auth.get("smtp_host")), "advisors": advisors}, indent=2))
+                          "custom_smtp_configured": bool(auth.get("smtp_host")), "cleanup_queue": queue, "cleanup_schedule": schedule, "advisors": advisors}, indent=2))
         if pending or unknown or applied != names or security["public_tables_without_rls"] or security["public_privileged_rpcs"] or security["active_session_guards"] != 8:
             raise RuntimeError("Database release/security checks failed")
 

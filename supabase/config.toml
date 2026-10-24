@@ -1,0 +1,6 @@
+project_id = "social-app"
+
+[functions.sidle-account-cleanup]
+# Authentication is enforced in the handler using the provisioned worker token.
+verify_jwt = false
+entrypoint = "./functions/sidle-account-cleanup/index.ts"
