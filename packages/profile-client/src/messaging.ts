@@ -57,6 +57,7 @@ export function createMessagingClient(config: ProfileClientConfig) {
       (await json<{ message: MessageView }>(await call(`/conversations/${encodeURIComponent(conversationId)}/messages`, "POST", { body, clientTag }))).message,
     markRead: async (conversationId: string): Promise<void> => done(await call(`/conversations/${encodeURIComponent(conversationId)}/read`, "POST")),
     getNotificationSettings: async (): Promise<NotificationSettings> => json(await call("/me/notification-settings", "GET")),
+    getNotificationDelivery: async (): Promise<{ provider: "expo" | "disabled"; categories: string[] }> => json(await call("/me/notification-delivery", "GET")),
     setNotificationSettings: async (settings: NotificationSettings): Promise<NotificationSettings> => json(await call("/me/notification-settings", "PUT", settings)),
     registerPushToken: async (platform: PushPlatform, token: string): Promise<void> => done(await call("/me/push-tokens", "POST", { platform, token })),
     removePushToken: async (token: string): Promise<void> => done(await call("/me/push-tokens", "DELETE", { token })),

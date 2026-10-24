@@ -10,6 +10,7 @@ const apiEnvSchema = z
     SUPABASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     SUPABASE_PUBLISHABLE_KEY: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
     CORS_ORIGINS: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    PUSH_PROVIDER: z.preprocess(emptyToUndefined, z.enum(["disabled", "expo"]).default("disabled")),
   })
   .superRefine((env, ctx) => {
     if (env.APP_ENV !== "local" && !env.DATABASE_URL) {

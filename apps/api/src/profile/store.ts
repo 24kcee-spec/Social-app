@@ -1,7 +1,7 @@
 import type { ContentVisibility, Interest, InterestStrength, MessagePermission, Profile, ProfileMedia, PromptAnswer, PromptDefinition, SocialStyle, StudentVerificationResult, VerificationLevel } from "@sp/types";
 import type { InterestSelectionsRequest, OnboardingInput, ProfileMediaRegistrationInput, ProfileUpdateInput, PromptAnswersRequest, StudentVerificationInput } from "@sp/validation";
 import type { SqlRunner } from "../migrate";
-import { computeVerificationLevel, getInstitutionName, verifyStudentCredentials } from "./verification";
+import { getInstitutionName, verifyStudentCredentials } from "./verification";
 
 export class ProfileValidationError extends Error {}
 export class ProfileMediaLimitError extends Error {}
@@ -37,7 +37,7 @@ export function createProfileStore(db: SqlRunner) {
   async function fetchProfile(userId: string): Promise<Profile> {
     await ensureProfile(userId);
     const p = await db.query<Record<string, unknown>>(
-      `select p.user_id, p.display_name, p.bio, p.social_styles, p.discoverable, p.message_permission::text, p.story_visibility::text, p.activity_visibility::text, p.onboarding_completed, p.verification_level, p.created_at, p.updated_at, u.email
+      `select p.user_id, p.display_name, p.bio, p.social_styles, p.discoverable, p.message_permission::text, p.story_visibility::text, p.activity_visibility::text, p.onboarding_completed, p.verification_level, p.verified_student_email, p.created_at, p.updated_at, u.email
          from profiles p join users u on u.id = p.user_id where p.user_id = $1`,
       [userId],
     );
@@ -45,13 +45,10 @@ export function createProfileStore(db: SqlRunner) {
     const userEmail = (row.email as string | null) ?? null;
     let currentVerif = (row.verification_level as VerificationLevel) || "unverified";
 
-    // Automatic verification upgrade if user has confirmed academic or standard email
-    if (currentVerif !== "student_verified" && currentVerif !== "trusted") {
-      const computed = computeVerificationLevel(userEmail);
-      if (computed === "student_verified" || (computed === "email_verified" && currentVerif === "unverified")) {
-        await db.query(`update profiles set verification_level = $1 where user_id = $2`, [computed, userId]);
-        currentVerif = computed;
-      }
+    // Never promote from an email string alone. Legacy/unmatched proof fails closed.
+    if (currentVerif === "student_verified" && (!row.verified_student_email || row.verified_student_email !== userEmail)) {
+      await db.query(`update profiles set verification_level = 'unverified', verified_student_email = null where user_id = $1`, [userId]);
+      currentVerif = "unverified";
     }
 
     const i = await db.query<Record<string, unknown>>(`select i.id, i.name, i.category, i.slug, i.sort_order, ui.strength from user_interests ui join interests i on i.id=ui.interest_id where ui.user_id=$1 and i.active=true order by i.category,i.sort_order,i.name`, [userId]);
@@ -157,17 +154,18 @@ export function createProfileStore(db: SqlRunner) {
     },
     async deleteMedia(userId: string, mediaId: string): Promise<boolean> { const { rows } = await db.query(`delete from profile_media where id=$1 and user_id=$2 returning id`, [mediaId,userId]); return rows.length>0; },
 
-    async verifyStudent(userId: string, input: StudentVerificationInput): Promise<StudentVerificationResult> {
-      const evaluation = verifyStudentCredentials(input);
+    async verifyStudent(userId: string, input: StudentVerificationInput, verifiedEmail: string | null): Promise<StudentVerificationResult> {
+      const evaluation = verifyStudentCredentials(input, verifiedEmail);
       if (!evaluation.verified) {
         return evaluation;
       }
-      await db.query(`update profiles set verification_level = 'student_verified' where user_id = $1`, [userId]);
+      const proof = await db.query(`update profiles set verification_level = 'student_verified', verified_student_email = $2 where user_id = $1 and exists (select 1 from users where id = $1 and email = $2) returning user_id`, [userId, verifiedEmail]);
+      if (!proof.rows.length) throw new ProfileValidationError("Your sign-in email changed. Sign in again before verifying.");
       return evaluation;
     },
 
     async getVerificationStatus(userId: string): Promise<StudentVerificationResult> {
-      await ensureProfile(userId);
+      await fetchProfile(userId);
       const { rows } = await db.query<{ verification_level: string; email: string | null }>(
         `select p.verification_level, u.email from profiles p join users u on u.id = p.user_id where p.user_id = $1`,
         [userId],
@@ -180,7 +178,7 @@ export function createProfileStore(db: SqlRunner) {
           verified: true,
           level,
           institution: inst,
-          message: `Verified student member of ${inst}. Full campus features and badge active.`,
+          message: `Academic email access confirmed for ${inst}. This does not verify current enrollment.`,
         };
       }
       if (level === "trusted") {

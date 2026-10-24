@@ -1,5 +1,7 @@
 # Sidle
 
+Current implementation, validation and remaining release work: [docs/status.md](docs/status.md).
+
 > A low-pressure social platform for finding people, conversations, groups and real plans — at your pace.
 
 Sidle is the codebase for a social connection product spanning web, mobile, and API layers. The current focus is on the core social experience: profiles, community, discover, connections, messaging, and safer sharing/reporting flows, with a shared design system and domain contracts across apps.

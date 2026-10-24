@@ -64,3 +64,6 @@ pnpm --filter @sp/api dev
 Then open:
 - http://localhost:4000/health
 - http://localhost:4000/ready
+
+## Database TLS
+Remote connections require a valid certificate chain and hostname. If the provider CA is not in Node's default trust store, set `DATABASE_CA_CERT_PATH` to a readable PEM CA bundle obtained through the provider's official dashboard/documentation. Do not disable verification. URL SSL options cannot override this policy. Run `setup-check` and an authenticated request in the deployment before rollout; cloud TCP connectivity is a separate prerequisite from HTTPS access.

@@ -18,6 +18,7 @@ const validEnv = {
   SUPABASE_PUBLISHABLE_KEY: "sb_publishable_test_value",
   MOBILE_API_URL: "https://api.social-app.invalid",
   PUBLIC_WEB_URL: "https://social-app.invalid",
+  EAS_PROJECT_ID: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
   ANDROID_PACKAGE: ""
 };
 
@@ -38,6 +39,13 @@ function expectFailure(result, message, label) {
 
 const preview = loadConfig("preview");
 assert.equal(preview.status, 0, "valid preview config should load:\n" + preview.stderr);
+
+expectFailure(loadConfig("preview", { EAS_PROJECT_ID: "" }), "EAS_PROJECT_ID", "unlinked EAS project");
+const resolved = spawnSync(process.execPath, ["-e", "process.stdout.write(JSON.stringify(require('./app.config.js')))"], { cwd: appDir, env: { ...process.env, ...validEnv }, encoding: "utf8" });
+const appConfig = JSON.parse(resolved.stdout).expo;
+assert.equal(appConfig.android.intentFilters[0].data[0].host, "social-app.invalid");
+assert.deepEqual(appConfig.ios.associatedDomains, ["applinks:social-app.invalid"]);
+assert.equal(appConfig.extra.eas.projectId, validEnv.EAS_PROJECT_ID);
 
 const missingApi = loadConfig("preview", { MOBILE_API_URL: "" });
 expectFailure(missingApi, "MOBILE_API_URL", "missing preview API URL");

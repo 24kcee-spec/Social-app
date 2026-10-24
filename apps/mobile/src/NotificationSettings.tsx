@@ -5,11 +5,14 @@ import { errorMessage } from "./auth";
 import { getMessagingClient } from "./messagingClient";
 import { useTheme } from "./theme";
 import { Banner, Button } from "./ui";
+import { enableDevicePush, disableDevicePush } from "./push";
 
-export function NotificationSettingsScreen({ onBack }: { onBack: () => void }) {
+export function NotificationSettingsScreen({ onBack, userId }: { onBack: () => void; userId: string }) {
   const { colors, radius, space, type, shadow } = useTheme();
   const client = getMessagingClient();
   const [settings, setSettings] = useState<NotificationSettings | null>(null);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [delivery, setDelivery] = useState<"expo" | "disabled" | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<keyof NotificationSettings | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -20,6 +23,7 @@ export function NotificationSettingsScreen({ onBack }: { onBack: () => void }) {
     setError(null);
     try {
       setSettings(await client.getNotificationSettings());
+      setDelivery((await client.getNotificationDelivery()).provider);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -149,9 +153,11 @@ export function NotificationSettingsScreen({ onBack }: { onBack: () => void }) {
       >
         <Text style={{ color: colors.text, fontWeight: "800" }}>About phone alerts</Text>
         <Text style={{ color: colors.textMuted, lineHeight: 20 }}>
-          Your preference choices are stored, but live push delivery is not enabled yet. These settings do not
-          guarantee system notifications on your phone. The Messages area still shows your in-app unread count.
+          {delivery === "expo" ? "Message push is configured on this server. Enable alerts on this device to register it; device permissions and the installed build's FCM/APNs credentials must also work." : delivery === "disabled" ? "Phone alerts are disabled on this server. Your preferences remain saved." : "Phone-alert status is unavailable. Retry loading preferences."}
+          {" "}Connection-request push and web push are not supported yet. Unread messages remain available in-app.
         </Text>
+        <Button label={pushBusy ? "Updating device…" : "Enable alerts on this device"} disabled={pushBusy || delivery !== "expo"} onPress={async () => { setPushBusy(true); setError(null); try { await enableDevicePush(userId); setNotice("Device registered. Send a test message from another account to verify delivery."); } catch (err) { setError(errorMessage(err)); } finally { setPushBusy(false); } }} />
+        <Button label="Disable alerts on this device" secondary disabled={pushBusy} onPress={async () => { setPushBusy(true); setError(null); try { await disableDevicePush(userId); setNotice("This device was unregistered from phone alerts."); } catch (err) { setError(errorMessage(err)); } finally { setPushBusy(false); } }} />
       </View>
     </View>
   );

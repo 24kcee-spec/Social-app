@@ -44,7 +44,13 @@ if (isRemoteTestOrProductionBuild) {
   if (!process.env.SUPABASE_PUBLISHABLE_KEY?.trim()) {
     throw new Error("Android EAS " + easProfile + " builds require SUPABASE_PUBLISHABLE_KEY.");
   }
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(process.env.EAS_PROJECT_ID || "")) {
+    throw new Error("Android EAS builds require EAS_PROJECT_ID from the linked Expo project.");
+  }
 }
+
+const webUrl = process.env.PUBLIC_WEB_URL || "http://localhost:3000";
+const linkHost = new URL(webUrl).protocol === "https:" ? new URL(webUrl).hostname : null;
 
 const androidPackage = process.env.ANDROID_PACKAGE?.trim() || "app.social.dev";
 if (easProfile === "production") {
@@ -69,32 +75,32 @@ module.exports = {
     orientation: "portrait",
     icon: "./assets/icon.png",
     scheme: "socialapp",
-    plugins: [["expo-image-picker", { photosPermission: "Allow Sidle to use your photos for your profile." }]],
+    plugins: [["expo-image-picker", { photosPermission: "Allow Sidle to use your photos for your profile." }], "expo-notifications"],
     ios: {
       supportsTablet: false,
-      bundleIdentifier: "app.social.dev",
-      associatedDomains: ["applinks:social-app.local"],
+      bundleIdentifier: process.env.IOS_BUNDLE_IDENTIFIER?.trim() || "app.social.dev",
+      associatedDomains: linkHost ? [`applinks:${linkHost}`] : [],
     },
     android: {
       package: androidPackage,
       adaptiveIcon: { foregroundImage: "./assets/adaptive-icon.png", backgroundColor: "#F7F6F2" },
-      intentFilters: [
+      intentFilters: linkHost ? [
         {
           action: "VIEW",
           autoVerify: true,
           data: [
-            { scheme: "socialapp" },
             {
               scheme: "https",
-              host: "social-app.local",
+              host: linkHost,
               pathPrefix: "/share",
             },
           ],
           category: ["BROWSABLE", "DEFAULT"],
         },
-      ],
+      ] : [],
     },
     extra: {
+      ...(process.env.EAS_PROJECT_ID ? { eas: { projectId: process.env.EAS_PROJECT_ID } } : {}),
       supabaseUrl: process.env.SUPABASE_URL ?? "",
       supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY ?? "",
       // Local development may use a LAN IP; a remotely installed APK must use a reachable HTTPS API.

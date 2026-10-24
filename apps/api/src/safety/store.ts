@@ -1,10 +1,11 @@
 import type { ReportAction, ReportItem, ReportReason, ReportStatus, ReportSummary, ReportTargetType } from "@sp/types";
 import type { CreateReportInput, ReportListQuery, ResolveReportInput } from "@sp/validation";
 import type { SqlRunner } from "../migrate";
+import { createCommunityStore } from "../community/store";
 
 export class SafetyError extends Error {
   constructor(
-    public readonly code: "not_found" | "forbidden" | "invalid" | "rate_limited" | "already_reported",
+    public readonly code: "not_found" | "forbidden" | "invalid" | "rate_limited" | "already_reported" | "conflict" | "unavailable",
     message: string,
   ) {
     super(message);
@@ -22,6 +23,7 @@ export interface SafetyStore {
 export interface SafetyStoreOptions {
   now?: () => Date;
   maxReportsPerHour?: number;
+  withTransaction?: (work: (tx: SqlRunner) => Promise<void>) => Promise<void>;
 }
 
 const text = (v: unknown): string => String(v);
@@ -235,22 +237,29 @@ export function createSafetyStore(db: SqlRunner, options: SafetyStoreOptions = {
     },
 
     async deleteAccount(userId: string): Promise<void> {
-      await db.query(`update users set status = 'deleted' where id = $1`, [userId]);
-      await db.query(
+      if (!options.withTransaction) throw new SafetyError("unavailable", "Account removal is temporarily unavailable. Please try again later.");
+      await options.withTransaction(async (tx) => {
+      await tx.query(`select id from users where id = $1 for update`, [userId]);
+      const owned = await tx.query(`select id from groups where owner_id = $1 limit 1`, [userId]);
+      if (owned.rows.length) throw new SafetyError("conflict", "Delete the groups you own from Community before removing your account, so their members are not left without an owner.");
+      const events = await tx.query<{ id: string }>(`select event_id::text as id from event_rsvps where user_id = $1 and status in ('going', 'waitlisted')`, [userId]);
+      const community = createCommunityStore(tx, clock);
+      for (const event of events.rows) await community.cancelRsvp(userId, event.id);
+      await tx.query(`update users set status = 'deleted', email = 'deleted+' || id::text || '@account.invalid', phone = null, last_active_at = null where id = $1`, [userId]);
+      await tx.query(
         `update profiles
             set display_name = 'Deleted User', bio = '', onboarding_completed = false,
-                verification_level = 'unverified'
+                verification_level = 'unverified', verified_student_email = null,
+                discoverable = false, message_permission = 'nobody', social_styles = '{low_pressure}'
           where user_id = $1`,
         [userId],
       );
-      await db.query(`delete from user_sessions where user_id = $1`, [userId]);
-      await db.query(`delete from device_push_tokens where user_id = $1`, [userId]);
-      await db.query(`delete from notification_settings where user_id = $1`, [userId]);
-      await db.query(`delete from profile_media where user_id = $1`, [userId]);
-      await db.query(`delete from user_interests where user_id = $1`, [userId]);
-      await db.query(`delete from prompt_answers where user_id = $1`, [userId]);
-      await db.query(`delete from event_rsvps where user_id = $1`, [userId]);
-      await db.query(`delete from group_members where user_id = $1`, [userId]);
+      await tx.query(`delete from push_delivery_receipts where token in (select token from device_push_tokens where user_id = $1)`, [userId]);
+      for (const table of ["user_sessions", "device_push_tokens", "notification_settings", "profile_media", "user_interests", "prompt_answers", "event_rsvps", "group_members", "user_roles"]) {
+        await tx.query(`delete from ${table} where user_id = $1`, [userId]);
+      }
+      await tx.query(`insert into account_cleanup_jobs (user_id) values ($1) on conflict do nothing`, [userId]);
+      });
     },
   };
 }

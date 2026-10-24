@@ -17,6 +17,7 @@ import { AccountMenu } from "./account-menu";
 import { MyProfileView } from "./my-profile-view";
 import { SettingsOverview, type ThemePreference } from "./settings-overview";
 import { NotificationSettingsPage } from "./notification-settings";
+import { PrivacySettings } from "./privacy-settings";
 
 const SOCIAL_STYLE_LABELS: Record<SocialStyle, string> = {
   small_group: "Small groups",
@@ -393,10 +394,12 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
   const currentNavigationRef = useRef<AppNavigation>({ shellView: "app", tab: "discover", focusSection: null });
   const currentHrefRef = useRef("");
   const profileEditorDirtyRef = useRef(false);
+  const profileEditorBusyRef = useRef(false);
   const [themePreference, setThemePreference] = useState<ThemePreference>("system");
 
-  const setProfileDirty = useCallback((dirty: boolean) => {
+  const setProfileDirty = useCallback((dirty: boolean, busy = false) => {
     profileEditorDirtyRef.current = dirty;
+    profileEditorBusyRef.current = busy;
   }, []);
   const [pendingIn, setPendingIn] = useState(0);
   const [unread, setUnread] = useState(0);
@@ -428,10 +431,10 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
       const navigation = readAppNavigation(window.location.search);
       const previous = currentNavigationRef.current;
       const leavingEditor = previous.shellView === "app" && previous.tab === "profile"
-        && (navigation.shellView !== "app" || navigation.tab !== "profile");
+        && (navigation.shellView !== "app" || navigation.tab !== "profile" || navigation.focusSection !== previous.focusSection);
 
-      if (leavingEditor && profileEditorDirtyRef.current) {
-        const confirmed = window.confirm(
+      if (leavingEditor && (profileEditorDirtyRef.current || profileEditorBusyRef.current)) {
+        const confirmed = !profileEditorBusyRef.current && window.confirm(
           "You have unsaved profile changes. Leave without saving? Photo uploads and removals are saved immediately and will not be undone.",
         );
         if (!confirmed) {
@@ -481,7 +484,6 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
   useEffect(() => {
     if (shellView !== "app" || tab !== "profile" || !focusSection) return;
     document.getElementById(focusSection)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    setFocusSection(null);
   }, [shellView, tab, focusSection, profile]);
 
   function applyNavigation(navigation: AppNavigation, historyMode: "push" | "replace" = "push") {
@@ -499,6 +501,7 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
   }
 
   function confirmLeaveProfileEditor() {
+    if (profileEditorBusyRef.current) { window.alert("Please wait for the current save or photo operation to finish."); return false; }
     if (!(shellView === "app" && tab === "profile") || !profileEditorDirtyRef.current) return true;
     return window.confirm(
       "You have unsaved profile changes. Leave without saving? Photo uploads and removals are saved immediately and will not be undone.",
@@ -506,7 +509,7 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
   }
 
   function navigateTab(nextTab: AppTab, historyMode: "push" | "replace" = "push") {
-    if (nextTab !== "profile" && !confirmLeaveProfileEditor()) return;
+    if ((nextTab !== "profile" || focusSection !== null) && !confirmLeaveProfileEditor()) return;
     applyNavigation({ shellView: "app", tab: nextTab, focusSection: null }, historyMode);
   }
 
@@ -521,6 +524,7 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
   }
 
   function openProfileSection(sectionId: string) {
+    if (!confirmLeaveProfileEditor()) return;
     const safeSection = PROFILE_EDITOR_SECTIONS.includes(sectionId as (typeof PROFILE_EDITOR_SECTIONS)[number])
       ? sectionId
       : null;
@@ -718,6 +722,10 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
             <Messages onUnread={setUnread} openWithUserId={chatWith} onOpened={() => setChatWith(null)} />
           ) : tab === "community" ? (
             <Community />
+          ) : focusSection === "privacy-settings" ? (
+            <PrivacySettings profile={profile} onSaved={setProfile} onBack={() => openShellView("settings")} onDirtyChange={setProfileDirty} renderControls={(value, setValue) => <PrivacyEditor privacy={value} setPrivacy={setValue} />} />
+          ) : focusSection === "account-sessions" || focusSection === "account-data" ? (
+            <AccountSettings me={me} sessions={sessions} revoke={revoke} onBack={() => openShellView("settings")} />
           ) : (
             <ProfileEditor
               profile={profile}
@@ -725,8 +733,6 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
               prompts={prompts}
               client={client}
               onSaved={setProfile}
-              sessions={sessions}
-              revoke={revoke}
               onDirtyChange={setProfileDirty}
             />
           )
@@ -912,8 +918,6 @@ function ProfileEditor({
   prompts,
   client,
   onSaved,
-  sessions,
-  revoke,
   onDirtyChange,
 }: {
   profile: Profile;
@@ -921,9 +925,7 @@ function ProfileEditor({
   prompts: PromptDefinition[];
   client: ProfileClient;
   onSaved: (profile: Profile) => void;
-  sessions: DeviceSession[];
-  revoke: (id: string) => void;
-  onDirtyChange: (dirty: boolean) => void;
+  onDirtyChange: (dirty: boolean, busy?: boolean) => void;
 }) {
   const [displayName, setDisplayName] = useState(profile.displayName);
   const [bio, setBio] = useState(profile.bio);
@@ -941,6 +943,10 @@ function ProfileEditor({
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
+
+  const draftFingerprint = JSON.stringify({ displayName, bio, styles, privacy, selected, answers });
+  const liveDraftFingerprint = useRef(draftFingerprint);
+  liveDraftFingerprint.current = draftFingerprint;
 
   const selectedDraft = Object.entries(selected)
     .map(([interestId, strength]) => ({ interestId, strength }))
@@ -1007,8 +1013,8 @@ function ProfileEditor({
   }, [refreshMedia]);
 
   useEffect(() => {
-    onDirtyChange(hasUnsavedChanges);
-  }, [hasUnsavedChanges, onDirtyChange]);
+    onDirtyChange(hasUnsavedChanges, busy || mediaBusy);
+  }, [hasUnsavedChanges, busy, mediaBusy, onDirtyChange]);
 
   useEffect(() => () => onDirtyChange(false), [onDirtyChange]);
 
@@ -1047,6 +1053,7 @@ function ProfileEditor({
 
   async function save() {
     if (busy || mediaBusy || !hasUnsavedChanges || saveValidationMessage) return;
+    const submittedFingerprint = liveDraftFingerprint.current;
     setBusy(true);
     clearFeedback();
     try {
@@ -1065,9 +1072,9 @@ function ProfileEditor({
         .map(([promptId, answer]) => ({ promptId, answer: answer.trim() }));
       saved = await client.updatePrompts({ answers: chosenAnswers });
       onSaved(saved);
-      resetDraft(saved);
-      setMessage("Profile saved successfully.");
-      onDirtyChange(false);
+      if (liveDraftFingerprint.current === submittedFingerprint) {
+        resetDraft(saved); setMessage("Profile saved successfully."); onDirtyChange(false);
+      } else setMessage("Submitted changes saved. Newer edits remain unsaved.");
     } catch (err) {
       setError(errorMessage(err));
       try {
@@ -1461,48 +1468,49 @@ function ProfileEditor({
             </div>
           </section>
 
-          {/* Privacy Settings */}
-          <section className="card" id="privacy-settings" tabIndex={-1}>
-            <span className="eyebrow">CONTROLS</span>
-            <h2>Privacy & Reachability</h2>
-            <p className="muted">Adjust who can find and message you on the platform. Save your changes when you are ready.</p>
-            <PrivacyEditor
-              privacy={privacy}
-              setPrivacy={(value) => { setPrivacy(value); clearFeedback(); }}
-            />
-          </section>
 
-          {/* Active Devices & Security */}
-          <Devices sessions={sessions} revoke={revoke} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
-          {/* Danger Zone: Account Deletion */}
+function AccountSettings({ me, sessions, revoke, onBack }: { me: Me; sessions: DeviceSession[]; revoke: (id: string) => void; onBack: () => void }) {
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  return <section className="settings-page" aria-labelledby="account-title">
+    <header className="settings-page-header"><div><span className="eyebrow">YOUR ACCOUNT</span><h1 id="account-title">Account & security</h1><p className="muted">{me.email || me.phone} · {me.status}</p></div><button type="button" className="secondary compact" onClick={onBack}>Back to Settings</button></header>
+    {error && <p className="notice err" role="alert">{error}</p>}
+    {notice && <p className="notice ok" role="status">{notice}</p>}
+    <section className="settings-panel"><h2>Password reset</h2><p className="muted">Send a reset link to your sign-in email.</p><button type="button" disabled={busy || !me.email} onClick={async () => { setBusy(true); setError(null); try { await getAuth().requestPasswordReset(me.email!, `${window.location.origin}/reset`); setNotice("If available, a password reset link has been sent to your sign-in email."); } catch (err) { setError(errorMessage(err)); } finally { setBusy(false); } }}>Send reset link</button></section>
+    <Devices sessions={sessions} revoke={revoke} />
           <section className="card" id="account-data" tabIndex={-1} style={{ borderColor: "rgba(239, 68, 68, 0.3)" }}>
             <span className="eyebrow" style={{ color: "var(--danger)" }}>DATA PRIVACY & REMOVAL</span>
             <h2>Delete Account and Personal Data</h2>
             <p className="muted">
-              Permanently anonymizes your account, removes your profile photos, prompt answers, interests, group memberships and ends all active sessions.
+              Immediately disables app access and removes your profile details, contact information, interests, prompts and memberships. Storage photos and your sign-in account are queued for server cleanup. Past messages and safety reports remain; provider backups follow their retention policy. Delete any groups you own first.
             </p>
             <button
               type="button"
               className="danger compact"
+              disabled={busy}
               onClick={async () => {
-                if (!window.confirm("Are you sure you want to permanently delete your account and data? This cannot be undone.")) return;
+                if (!window.confirm("Remove this account? App access ends immediately. Photos and sign-in records are queued for cleanup; historical messages, reports and provider backups are retained as described. This cannot be undone.")) return;
+                setBusy(true); setError(null);
                 try {
                   await getSafetyClient().deleteAccount();
                   await getAuth().signOut();
                   window.location.reload();
                 } catch (e) {
                   setError(errorMessage(e));
-                }
+                } finally { setBusy(false); }
               }}
             >
               Delete my account
             </button>
           </section>
-        </div>
-      </div>
-    </div>
-  );
+  </section>;
 }
 
 function CategorizedInterests({

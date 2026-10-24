@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { interestSelectionsRequestSchema, onboardingSchema, profileMediaRegistrationSchema, profileUpdateSchema, promptAnswersRequestSchema, studentVerificationSchema } from "@sp/validation";
 import { ProfileMediaLimitError, ProfileValidationError, type ProfileStore } from "./store";
+import { EmailProofUnavailable } from "./email-proof";
 
 function validationPayload(result: { error: { issues: { path: (string | number)[]; message: string }[] } }) {
   const fields: Record<string, string> = {};
@@ -16,7 +17,11 @@ function withStoreError(reply: FastifyReply, err: unknown) {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export interface ProfileDeps { store: ProfileStore; requireAuth: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>; }
+export interface ProfileDeps {
+  store: ProfileStore;
+  requireAuth: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>;
+  readEmailProof?: (token: string, userId: string) => Promise<string | null>;
+}
 
 export function registerProfile(app: FastifyInstance, deps: ProfileDeps) {
   app.get("/interests", { preHandler: deps.requireAuth }, async (_req, reply) => reply.send({ interests: await deps.store.listInterests() }));
@@ -80,7 +85,15 @@ export function registerProfile(app: FastifyInstance, deps: ProfileDeps) {
     if (!auth) return reply.code(401).send({ error: "unauthorized" });
     const parsed = studentVerificationSchema.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send(validationPayload(parsed));
-    const result = await deps.store.verifyStudent(auth.user.id, parsed.data);
+    if (!deps.readEmailProof) return reply.code(503).send({ error: "verification_unavailable", message: "Email verification is temporarily unavailable. Please try again later." });
+    let verifiedEmail: string | null;
+    try {
+      verifiedEmail = await deps.readEmailProof(req.headers.authorization!.replace(/^Bearer\s+/i, ""), auth.user.id);
+    } catch (err) {
+      if (err instanceof EmailProofUnavailable) return reply.code(503).send({ error: "verification_unavailable", message: "Email ownership could not be checked. Please try again later." });
+      throw err;
+    }
+    const result = await deps.store.verifyStudent(auth.user.id, parsed.data, verifiedEmail);
     return reply.code(result.verified ? 200 : 400).send(result);
   });
 

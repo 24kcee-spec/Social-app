@@ -1,11 +1,12 @@
 import { AuthClientError, type DeviceSession, type Me } from "@sp/auth-client";
 import type { Interest, Profile, PromptDefinition, ShareTargetType, SocialStyle } from "@sp/types";
-import type { OnboardingInput } from "@sp/validation";
+import { onboardingSchema, type OnboardingInput } from "@sp/validation";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   Image,
   Linking,
   Modal,
@@ -25,6 +26,7 @@ import { Discover } from "./src/Discover";
 import { getMessagingClient } from "./src/messagingClient";
 import { Messages } from "./src/Messages";
 import { NotificationSettingsScreen } from "./src/NotificationSettings";
+import { disableDevicePush, startPushLifecycle, subscribeToMessageAlerts } from "./src/push";
 import { deleteProfileImage, getProfileClient, getSignedMediaUrl, pickAndUploadProfileImage } from "./src/profile";
 import { getSafetyClient } from "./src/safetyClient";
 import { ThemeProvider, useTheme, type ThemePreference } from "./src/theme";
@@ -192,7 +194,7 @@ function AuthForm() {
       ]}
     >
       <View style={styles.authHeader}>
-        <Text style={[styles.eyebrow, { color: colors.accent }]}>✦ SOCIAL APP</Text>
+        <Text style={[styles.eyebrow, { color: colors.accent }]}>SIDLE</Text>
         <Text style={[styles.h1, { color: colors.text, fontSize: type.display.size - 6 }]}>
           {mode === "signin" ? "Welcome back" : mode === "signup" ? "Join the community" : "Reset password"}
         </Text>
@@ -351,16 +353,42 @@ function ProfileHome({
   const [unread, setUnread] = useState(0);
   const [chatWith, setChatWith] = useState<string | null>(null);
 
-  // Cross-device deep link destination restoration
+  const editorDirty = useRef(false);
+  const editorBusy = useRef(false);
+  const setEditorDirty = useCallback((dirty: boolean, busy = false) => { editorDirty.current = dirty; editorBusy.current = busy; }, []);
+  const navigate = useCallback((action: () => void) => {
+    if (editorBusy.current) { Alert.alert("Please wait", "Let the current save or photo operation finish before leaving."); return; }
+    if (!editorDirty.current) { action(); return; }
+    Alert.alert("Discard unsaved changes?", "Profile details and privacy edits will be discarded. Photo uploads/removals and theme changes are saved immediately.", [
+      { text: "Keep editing", style: "cancel" },
+      { text: "Discard and leave", style: "destructive", onPress: () => { editorDirty.current = false; action(); } },
+    ]);
+  }, []);
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (editorDirty.current || editorBusy.current) {
+        navigate(() => { setShellView("app"); setTab("discover"); });
+        return true;
+      }
+      if (shellView !== "app") { setShellView("app"); return true; }
+      return false;
+    });
+    return () => subscription.remove();
+  }, [navigate, shellView]);
+
+  const [pushConversation, setPushConversation] = useState<string | null>(null);
+  useEffect(() => startPushLifecycle(me.id), [me.id]);
+  useEffect(() => subscribeToMessageAlerts((id) => navigate(() => { setShellView("app"); setTab("messages"); setPushConversation(id); })), [navigate]);
+
+  // Guard external navigation as well as tab/menu navigation.
   useEffect(() => {
     if (!pendingTarget) return;
-    if (pendingTarget.targetType === "group" || pendingTarget.targetType === "event") {
-      setTab("community");
-    } else if (pendingTarget.targetType === "profile") {
-      setTab("discover");
-      onClearPendingTarget?.();
-    }
-  }, [pendingTarget, onClearPendingTarget]);
+    navigate(() => {
+      setShellView("app");
+      if (pendingTarget.targetType === "group" || pendingTarget.targetType === "event") setTab("community");
+      else { setTab("discover"); onClearPendingTarget?.(); }
+    });
+  }, [pendingTarget, onClearPendingTarget, navigate]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -404,7 +432,7 @@ function ProfileHome({
         text: "Sign out",
         style: "destructive",
         onPress: () => {
-          auth.signOut().then(onSignOut).catch((err) => setError(errorMessage(err)));
+          disableDevicePush(me.id).then(() => auth.signOut()).then(onSignOut).catch((err) => setError(errorMessage(err)));
         },
       },
     ]);
@@ -445,7 +473,7 @@ function ProfileHome({
         ]}
       >
         <View style={{ flex: 1 }}>
-          <Text style={[styles.headerEyebrow, { color: colors.accent }]}>✦ SOCIAL APP</Text>
+          <Text style={[styles.headerEyebrow, { color: colors.accent }]}>SIDLE</Text>
           <Text style={[styles.headerTitle, { color: colors.text, fontSize: type.title.size }]}>
             {!profile.onboardingCompleted
               ? "Complete Profile"
@@ -537,7 +565,7 @@ function ProfileHome({
                 onSignOut={onSignOut}
               />
             ) : shellView === "notifications" ? (
-              <NotificationSettingsScreen onBack={() => setShellView("settings")} />
+              <NotificationSettingsScreen userId={me.id} onBack={() => setShellView("settings")} />
             ) : shellView === "viewProfile" ? (
               <MobileMyProfileView
                 profile={profile}
@@ -558,6 +586,8 @@ function ProfileHome({
               <Messages
                 onUnread={setUnread}
                 openWithUserId={chatWith}
+                openConversationId={pushConversation}
+                onPushOpened={() => setPushConversation(null)}
                 onOpened={() => setChatWith(null)}
               />
             ) : tab === "community" ? (
@@ -570,6 +600,7 @@ function ProfileHome({
                 client={client}
                 me={me}
                 onSaved={setProfile}
+                onDirtyChange={setEditorDirty}
               />
             )}
           </ScrollView>
@@ -580,7 +611,7 @@ function ProfileHome({
       {profile.onboardingCompleted && shellView === "app" ? (
         <BottomNav
           currentTab={tab}
-          onSelectTab={(nextTab) => { setShellView("app"); setTab(nextTab); }}
+          onSelectTab={(nextTab) => { if (nextTab !== tab) navigate(() => { setShellView("app"); setTab(nextTab); }); }}
           pendingConnectionsCount={pendingIn}
           unreadMessagesCount={unread}
         />
@@ -612,10 +643,10 @@ function ProfileHome({
           }}>
             <Text style={{ color: colors.text, fontSize: 18, fontWeight: "800" }}>Your account</Text>
             <Text style={{ color: colors.textMuted, fontSize: 13, marginBottom: 4 }}>{me.email || "Email not available"}</Text>
-            <Button label="View my profile" secondary onPress={() => { setAccountMenuOpen(false); setShellView("viewProfile"); }} />
+            <Button label="View my profile" secondary onPress={() => { setAccountMenuOpen(false); navigate(() => setShellView("viewProfile")); }} />
             <Button label="Edit profile" secondary onPress={() => { setAccountMenuOpen(false); setShellView("app"); setTab("profile"); }} />
-            <Button label="Settings" onPress={() => { setAccountMenuOpen(false); setShellView("settings"); }} />
-            <Button label="Sign out" danger secondary onPress={() => { setAccountMenuOpen(false); handleSignOut(); }} />
+            <Button label="Settings" onPress={() => { setAccountMenuOpen(false); navigate(() => setShellView("settings")); }} />
+            <Button label="Sign out" danger secondary onPress={() => { setAccountMenuOpen(false); navigate(handleSignOut); }} />
           </View>
         </View>
       </Modal>
@@ -657,7 +688,6 @@ function MobileSettingsOverview({
   const [studentEmail, setStudentEmail] = useState(
     me.email?.includes("@students.") || me.email?.includes(".ac.zw") ? me.email : ""
   );
-  const [studentId, setStudentId] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [verifyMsg, setVerifyMsg] = useState<string | null>(null);
   const [verifyError, setVerifyError] = useState<string | null>(null);
@@ -707,7 +737,7 @@ function MobileSettingsOverview({
   const confirmDeleteAccount = () => {
     Alert.alert(
       "Delete account and personal data?",
-      "This permanently deletes your Sidle account and cannot be undone. Make sure you really want to continue.",
+      "This ends app access and removes profile/contact data. Photos and sign-in records are queued for cleanup. Past messages, reports and provider backups remain. Delete any groups you own first. This cannot be undone.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -717,6 +747,7 @@ function MobileSettingsOverview({
             setDeletingAccount(true);
             setSecurityError(null);
             try {
+              await disableDevicePush(me.id);
               await getSafetyClient().deleteAccount();
               await auth.signOut().catch(() => undefined);
               onSignOut();
@@ -764,20 +795,20 @@ function MobileSettingsOverview({
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <Text style={[styles.eyebrow, { color: colors.accent }]}>CAMPUS VERIFICATION</Text>
           {isStudentVerified ? (
-            <Badge label="✓ Campus Verified" tone="success" compact />
+            <Badge label="✓ Academic email" tone="success" compact />
           ) : (
             <Badge label="Unverified" tone="neutral" compact />
           )}
         </View>
 
         <Text style={[styles.h2, { color: colors.text }]}>
-          {isStudentVerified ? "Verified Campus Student" : "Verify Student Standing"}
+          {isStudentVerified ? "Academic email confirmed" : "Confirm academic email"}
         </Text>
 
         <Text style={[styles.muted, { color: colors.textMuted }]}>
           {isStudentVerified
-            ? "Your campus status is confirmed. You display the '✓ Campus Verified' badge across Discover, Connections, and Messages."
-            : "Connect your official university or college email (e.g. @students.nust.ac.zw or *.ac.zw) to unlock the Campus Verified badge."}
+            ? "This confirms access to your sign-in email at a supported institution, not enrollment or personal identity."
+            : "Sign in with a supported university email and confirm its email link first. Enter that same sign-in email here."}
         </Text>
 
         {!isStudentVerified && onVerifyStudent ? (
@@ -791,19 +822,13 @@ function MobileSettingsOverview({
               onChangeText={setStudentEmail}
             />
 
-            <Field
-              label="Student ID / Reg No (Optional)"
-              value={studentId}
-              placeholder="e.g. N0241234X"
-              autoCapitalize="characters"
-              onChangeText={setStudentId}
-            />
+
 
             {verifyMsg ? <Banner tone="success">{verifyMsg}</Banner> : null}
             {verifyError ? <Banner tone="error">{verifyError}</Banner> : null}
 
             <Button
-              label={verifying ? "Verifying…" : "Verify Student Status"}
+              label={verifying ? "Verifying…" : "Confirm academic email"}
               disabled={verifying || !studentEmail.trim()}
               onPress={async () => {
                 if (!studentEmail.trim()) return;
@@ -811,8 +836,8 @@ function MobileSettingsOverview({
                 setVerifyError(null);
                 setVerifyMsg(null);
                 try {
-                  await onVerifyStudent(studentEmail.trim(), studentId.trim() || undefined);
-                  setVerifyMsg("Campus status verified! Your profile now carries the verified badge.");
+                  await onVerifyStudent(studentEmail.trim());
+                  setVerifyMsg("Academic email ownership confirmed.");
                 } catch (err) {
                   setVerifyError(errorMessage(err));
                 } finally {
@@ -995,7 +1020,7 @@ function MobileMyProfileView({ profile, onBack, onEdit }: { profile: Profile; on
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <Text style={[styles.h1, { color: colors.text, fontSize: type.title.size }]}>{profile.displayName}</Text>
           {profile.verificationLevel === "student_verified" ? (
-            <Badge label="✓ Campus Verified" tone="success" compact />
+            <Badge label="✓ Academic email" tone="success" compact />
           ) : profile.verificationLevel === "trusted" ? (
             <Badge label="✓ Verified" tone="accent" compact />
           ) : null}
@@ -1288,6 +1313,7 @@ function Editor({
   client,
   me,
   onSaved,
+  onDirtyChange,
 }: {
   profile: Profile;
   interests: Interest[];
@@ -1295,6 +1321,7 @@ function Editor({
   client: ProfileClient;
   me: Me;
   onSaved: (p: Profile) => void;
+  onDirtyChange: (dirty: boolean, busy?: boolean) => void;
 }) {
   const { colors, radius, space, type, preference, setPreference, shadow } = useTheme();
 
@@ -1307,9 +1334,33 @@ function Editor({
     Object.fromEntries(profile.prompts.map((p) => [p.promptId, p.answer]))
   );
   const [busy, setBusy] = useState(false);
+  const [mediaBusy, setMediaBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
+
+  const draftInput = {
+    displayName: displayName.trim(), bio: bio.trim(), socialStyles: stylesList, privacy,
+    interests: selected.map((interestId) => ({ interestId, strength: profile.interests.find((i) => i.id === interestId)?.strength ?? 2 })),
+    answers: Object.entries(answers).filter(([, value]) => value.trim()).map(([promptId, answer]) => ({ promptId, answer: answer.trim() })),
+  };
+  const fingerprint = (value: typeof draftInput) => JSON.stringify({ ...value, socialStyles: [...value.socialStyles].sort(), interests: [...value.interests].sort((a, b) => a.interestId.localeCompare(b.interestId)), answers: [...value.answers].sort((a, b) => a.promptId.localeCompare(b.promptId)) });
+  const baseline = { displayName: profile.displayName, bio: profile.bio, socialStyles: profile.socialStyles, privacy: profile.privacy, interests: profile.interests.map((i) => ({ interestId: i.id, strength: i.strength ?? 2 })), answers: profile.prompts.map((p) => ({ promptId: p.promptId, answer: p.answer })) };
+  const liveDraft = useRef(draftInput);
+  liveDraft.current = draftInput;
+  const dirty = fingerprint(draftInput) !== fingerprint(baseline);
+  const validation = onboardingSchema.safeParse(draftInput);
+  useEffect(() => { onDirtyChange(dirty, busy || mediaBusy); }, [dirty, busy, mediaBusy, onDirtyChange]);
+  useEffect(() => () => onDirtyChange(false), [onDirtyChange]);
+  const resetDraft = (source: Profile) => {
+    setDisplayName(source.displayName); setBio(source.bio); setStylesList(source.socialStyles);
+    setPrivacy(source.privacy); setSelected(source.interests.map((i) => i.id));
+    setAnswers(Object.fromEntries(source.prompts.map((p) => [p.promptId, p.answer])));
+  };
+  const discard = () => Alert.alert("Discard profile changes?", "Immediate photo and theme changes will remain saved.", [
+    { text: "Keep editing", style: "cancel" },
+    { text: "Discard", style: "destructive", onPress: () => { resetDraft(profile); setError(null); setMessage("Draft discarded. Photo changes remain saved."); onDirtyChange(false); } },
+  ]);
 
   const refreshMedia = useCallback(async () => {
     const pairs = await Promise.all(
@@ -1323,35 +1374,29 @@ function Editor({
   }, [refreshMedia]);
 
   const save = async () => {
-    setBusy(true);
-    setError(null);
-    setMessage(null);
+    if (busy || mediaBusy || !dirty) return;
+    if (!validation.success) { setError(validation.error.issues[0]?.message || "Check your profile details."); return; }
+    const savingFingerprint = fingerprint(draftInput);
+    setBusy(true); setError(null); setMessage(null);
     try {
-      let next = await client.updateProfile({
-        displayName: displayName.trim(),
-        bio: bio.trim(),
-        socialStyles: stylesList,
-        privacy,
-      });
-      next = await client.updateInterests({
-        interests: selected.map((interestId) => ({ interestId, strength: 2 as const })),
-      });
-      next = await client.updatePrompts({
-        answers: Object.entries(answers)
-          .filter(([, v]) => v.trim())
-          .slice(0, 3)
-          .map(([promptId, answer]) => ({ promptId, answer: answer.trim() })),
-      });
-      onSaved(next);
-      setMessage("Profile saved successfully.");
+      await client.updateProfile({ displayName: draftInput.displayName, bio: draftInput.bio, socialStyles: stylesList, privacy });
+      await client.updateInterests({ interests: validation.data.interests });
+      await client.updatePrompts({ answers: validation.data.answers });
+      const saved = await client.getProfile();
+      onSaved(saved);
+      if (fingerprint(liveDraft.current) === savingFingerprint) {
+        resetDraft(saved); onDirtyChange(false); setMessage("Profile saved successfully.");
+      } else setMessage("Your submitted changes were saved. Newer edits remain unsaved.");
     } catch (err) {
       setError(errorMessage(err));
-    } finally {
-      setBusy(false);
-    }
+      try { onSaved(await client.getProfile()); setMessage("Some fields may already be saved. Your draft is retained; review and retry."); }
+      catch { setMessage("Some fields may already be saved. Your draft is retained; reconnect and review before retrying."); }
+    } finally { setBusy(false); }
   };
 
   const addPhoto = async () => {
+    if (busy || mediaBusy) return;
+    setMediaBusy(true);
     setError(null);
     try {
       const media = await pickAndUploadProfileImage(profile.media);
@@ -1361,10 +1406,11 @@ function Editor({
       }
     } catch (err) {
       setError(errorMessage(err));
-    }
+    } finally { setMediaBusy(false); }
   };
 
   const removePhoto = (mediaId: string) => {
+    if (busy || mediaBusy) return;
     const media = profile.media.find((m) => m.id === mediaId);
     if (!media) return;
     Alert.alert("Remove photo?", "Are you sure you want to remove this photo?", [
@@ -1373,13 +1419,15 @@ function Editor({
         text: "Remove",
         style: "destructive",
         onPress: async () => {
+          setMediaBusy(true);
           try {
             await deleteProfileImage(media);
             onSaved({ ...profile, media: profile.media.filter((m) => m.id !== mediaId) });
             setMessage("Photo removed.");
           } catch (err) {
             setError(errorMessage(err));
-          }
+            try { onSaved(await client.getProfile()); } catch { /* Keep original cleanup error. */ }
+          } finally { setMediaBusy(false); }
         },
       },
     ]);
@@ -1387,6 +1435,13 @@ function Editor({
 
   return (
     <View style={{ gap: space[4], paddingBottom: 32 }}>
+      <View style={{ gap: space[2] }}>
+        <Text style={{ color: colors.textMuted }}>Profile details remain a draft until Save. Photo and theme changes save immediately.</Text>
+        {dirty ? <Banner tone="info">You have unsaved changes.</Banner> : null}
+        <Button label={busy ? "Saving…" : "Save profile changes"} onPress={() => void save()} disabled={busy || mediaBusy || !dirty || !validation.success} />
+        <Button label="Discard changes" secondary onPress={discard} disabled={busy || mediaBusy || !dirty} />
+        {dirty && !validation.success ? <Banner tone="error">{validation.error.issues[0]?.message}</Banner> : null}
+      </View>
       {/* Profile Overview Card */}
       <View
         style={[
@@ -1419,38 +1474,6 @@ function Editor({
               ))}
             </View>
           </View>
-        </View>
-      </View>
-
-      {/* Appearance Preference */}
-      <View
-        style={[
-          styles.card,
-          {
-            backgroundColor: colors.surface,
-            borderColor: colors.line,
-            borderRadius: radius.md,
-            padding: space[4],
-          },
-          shadow[1],
-        ]}
-      >
-        <Text style={[styles.h2, { color: colors.text, fontSize: type.title.size }]}>Appearance</Text>
-        <Text style={[styles.muted, { color: colors.textMuted, fontSize: type.small.size }]}>
-          Choose your visual theme. System follows your device's mode automatically.
-        </Text>
-        <View style={[styles.themeRow, { marginTop: space[3] }]}>
-          {(["system", "light", "dark"] as ThemePreference[]).map((mode) => {
-            const isSelected = preference === mode;
-            return (
-              <Chip
-                key={mode}
-                label={mode === "system" ? "⚙ System" : mode === "light" ? "☀ Light" : "☾ Dark"}
-                selected={isSelected}
-                onPress={() => setPreference(mode)}
-              />
-            );
-          })}
         </View>
       </View>
 
@@ -1488,12 +1511,7 @@ function Editor({
           })}
         </View>
 
-        <Button
-          label={busy ? "Saving…" : "Save profile changes"}
-          onPress={() => void save()}
-          disabled={busy}
-          style={{ marginTop: space[4] }}
-        />
+
       </View>
 
       {/* Interests Manager */}
@@ -1526,7 +1544,6 @@ function Editor({
             );
           })}
         </View>
-        <Button label="Save interests" secondary compact onPress={() => void save()} disabled={busy} style={{ marginTop: space[3] }} />
       </View>
 
       {/* Photos Manager */}
@@ -1569,7 +1586,7 @@ function Editor({
         </View>
 
         {profile.media.length < 6 ? (
-          <Button label="+ Add photo" secondary onPress={() => void addPhoto()} style={{ marginTop: space[3] }} />
+          <Button label="+ Add photo" disabled={busy || mediaBusy} secondary onPress={() => void addPhoto()} style={{ marginTop: space[3] }} />
         ) : null}
       </View>
 
@@ -1611,7 +1628,6 @@ function Editor({
             </View>
           ))}
         </View>
-        <Button label="Save prompts" secondary compact onPress={() => void save()} disabled={busy} style={{ marginTop: space[3] }} />
       </View>
 
       {/* Privacy Manager */}
@@ -1629,7 +1645,6 @@ function Editor({
       >
         <Text style={[styles.h2, { color: colors.text, fontSize: type.title.size }]}>Privacy</Text>
         <PrivacyEditor privacy={privacy} setPrivacy={setPrivacy} />
-        <Button label="Save privacy" secondary compact onPress={() => void save()} disabled={busy} style={{ marginTop: space[3] }} />
       </View>
 
       {message ? <Banner tone="success">{message}</Banner> : null}

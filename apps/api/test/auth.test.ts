@@ -98,9 +98,11 @@ describe("sessions", () => {
     await get(app, "/me", `tok:${A}:phone`);
     const list = await get(app, "/me/sessions", `tok:${A}:laptop`);
     const phone = (await db.query<{ id: string }>("select id from user_sessions where auth_session_id = 'phone'")).rows[0]!.id;
+    await db.query("insert into device_push_tokens (user_id, platform, token, session_id) values ($1, 'android', 'ExpoPushToken[test_device]', $2)", [A, phone]);
     expect(list.statusCode).toBe(200);
     const del = await app.inject({ method: "DELETE", url: `/me/sessions/${phone}`, headers: { authorization: `Bearer tok:${A}:laptop` } });
     expect(del.statusCode).toBe(204);
+    expect((await db.query("select * from device_push_tokens where session_id = $1", [phone])).rows).toHaveLength(0);
     expect((await get(app, "/me", `tok:${A}:phone`)).statusCode).toBe(401);
     expect((await get(app, "/me", `tok:${A}:laptop`)).statusCode).toBe(200);
   });

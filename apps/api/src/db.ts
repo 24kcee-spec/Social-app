@@ -1,23 +1,25 @@
 import pg from "pg";
+import { readFileSync } from "node:fs";
 
 /**
- * Builds pg pool config. Local databases do not use TLS. Remote databases use TLS,
- * but certificate-chain verification remains temporarily disabled until the deployed
- * Supabase pooler CA configuration is verified. Do not ship this to a broader public
- * launch without configuring and testing a trusted CA.
+ * Remote databases always verify the certificate chain and hostname. Supply the
+ * provider CA through DATABASE_CA_CERT_PATH when it is not in the system trust store.
  */
-export function poolConfig(databaseUrl: string): pg.PoolConfig {
+export function poolConfig(databaseUrl: string, ca?: string): pg.PoolConfig {
   const url = new URL(databaseUrl);
   const local = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(url.hostname);
-  url.searchParams.delete("sslmode");
+  // pg-connection-string can override the ssl object when these URL options exist.
+  for (const key of ["ssl", "sslmode", "sslrootcert", "sslcert", "sslkey", "sslpassword"]) url.searchParams.delete(key);
   return {
     connectionString: url.toString(),
-    ssl: local ? undefined : { rejectUnauthorized: false },
+    ssl: local ? undefined : { rejectUnauthorized: true, ...(ca ? { ca } : {}) },
     max: 5,
     connectionTimeoutMillis: 5000,
   };
 }
 
 export function makePool(databaseUrl: string): pg.Pool {
-  return new pg.Pool(poolConfig(databaseUrl));
+  const caPath = process.env.DATABASE_CA_CERT_PATH?.trim();
+  const ca = caPath ? readFileSync(caPath, "utf8") : undefined;
+  return new pg.Pool(poolConfig(databaseUrl, ca));
 }

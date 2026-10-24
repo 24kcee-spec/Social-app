@@ -1,17 +1,8 @@
 import { NextResponse } from "next/server";
+import { appleAssociation } from "../../../lib/app-links";
 
 export async function GET() {
-  const aasa = {
-    applinks: {
-      apps: [],
-      details: [
-        {
-          appID: "TEAMID.app.social.dev",
-          paths: ["/share/*"],
-        },
-      ],
-    },
-  };
+  const aasa = appleAssociation(process.env.APPLE_TEAM_ID, process.env.IOS_BUNDLE_IDENTIFIER);
 
   return NextResponse.json(aasa, {
     headers: {

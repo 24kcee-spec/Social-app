@@ -14,8 +14,13 @@ let conv: string;
 const SUPABASE_STUBS = `
   create schema if not exists auth;
   create or replace function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.sub', true), '')::uuid $$;
+  create or replace function auth.jwt() returns jsonb language sql stable as $$ select jsonb_build_object('session_id', 'test-session') $$;
+  create schema storage;
+  create table storage.objects (name text);
+  alter table storage.objects enable row level security;
   do $$ begin create role anon nologin; exception when duplicate_object then null; end $$;
   do $$ begin create role authenticated nologin; exception when duplicate_object then null; end $$;
+  create policy storage_owner_test on storage.objects for all to authenticated using (true) with check (true);
   create publication supabase_realtime;
 `;
 
@@ -32,6 +37,9 @@ beforeAll(async () => {
   await db.exec(SUPABASE_STUBS);
   await db.exec(await readFile(path.join(here, "..", "..", "..", "docs", "supabase-phase5-security.sql"), "utf8"));
   await db.exec(await readFile(path.join(here, "..", "..", "..", "docs", "supabase-phase5b-security.sql"), "utf8"));
+  await db.exec("create policy profiles_self_insert on profiles for insert to authenticated with check (auth.uid() = user_id)");
+  await db.exec(await readFile(path.join(here, "..", "..", "..", "docs", "supabase-pilot-security.sql"), "utf8"));
+  await db.exec("grant usage on schema storage to authenticated; grant all on storage.objects to authenticated; grant insert, update on profiles to authenticated");
   await db.exec("grant usage on schema public to authenticated; grant select on all tables in schema public to authenticated");
   for (const [id, name] of [[ID.A, "ann"], [ID.B, "ben"], [ID.C, "cy"]] as const) await db.query(`insert into users (id, email) values ($1, $2)`, [id, `${name}@example.com`]);
   await db.query(`insert into connections (user_a, user_b) values ($1, $2)`, [ID.A, ID.B]);
@@ -84,5 +92,20 @@ describe("Phase 5 + 5b Supabase security SQL (real files, run on Postgres)", () 
   it("publishes messages and conversation_members to Realtime", async () => {
     const { rows } = await db.query<{ tablename: string }>(`select tablename from pg_publication_tables where pubname = 'supabase_realtime' order by tablename`);
     expect(rows.map((r) => r.tablename)).toEqual(expect.arrayContaining(["conversation_members", "messages"]));
+  });
+
+  it("denies revoked or deleted accounts direct reads and storage writes with old JWTs", async () => {
+    await db.query("insert into user_sessions (user_id, auth_session_id, revoked_at) values ($1, 'test-session', now())", [ID.A]);
+    expect(await count(ID.A, "messages")).toBe(0);
+    await expect(asUser(ID.A, "insert into storage.objects(name) values ('photo.jpg')")).rejects.toThrow();
+    await db.query("delete from user_sessions where user_id = $1", [ID.A]);
+    await db.query("update users set status = 'deleted' where id = $1", [ID.A]);
+    expect(await count(ID.A, "messages")).toBe(0);
+    await db.query("update users set status = 'active' where id = $1", [ID.A]);
+    expect(await count(ID.A, "messages")).toBe(1);
+  });
+
+  it("prevents direct profile writes from forging verification evidence", async () => {
+    await expect(asUser(ID.A, "insert into profiles (user_id, verification_level, verified_student_email) values ($1, 'student_verified', 'fake@students.nust.ac.zw')", [ID.A])).rejects.toThrow();
   });
 });

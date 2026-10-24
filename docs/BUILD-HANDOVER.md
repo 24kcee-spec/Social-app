@@ -1,3 +1,5 @@
+> **Historical handover:** This file describes an older build snapshot. Use [docs/status.md](status.md) and [handover.md](handover.md) for the current implementation, test results and remaining release work. In cloud tasks use the existing checkout; an archive upload is not required.
+
 # BUILD HANDOVER - Social Connection Platform (updated 5 Oct 2026, after Phase 5)
 
 Paste this file into a new Claude session, attach `Social-Connection-Platform-Blueprint-FINAL.pdf`, and say: **"Continue at <step>."**
