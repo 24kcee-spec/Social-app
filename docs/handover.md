@@ -1,3 +1,5 @@
+> **Settings/profile follow-through (24 Oct 2026):** Web privacy/account destinations are independent screens with blocked-account management and password reset. Mobile profile drafts now support save/discard, partial-failure recovery and navigation guards; appearance lives in Settings. All-workspace typechecks pass. Browser/native interaction tests are still pending.
+
 > **Android/native links (24 Oct 2026):** EAS project UUID validation, domain-derived app links and configuration-driven web signing associations are implemented. Mobile config guards and link-identity tests pass. EAS linking/build, release identities, and physical-device tests remain external prerequisites.
 
 > **API live-gate preparation (24 Oct 2026):** A complete automated multi-account API journey passes against PGlite, including idempotent messages/read receipts, waitlist promotion, blocked chat and session revocation. Readiness now requires the exact release migration ledger and pilot security function. Read-only live HTTPS inspection confirms migrations 0001–0010 applied; no new live migrations or browser/device evidence yet.
