@@ -1,4 +1,6 @@
 import { loadApiEnv } from "@sp/config";
+import { readdir } from "node:fs/promises";
+import { createSchemaReadinessCheck } from "./schema-readiness";
 import { buildApp, type ReadinessCheck } from "./app";
 import { createApiConfigurationCheck } from "./readiness";
 import { registerAuth } from "./auth/plugin";
@@ -36,6 +38,8 @@ if (pool) {
   readinessChecks.database = async () => {
     await pool.query("select 1");
   };
+  const migrationNames = (await readdir(new URL("../migrations/", import.meta.url))).filter((name) => /^\d{4}_[a-z0-9_]+\.sql$/.test(name));
+  readinessChecks.schema = createSchemaReadinessCheck({ query: (sql, params) => pool.query(sql, params as unknown[]) as never }, migrationNames);
 }
 
 const app = buildApp({ readinessChecks, logger: true, corsOrigins: resolveCorsOrigins(env) });

@@ -63,6 +63,10 @@ if (env) {
       }
 
       const t = await pool.query("select to_regclass('public.users') as users, to_regclass('public.user_sessions') as sessions, to_regclass('public.profiles') as profiles, to_regclass('public.interests') as interests, to_regclass('public.user_interests') as user_interests, to_regclass('public.prompt_catalog') as prompt_catalog, to_regclass('public.prompt_answers') as prompt_answers, to_regclass('public.profile_media') as profile_media");
+      const pilotSecurity = await pool.query("select to_regprocedure('public.has_active_app_session()') is not null as installed");
+      pilotSecurity.rows[0]?.installed ? ok("Pilot active-account/session security function installed") : fail("Pilot security SQL missing", "Apply docs/supabase-pilot-security.sql LAST after numbered migrations and earlier security scripts");
+      const directWrites = await pool.query("select policyname from pg_policies where schemaname = 'public' and policyname in ('profiles_self_insert', 'profiles_self_update', 'reports_reporter_insert', 'reports_admin_update')");
+      directWrites.rows.length === 0 ? ok("Verification/report writes are API-only") : fail("Direct Data API write policies bypass API checks", "Apply docs/supabase-pilot-security.sql LAST");
       const row = t.rows[0] as Record<string, unknown> | undefined;
       const phase1 = Boolean(row?.users && row?.sessions);
       const phase2 = Boolean(row?.profiles && row?.interests && row?.user_interests && row?.prompt_catalog && row?.prompt_answers && row?.profile_media);

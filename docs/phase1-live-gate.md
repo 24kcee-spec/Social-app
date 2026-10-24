@@ -55,3 +55,8 @@ The repository's handover records physical Android testing as not yet completed.
 - **BLOCKED:** the required Supabase project, verified test account, physical device, or provider access is not available.
 
 Unverified items remain blocked; do not silently mark them complete.
+
+## 24 October 2026 implementation update
+`pnpm --filter @sp/api exec vitest run test/core-loop.test.ts` exercises real route validation, authentication/session handling and SQL through the complete connection/community journey against PGlite. Only provider token verification is replaced. This is automated API integration evidence, not browser, hosted Realtime or physical-device evidence.
+
+Live read-only HTTPS inspection confirmed migrations 0001–0010 applied. New migrations 0011–0012 and `docs/supabase-pilot-security.sql` remain unapplied from this cloud machine because direct PostgreSQL connectivity times out. `/ready` now checks the release migration ledger and pilot security function, so deploying new code before applying its schema/security requirements correctly reports not ready. Apply the pilot security file LAST after all earlier Supabase security files. Re-running older files afterward can restore permissive policies: rerun setup-check and the pilot security file.
