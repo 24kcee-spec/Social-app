@@ -37,12 +37,80 @@
 .app-header .nav-pill-btn,
 .app-header .account-menu-trigger,
 .settings-page .settings-tile,
-.settings-page button:not(.link) {
+.settings-page button:not(.link),
+.settings-page a.secondary {
   min-height: 44px;
 }
 
 .account-menu-popover {
   max-width: min(340px, calc(100vw - 24px));
+}
+
+.settings-help-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.settings-help-card {
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+
+.settings-help-card h3,
+.settings-help-card p {
+  margin-top: 0;
+}
+
+.settings-help-card p {
+  margin-bottom: 0;
+  line-height: 1.55;
+}
+
+.my-profile-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.my-profile-photo-grid img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line);
+}
+
+.blocked-account-list {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0 0;
+}
+
+.blocked-account-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.blocked-account-list li:last-child {
+  border-bottom: 0;
+}
+
+.message-retry {
+  display: inline-flex;
+  margin-top: 4px;
+  font-size: 0.78rem;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 @media (max-width: 640px) {
@@ -81,7 +149,26 @@
   }
 
   .settings-page-header > button,
-  .settings-panel-heading > button {
+  .settings-page-header > a,
+  .settings-panel-heading > button,
+  .settings-panel-heading > a {
+    width: 100%;
+  }
+
+  .settings-help-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .my-profile-photo-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .blocked-account-list li {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .blocked-account-list li button {
     width: 100%;
   }
 }
@@ -100,6 +187,10 @@
   .settings-theme-options {
     grid-template-columns: 1fr;
   }
+
+  .my-profile-photo-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (forced-colors: active) {
@@ -115,7 +206,9 @@
   }
 
   .nav-badge,
-  .settings-status {
+  .settings-status,
+  .settings-help-card,
+  .my-profile-photo-grid img {
     border: 1px solid CanvasText;
   }
 }
