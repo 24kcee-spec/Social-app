@@ -80,7 +80,7 @@ export function SettingsOverview({
             <h2 id="verification-title" style={{ margin: "6px 0 4px" }}>
               {isStudentVerified ? "Academic email confirmed" : "Confirm your academic email"}
             </h2>
-            <p className="muted" style={{ margin: 0, fontSize: "0.9rem", maxWidth: 540 }}>
+            <p id="verification-help" className="muted" style={{ margin: 0, fontSize: "0.9rem", maxWidth: 540 }}>
               {isStudentVerified
                 ? "Your confirmed sign-in email belongs to a supported institution. This badge verifies email access, not current enrollment or identity."
                 : "Sign in with a supported university email and confirm it through the email link first. The address below must match your confirmed sign-in email."}
@@ -90,6 +90,7 @@ export function SettingsOverview({
 
         {!isStudentVerified && onVerifyStudent && (
           <form
+            aria-busy={verifying}
             onSubmit={async (e) => {
               e.preventDefault();
               if (!studentEmail.trim() || verifying) return;
@@ -107,18 +108,23 @@ export function SettingsOverview({
             }}
             style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 12, maxWidth: 500 }}
           >
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div className="field" style={{ margin: 0 }}>
+              <label htmlFor="student-email">Academic email</label>
               <input
+                id="student-email"
+                name="studentEmail"
                 type="email"
+                autoComplete="email"
+                aria-describedby="verification-help"
                 placeholder="e.g. n02420280y@students.nust.ac.zw"
                 value={studentEmail}
                 onChange={(e) => setStudentEmail(e.target.value)}
                 required
-                style={{ flex: 1, minWidth: 240, padding: "8px 12px", fontSize: "0.9rem" }}
+                disabled={verifying}
+                style={{ width: "100%", padding: "8px 12px", fontSize: "0.9rem" }}
               />
-
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <button type="submit" disabled={verifying} className="compact" style={{ alignSelf: "flex-start" }}>
                 {verifying ? "Verifying…" : "Confirm academic email"}
               </button>
@@ -131,8 +137,8 @@ export function SettingsOverview({
                 finally { setVerifying(false); }
               }}>Send email access link</button>
             </div>
-            {verifyMsg && <p className="notice ok" style={{ margin: 0 }}>{verifyMsg}</p>}
-            {verifyError && <p className="notice err" style={{ margin: 0 }}>{verifyError}</p>}
+            {verifyMsg && <p className="notice ok" role="status" aria-live="polite" style={{ margin: 0 }}>{verifyMsg}</p>}
+            {verifyError && <p className="notice err" role="alert" style={{ margin: 0 }}>{verifyError}</p>}
           </form>
         )}
       </section>

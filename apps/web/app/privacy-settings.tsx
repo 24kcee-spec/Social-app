@@ -30,10 +30,13 @@ export function PrivacySettings({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const dirty = JSON.stringify(privacy) !== JSON.stringify(profile.privacy);
+
   useEffect(() => {
     onDirtyChange(dirty, saving);
   }, [dirty, saving, onDirtyChange]);
+
   useEffect(() => () => onDirtyChange(false), [onDirtyChange]);
+
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => {
       if (dirty || saving) {
@@ -44,8 +47,10 @@ export function PrivacySettings({
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty, saving]);
+
   const loadBlocks = useCallback(async () => {
     setBlocksLoading(true);
+    setError(null);
     try {
       setBlocks(await getDiscoveryClient().listBlocks());
     } catch (err) {
@@ -54,6 +59,7 @@ export function PrivacySettings({
       setBlocksLoading(false);
     }
   }, []);
+
   useEffect(() => {
     void loadBlocks();
   }, [loadBlocks]);
@@ -71,7 +77,7 @@ export function PrivacySettings({
           <h1 id="privacy-title">Privacy & safety</h1>
           <p className="muted">Control discovery, message permissions and blocked accounts.</p>
         </div>
-        <button type="button" className="secondary compact" onClick={onBack}>
+        <button type="button" className="secondary compact" onClick={onBack} disabled={saving}>
           Back to Settings
         </button>
       </header>
@@ -81,11 +87,11 @@ export function PrivacySettings({
         </p>
       )}
       {notice && (
-        <p className="notice ok" role="status">
+        <p className="notice ok" role="status" aria-live="polite">
           {notice}
         </p>
       )}
-      <section className="settings-panel">
+      <section className="settings-panel" aria-busy={saving}>
         <h2>Visibility and contact</h2>
         <fieldset
           aria-label="Privacy controls"
@@ -130,18 +136,20 @@ export function PrivacySettings({
           </button>
         </div>
       </section>
-      <section className="settings-panel" aria-labelledby="blocked-title">
+      <section className="settings-panel" aria-labelledby="blocked-title" aria-busy={blocksLoading || unblocking !== null}>
         <h2 id="blocked-title">Blocked accounts</h2>
         {blocks === null ? (
           <>
-            <p role="status">
+            <p role="status" aria-live="polite">
               {blocksLoading
                 ? 'Loading blocked accounts…'
                 : 'Blocked accounts could not be loaded.'}
             </p>
-            <button type="button" className="secondary" onClick={() => void loadBlocks()}>
-              Retry
-            </button>
+            {!blocksLoading && (
+              <button type="button" className="secondary" onClick={() => void loadBlocks()}>
+                Retry
+              </button>
+            )}
           </>
         ) : blocks.length === 0 ? (
           <p className="muted">You have no blocked accounts.</p>
@@ -154,6 +162,7 @@ export function PrivacySettings({
                   type="button"
                   className="secondary compact"
                   disabled={unblocking !== null}
+                  aria-busy={unblocking === block.userId}
                   onClick={async () => {
                     if (
                       !window.confirm(
@@ -176,7 +185,7 @@ export function PrivacySettings({
                     }
                   }}
                 >
-                  Unblock
+                  {unblocking === block.userId ? 'Unblocking…' : 'Unblock'}
                 </button>
               </li>
             ))}

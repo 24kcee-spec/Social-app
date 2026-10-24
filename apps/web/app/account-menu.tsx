@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 interface AccountMenuProps {
   displayName: string;
@@ -22,6 +22,7 @@ export function AccountMenu({
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuId = useId();
 
   useEffect(() => {
     if (!open) return;
@@ -39,10 +40,23 @@ export function AccountMenu({
         triggerRef.current?.focus();
         return;
       }
-      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+
       const items = Array.from(wrapperRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? []);
-      const index = items.indexOf(document.activeElement as HTMLButtonElement);
       if (!items.length) return;
+
+      if (event.key === "Home" || event.key === "End") {
+        event.preventDefault();
+        items[event.key === "Home" ? 0 : items.length - 1]?.focus();
+        return;
+      }
+
+      if (event.key === "Tab") {
+        setOpen(false);
+        return;
+      }
+
+      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+      const index = items.indexOf(document.activeElement as HTMLButtonElement);
       event.preventDefault();
       const direction = event.key === "ArrowDown" ? 1 : -1;
       items[(index + direction + items.length) % items.length]?.focus();
@@ -62,13 +76,21 @@ export function AccountMenu({
   }
 
   return (
-    <div className="account-menu-anchor" ref={wrapperRef}>
+    <div
+      className="account-menu-anchor"
+      ref={wrapperRef}
+      onBlur={(event) => {
+        if (event.relatedTarget instanceof Node && wrapperRef.current?.contains(event.relatedTarget)) return;
+        setOpen(false);
+      }}
+    >
       <button
         ref={triggerRef}
         type="button"
         className="user-badge-chip account-menu-trigger"
         aria-label="Open account menu"
         aria-haspopup="menu"
+        aria-controls={menuId}
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
@@ -83,12 +105,12 @@ export function AccountMenu({
       </button>
 
       {open ? (
-        <div className="account-menu-popover" role="menu" aria-label="Account options">
+        <div id={menuId} className="account-menu-popover" role="menu" aria-label="Account options">
           <div className="account-menu-identity">
             <strong>{displayName || "Member"}</strong>
             <span>{email || "Email not available"}</span>
           </div>
-          <div className="account-menu-divider" />
+          <div className="account-menu-divider" role="separator" />
           <button type="button" role="menuitem" onClick={() => choose(onViewProfile)}>
             <span aria-hidden="true">◉</span>
             <span><strong>View my profile</strong><small>See your saved profile as a member would</small></span>
@@ -101,7 +123,7 @@ export function AccountMenu({
             <span aria-hidden="true">⚙</span>
             <span><strong>Settings</strong><small>Account, appearance and notifications</small></span>
           </button>
-          <div className="account-menu-divider" />
+          <div className="account-menu-divider" role="separator" />
           <button type="button" role="menuitem" className="account-menu-signout" onClick={() => choose(onSignOut)}>
             <span aria-hidden="true">↪</span>
             <span><strong>Sign out</strong><small>Sign out on this device</small></span>
