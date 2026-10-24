@@ -98,7 +98,7 @@ export function SettingsOverview({
               setVerifyError(null);
               setVerifyMsg(null);
               try {
-                await onVerifyStudent(studentEmail.trim(), undefined);
+                await onVerifyStudent(studentEmail.trim().toLowerCase(), undefined);
                 setVerifyMsg("Academic email ownership confirmed.");
               } catch (err: unknown) {
                 setVerifyError(err instanceof Error ? err.message : "Failed to verify. Please make sure you enter a valid university email.");
@@ -114,6 +114,9 @@ export function SettingsOverview({
                 id="student-email"
                 name="studentEmail"
                 type="email"
+                inputMode="email"
+                autoCapitalize="none"
+                spellCheck={false}
                 autoComplete="email"
                 aria-describedby="verification-help"
                 placeholder="e.g. n02420280y@students.nust.ac.zw"
@@ -125,13 +128,13 @@ export function SettingsOverview({
               />
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-              <button type="submit" disabled={verifying} className="compact" style={{ alignSelf: "flex-start" }}>
+              <button type="submit" disabled={verifying || !studentEmail.trim()} className="compact" style={{ alignSelf: "flex-start" }}>
                 {verifying ? "Verifying…" : "Confirm academic email"}
               </button>
               <button type="button" className="secondary compact" disabled={verifying || !me.email} onClick={async () => {
                 setVerifying(true); setVerifyError(null); setVerifyMsg(null);
                 try {
-                  await getAuth().requestEmailAccessLink(me.email!, `${window.location.origin}/?view=settings`);
+                  await getAuth().requestEmailAccessLink(me.email!, `${window.location.origin}/settings`);
                   setVerifyMsg("If available, an access link was sent to your sign-in email. Open it, return to Settings and confirm your academic email. Delivery depends on the project's email provider.");
                 } catch (err) { setVerifyError(err instanceof Error ? err.message : "Could not send the access link."); }
                 finally { setVerifying(false); }
@@ -201,9 +204,14 @@ export function SettingsOverview({
       </section>
 
       <section className="settings-panel settings-help-panel" aria-labelledby="help-title">
-        <span className="eyebrow">HELP & SAFETY</span>
-        <h2 id="help-title">Keep your space comfortable</h2>
-        <p className="muted">Use the report and block actions on profiles, connections, messages, groups and events when something does not feel right. Settings here reflect controls already available in the app; we do not show unsupported switches.</p>
+        <div className="settings-panel-heading">
+          <div>
+            <span className="eyebrow">HELP & SAFETY</span>
+            <h2 id="help-title">Keep your space comfortable</h2>
+            <p className="muted">Use the report and block actions on profiles, connections, messages, groups and events when something does not feel right. The help center explains the controls Sidle actually supports without inventing unavailable services.</p>
+          </div>
+          <a className="secondary compact" href="/help">Open help & safety →</a>
+        </div>
       </section>
     </section>
   );
