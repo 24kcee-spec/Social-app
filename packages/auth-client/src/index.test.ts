@@ -16,6 +16,17 @@ function backend(overrides: Partial<Parameters<typeof createAuthClient>[0]["back
 }
 
 describe("auth client", () => {
+  it("requests an explicit email access link without creating an account", async () => {
+    let received: unknown;
+    const auth = createAuthClient({ supabaseUrl: "https://x.supabase.co", publishableKey: "pk", apiUrl: "http://api", backend: backend({ signInWithOtp: async (args) => { received = args; return { data: {}, error: null }; } }) });
+    await auth.requestEmailAccessLink("  Student@Example.com ", "https://app.example.com/?view=settings");
+    expect(received).toEqual({ email: "student@example.com", options: { shouldCreateUser: false, emailRedirectTo: "https://app.example.com/?view=settings" } });
+  });
+  it("keeps email-link account existence private but reports provider failures", async () => {
+    const make = (error: { code?: string; status?: number }) => createAuthClient({ supabaseUrl: "https://x.supabase.co", publishableKey: "pk", apiUrl: "http://api", backend: backend({ signInWithOtp: async () => ({ data: {}, error }) }) });
+    await expect(make({ code: "user_not_found", status: 404 }).requestEmailAccessLink("a@example.com", "https://app.example.com")).resolves.toBeUndefined();
+    await expect(make({ status: 503 }).requestEmailAccessLink("a@example.com", "https://app.example.com")).rejects.toMatchObject({ code: "service_unavailable" });
+  });
   it("rejects invalid sign-up input", async () => {
     const auth = createAuthClient({ supabaseUrl: "https://x.supabase.co", publishableKey: "pk", apiUrl: "http://api", backend: backend() });
     await expect(auth.signUp({ email: "bad", password: "short" })).rejects.toMatchObject({ code: "validation" });

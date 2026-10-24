@@ -67,3 +67,5 @@ Then open:
 
 ## Database TLS
 Remote connections require a valid certificate chain and hostname. If the provider CA is not in Node's default trust store, set `DATABASE_CA_CERT_PATH` to a readable PEM CA bundle obtained through the provider's official dashboard/documentation. Do not disable verification. URL SSL options cannot override this policy. Run `setup-check` and an authenticated request in the deployment before rollout; cloud TCP connectivity is a separate prerequisite from HTTPS access.
+
+Supabase database/pooler hosts additionally trust the official bundled provider root, with hostname/chain verification enabled; see [certificate provenance](certs/README.md). For cloud maintenance when direct TCP is unavailable, use `python scripts/supabase-maintenance.py` from the repo root with the secure `SUPABASE_ACCESS_TOKEN` binding. The Management token is not an application runtime credential. Live evidence is recorded in `docs/supabase-live-validation.md`.

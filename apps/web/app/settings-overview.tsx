@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { DeviceSession, Me } from "@sp/auth-client";
 import type { Profile } from "@sp/types";
+import { getAuth } from "../lib/auth";
 
 export type ThemePreference = "system" | "light" | "dark";
 
@@ -121,6 +122,14 @@ export function SettingsOverview({
               <button type="submit" disabled={verifying} className="compact" style={{ alignSelf: "flex-start" }}>
                 {verifying ? "Verifying…" : "Confirm academic email"}
               </button>
+              <button type="button" className="secondary compact" disabled={verifying || !me.email} onClick={async () => {
+                setVerifying(true); setVerifyError(null); setVerifyMsg(null);
+                try {
+                  await getAuth().requestEmailAccessLink(me.email!, `${window.location.origin}/?view=settings`);
+                  setVerifyMsg("If available, an access link was sent to your sign-in email. Open it, return to Settings and confirm your academic email. Delivery depends on the project's email provider.");
+                } catch (err) { setVerifyError(err instanceof Error ? err.message : "Could not send the access link."); }
+                finally { setVerifying(false); }
+              }}>Send email access link</button>
             </div>
             {verifyMsg && <p className="notice ok" style={{ margin: 0 }}>{verifyMsg}</p>}
             {verifyError && <p className="notice err" style={{ margin: 0 }}>{verifyError}</p>}

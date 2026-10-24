@@ -1,6 +1,6 @@
 # Sidle — implementation and remaining release work
 
-Updated: 24 October 2026. This is the current status; older phase handovers and the 22 October audit are historical snapshots. Implementation phases and audit phases use different numbering, so remaining work is named below.
+Updated: 24 October 2026. **Live follow-up:** migrations 0001–0015 and final hardening are now applied. See [supabase-live-validation.md](supabase-live-validation.md) for current evidence and remaining provider/deployment requirements. The original readiness-branch checklist below is historical where superseded. This is the current status; older phase handovers and the 22 October audit are historical snapshots. Implementation phases and audit phases use different numbering, so remaining work is named below.
 
 ## Implemented in the readiness branch
 
@@ -19,7 +19,7 @@ Updated: 24 October 2026. This is the current status; older phase handovers and 
 ## Validation observed here
 
 - Frozen-lockfile install succeeded and was repeated successfully using pnpm 9.15.4.
-- `pnpm verify`: **416 tests passed** (API 305, profile-client 58, auth-client 17, validation 27, config 7, design tokens 2); all workspace typechecks passed. Runtime: Node 24.19.0, compatible with `engines >=22`; CI remains pinned to Node 22.
+- `pnpm verify`: **427 tests passed** (API 314, profile-client 58, auth-client 19, validation 27, config 7, design tokens 2); all workspace typechecks passed. Runtime: Node 24.19.0, compatible with `engines >=22`; CI remains pinned to Node 22.
 - Next.js production build passed with Sidle assets and metadata.
 - Mobile build-config guards passed; Expo public config resolved with the notification plugin. Use `EXPO_NO_TELEMETRY=1 CI=1` in cloud shells without a writable user home.
 - Local production web `/`, `/reset`, association documents and API `/health` responded correctly. Protected profile/delivery endpoints rejected unauthenticated requests (401).

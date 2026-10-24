@@ -82,7 +82,7 @@ if (env) {
         const rls4 = await pool.query("select relname from pg_class where relnamespace = 'public'::regnamespace and relname in ('question_cards','this_or_that_catalog','interaction_settings','connection_requests','connections','activation_milestones') and relrowsecurity");
         rls4.rows.length === 6 ? ok("RLS enabled on Phase 4 tables") : fail("RLS is not enabled on all Phase 4 tables", "Run docs/supabase-phase4-security.sql in Supabase SQL Editor");
         const fn = await pool.query("select prosrc from pg_proc where proname = 'can_view_discovery_thumbnail' and pronamespace = 'public'::regnamespace");
-        if (fn.rows[0]) String(fn.rows[0].prosrc).includes("connection_requests") ? ok("Thumbnail policy knows about connections (Phase 4 version)") : fail("Thumbnail policy is the Phase 3 version (connected people may see blank photos)", "Run docs/supabase-phase4-security.sql in Supabase SQL Editor");
+        if (fn.rows[0]) (String(fn.rows[0].prosrc).includes("connection_requests") || String(fn.rows[0].prosrc).includes("app_private.can_view_discovery_thumbnail")) ? ok("Thumbnail policy knows about connections (Phase 4 version)") : fail("Thumbnail policy is the Phase 3 version (connected people may see blank photos)", "Run docs/supabase-phase4-security.sql in Supabase SQL Editor");
       }
       const p5 = await pool.query("select to_regclass('public.conversations') as c, to_regclass('public.conversation_members') as m, to_regclass('public.messages') as msg, to_regclass('public.notification_settings') as n, to_regclass('public.device_push_tokens') as t");
       const phase5 = Boolean(p5.rows[0]?.c && p5.rows[0]?.m && p5.rows[0]?.msg && p5.rows[0]?.n && p5.rows[0]?.t);

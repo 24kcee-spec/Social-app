@@ -66,7 +66,7 @@ export function verifyStudentCredentials(input: {
 } {
   const email = input.studentEmail.trim().toLowerCase();
   if (!verifiedEmail || email !== verifiedEmail.trim().toLowerCase()) {
-    return { verified: false, level: "unverified", institution: "Unverified", message: "Sign in with this university email and confirm it using the Supabase email link first. The entered email must match your confirmed sign-in email." };
+    return { verified: false, level: "unverified", institution: "Unverified", message: "Confirm your university sign-in email first. Older auto-confirmed accounts must use a fresh email access link; the address must match your sign-in email. Accounts with a phone identity must confirm an email change instead." };
   }
   if (!isAcademicEmail(email)) {
     return {

@@ -16,7 +16,8 @@ const SUPABASE_STUBS = `
   create or replace function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.sub', true), '')::uuid $$;
   create or replace function auth.jwt() returns jsonb language sql stable as $$ select jsonb_build_object('session_id', 'test-session') $$;
   create schema storage;
-  create table storage.objects (name text);
+  create table storage.objects (name text, bucket_id text, owner_id text);
+  create function storage.foldername(name text) returns text[] language sql immutable as $$ select string_to_array(regexp_replace(name, '/[^/]+$', ''), '/') $$;
   alter table storage.objects enable row level security;
   do $$ begin create role anon nologin; exception when duplicate_object then null; end $$;
   do $$ begin create role authenticated nologin; exception when duplicate_object then null; end $$;

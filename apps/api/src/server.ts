@@ -50,7 +50,14 @@ if (pool && env.SUPABASE_URL) {
   const db = { exec: (sql: string) => pool.query(sql), query: (sql: string, params?: unknown[]) => pool.query(sql, params as unknown[]) as never };
   const store = createAuthStore(db);
   const { requireAuth, requireRole } = registerAuth(app, { verify, store });
-  registerProfile(app, { requireAuth, store: createProfileStore(db), readEmailProof: createEmailProofReader({ supabaseUrl: env.SUPABASE_URL, publishableKey: env.SUPABASE_PUBLISHABLE_KEY }) });
+  registerProfile(app, { requireAuth, store: createProfileStore(db), readEmailProof: createEmailProofReader({
+    supabaseUrl: env.SUPABASE_URL, publishableKey: env.SUPABASE_PUBLISHABLE_KEY,
+    readConfirmationBaseline: async () => {
+      const { rows } = await pool.query<{ baseline: string }>("select confirmed_email_not_before::text as baseline from public.email_proof_settings where singleton");
+      if (!rows[0]) throw new Error("Email confirmation baseline is missing");
+      return rows[0].baseline;
+    },
+  }) });
   registerDiscovery(app, { requireAuth, requireRole, store: createDiscoveryStore(db) });
   registerConnections(app, { requireAuth, requireRole, store: createConnectionsStore(db) });
   const pushEnabled = env.PUSH_PROVIDER === "expo";
