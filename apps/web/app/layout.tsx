@@ -5,6 +5,8 @@ import "./shell-polish.css";
 import "./feature-polish.css";
 import "./brand-polish.css";
 import "./release-hardening.css";
+import "./superb-design.css";
+import { ProductExperience } from "./product-experience";
 import { ShellAccessibility } from "./shell-accessibility";
 
 const description =
@@ -37,7 +39,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   colorScheme: "light dark",
-  themeColor: "#1F4FD8",
+  themeColor: "#315ee7",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -46,6 +48,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <a className="skip-link" href="#main">Skip to main content</a>
         <ShellAccessibility />
+        <ProductExperience />
         <div id="app">{children}</div>
       </body>
     </html>
