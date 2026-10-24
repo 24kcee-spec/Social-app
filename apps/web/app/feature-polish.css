@@ -1,0 +1,609 @@
+/* Phase 8B/8C — Discover + Connections polish
+   Presentation-only overrides layered after globals.css and shell-polish.css.
+   No API, auth, persistence, or routing behavior changes. */
+
+/* Shared screen framing */
+.discover-page-head,
+.connections-page {
+  --feature-card-radius: clamp(20px, 2.2vw, 28px);
+  --feature-gap: clamp(16px, 2vw, 24px);
+}
+
+.discover-page-head > .discover-header-bar,
+.connections-page > .discover-header-bar {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin-bottom: 18px;
+  padding: clamp(20px, 3.5vw, 34px);
+  border: 1px solid var(--accent-line);
+  border-radius: var(--feature-card-radius);
+  background:
+    radial-gradient(circle at 92% 8%, color-mix(in srgb, var(--accent) 18%, transparent) 0, transparent 36%),
+    linear-gradient(135deg, color-mix(in srgb, var(--accent-soft) 76%, var(--surface-card)) 0%, var(--surface-card) 62%);
+  box-shadow: var(--shadow-1);
+}
+
+.discover-page-head > .discover-header-bar::after,
+.connections-page > .discover-header-bar::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 150px;
+  height: 150px;
+  right: -54px;
+  bottom: -72px;
+  border: 24px solid color-mix(in srgb, var(--accent) 7%, transparent);
+  border-radius: 50%;
+}
+
+.discover-page-head > .discover-header-bar h1,
+.connections-page > .discover-header-bar h1 {
+  max-width: 760px;
+  font-size: clamp(1.75rem, 3vw, 2.55rem);
+}
+
+.discover-page-head > .discover-header-bar .muted,
+.connections-page > .discover-header-bar .discover-philosophy {
+  max-width: 690px !important;
+}
+
+.discover-page-head .eyebrow,
+.connections-page .eyebrow {
+  letter-spacing: 0.11em;
+}
+
+/* Discover — filters */
+.discover-page-head > .filter-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  margin: 0 0 22px;
+  padding: 2px 2px 7px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+
+.discover-page-head > .filter-chips::-webkit-scrollbar {
+  display: none;
+}
+
+.discover-page-head .chip-btn {
+  flex: 0 0 auto;
+  min-height: 40px;
+  scroll-snap-align: start;
+  padding: 8px 15px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface-card);
+  color: var(--text-muted);
+  box-shadow: none;
+  font-size: 0.84rem;
+  font-weight: 720;
+}
+
+.discover-page-head .chip-btn:hover:not(:disabled) {
+  transform: none;
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: none;
+}
+
+.discover-page-head .chip-btn.on,
+.discover-page-head .chip-btn[aria-pressed="true"] {
+  border-color: transparent;
+  background: var(--accent-gradient);
+  color: #fff;
+  box-shadow: 0 5px 15px rgba(31, 79, 216, 0.22);
+}
+
+.discover-page-head .chip-btn:focus-visible,
+.discover-page-head .story:focus-visible,
+.discover-page-head .profile-card button:focus-visible,
+.connections-page button:focus-visible,
+.connections-page input:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+/* Discover — fresh introductions rail */
+.discover-page-head .stories-row {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  margin: 0 0 26px;
+  padding: 2px 2px 10px;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+}
+
+.discover-page-head .stories-row::-webkit-scrollbar {
+  display: none;
+}
+
+.discover-page-head .story {
+  flex: 0 0 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--text);
+  box-shadow: none;
+  scroll-snap-align: start;
+}
+
+.discover-page-head .story:hover:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+}
+
+.discover-page-head .story-ring {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  padding: 3px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: conic-gradient(from 215deg, var(--accent), color-mix(in srgb, var(--accent) 48%, var(--success)), var(--accent));
+  box-shadow: 0 5px 16px rgba(31, 79, 216, 0.18);
+  transition: transform var(--dur-fast), box-shadow var(--dur-fast);
+}
+
+.discover-page-head .story:hover .story-ring {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(31, 79, 216, 0.26);
+}
+
+.discover-page-head .story-ring > img,
+.discover-page-head .story-ring > span {
+  width: 100%;
+  height: 100%;
+  border: 3px solid var(--surface-card);
+  border-radius: 50%;
+}
+
+.discover-page-head .story-ring > img {
+  object-fit: cover;
+}
+
+.discover-page-head .story-ring > span {
+  display: grid;
+  place-items: center;
+  background: var(--surface-sunken);
+  color: var(--accent);
+  font-size: 1rem;
+  font-weight: 820;
+}
+
+.discover-page-head .story-name {
+  max-width: 70px;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Discover — cards */
+.discover-page-head .discover-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 318px), 1fr));
+  gap: var(--feature-gap);
+}
+
+.discover-page-head .profile-card {
+  min-width: 0;
+  border-radius: var(--feature-card-radius);
+  border-color: color-mix(in srgb, var(--line) 88%, var(--accent) 12%);
+  box-shadow: 0 12px 32px rgba(16, 21, 36, 0.07);
+  transform: translateZ(0);
+}
+
+.discover-page-head .profile-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent-line);
+  box-shadow: 0 18px 42px rgba(16, 21, 36, 0.11);
+}
+
+.discover-page-head .profile-card-cover {
+  height: auto;
+  min-height: 245px;
+  aspect-ratio: 4 / 3;
+  background:
+    radial-gradient(circle at 25% 20%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 42%),
+    var(--surface-sunken);
+}
+
+.discover-page-head .profile-card-initial {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: color-mix(in srgb, var(--accent) 82%, var(--text));
+  font-size: clamp(3.5rem, 8vw, 5.25rem);
+  font-weight: 850;
+  letter-spacing: -0.06em;
+}
+
+.discover-page-head .profile-card-scrim {
+  background: linear-gradient(to top, rgba(11, 16, 30, 0.9) 0%, rgba(11, 16, 30, 0.22) 52%, transparent 78%);
+}
+
+.discover-page-head .profile-card-cover-badges {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.discover-page-head .social-style-tag {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: rgba(11, 16, 30, 0.72);
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.12);
+}
+
+.discover-page-head .profile-card-body {
+  padding: 22px clamp(18px, 2.2vw, 24px) 20px;
+}
+
+.discover-page-head .profile-card-name {
+  font-size: clamp(1.25rem, 2vw, 1.45rem);
+  letter-spacing: -0.025em;
+}
+
+.discover-page-head .campus-badge {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.discover-page-head .profile-card-bio {
+  display: -webkit-box;
+  min-height: 2.8em;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.discover-page-head .shared-interests-row {
+  gap: 7px;
+  margin-bottom: 16px;
+}
+
+.discover-page-head .shared-chip {
+  padding: 5px 10px;
+  background: color-mix(in srgb, var(--surface-sunken) 90%, transparent);
+}
+
+.discover-page-head .shared-chip.highlight {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.discover-page-head .prompt-quote-box {
+  margin-bottom: 16px;
+  padding: 14px 15px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--surface-sunken) 82%, var(--surface-card));
+}
+
+.discover-page-head .prompt-answer {
+  font-style: normal;
+}
+
+.discover-page-head .profile-card-footer {
+  gap: 12px;
+}
+
+.discover-page-head .profile-card-footer > div {
+  flex-wrap: wrap;
+}
+
+.discover-page-head .profile-card-footer button {
+  box-shadow: none;
+}
+
+.discover-page-head .profile-card-footer button:not(.secondary) {
+  box-shadow: 0 5px 14px rgba(31, 79, 216, 0.2);
+}
+
+/* Discover — loading/empty/safety */
+.discover-page-head .discover-grid[aria-busy="true"] .card {
+  overflow: hidden;
+  border-radius: var(--feature-card-radius);
+  opacity: 1 !important;
+  background: var(--surface-card);
+}
+
+.discover-page-head .discover-grid[aria-busy="true"] .card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--surface-elevated) 62%, transparent), transparent);
+  animation: feature-skeleton 1.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes feature-skeleton {
+  to { transform: translateX(100%); }
+}
+
+.discover-page-head .empty-state-card {
+  border: 1px dashed var(--accent-line);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent-soft) 36%, var(--surface-card)), var(--surface-card));
+}
+
+.discover-page-head .invite-card {
+  border-color: var(--accent-line);
+  background: linear-gradient(135deg, var(--surface-card), color-mix(in srgb, var(--accent-soft) 45%, var(--surface-card)));
+}
+
+.discover-page-head > .card:last-child {
+  border-radius: var(--feature-card-radius);
+}
+
+/* Connections — low-pressure control */
+.connections-page .switch-row {
+  position: relative;
+  overflow: hidden;
+  gap: 24px;
+  border: 1px solid var(--accent-line);
+  border-radius: var(--feature-card-radius);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--success-soft) 32%, var(--surface-card)), var(--surface-card));
+  box-shadow: var(--shadow-1);
+}
+
+.connections-page .switch-row::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--success);
+}
+
+.connections-page .switch-title {
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.connections-page .switch-desc {
+  max-width: 820px;
+  line-height: 1.55;
+}
+
+.connections-page .toggle-switch {
+  flex: 0 0 auto;
+}
+
+.connections-page .toggle-switch input:focus-visible + .toggle-slider {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+/* Connections — section layout */
+.connections-page > div[style*="flex-direction: column"] {
+  gap: clamp(28px, 4vw, 44px) !important;
+}
+
+.connections-page > div[style*="flex-direction: column"] > div > div:first-child {
+  flex-wrap: wrap;
+}
+
+.connections-page .nav-badge {
+  animation: none;
+  box-shadow: none;
+}
+
+.connections-page .card {
+  border-radius: var(--feature-card-radius);
+  border-color: color-mix(in srgb, var(--line) 88%, var(--accent) 12%);
+  box-shadow: 0 10px 28px rgba(16, 21, 36, 0.06);
+}
+
+.connections-page .card:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent-line);
+  box-shadow: 0 16px 36px rgba(16, 21, 36, 0.09);
+}
+
+.connections-page .card > div:first-child div[aria-hidden="true"] {
+  background: var(--accent-gradient) !important;
+  box-shadow: 0 5px 14px rgba(31, 79, 216, 0.2);
+}
+
+.connections-page .card img {
+  display: block;
+}
+
+.connections-page .card h3 {
+  letter-spacing: -0.02em;
+}
+
+.connections-page .campus-badge {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.connections-page .prompt-quote-box {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--surface-sunken) 78%, var(--surface-card));
+}
+
+.connections-page .card button {
+  box-shadow: none;
+}
+
+.connections-page .card button:not(.secondary) {
+  box-shadow: 0 5px 14px rgba(31, 79, 216, 0.2);
+}
+
+.connections-page .empty-state-card {
+  border: 1px dashed var(--line-strong);
+  background: var(--surface-card);
+}
+
+/* Give empty subsections the same restrained, intentional treatment. */
+.connections-page .card[style*="text-align: center"] {
+  border-style: dashed;
+  border-color: var(--line-strong);
+  background: color-mix(in srgb, var(--surface-sunken) 60%, var(--surface-card)) !important;
+  box-shadow: none;
+}
+
+/* Cross-screen notice polish */
+.discover-page-head .notice,
+.connections-page .notice {
+  border-radius: 14px;
+  box-shadow: var(--shadow-1);
+}
+
+.discover-page-head .notice .link,
+.connections-page .notice .link {
+  margin-left: auto;
+}
+
+/* Tablet */
+@media (max-width: 900px) {
+  .discover-page-head > .discover-header-bar,
+  .connections-page > .discover-header-bar {
+    padding: 22px;
+  }
+
+  .discover-page-head .profile-card-cover {
+    min-height: 225px;
+  }
+
+  .connections-page .switch-row {
+    align-items: flex-start;
+  }
+}
+
+/* Phone */
+@media (max-width: 640px) {
+  .discover-page-head,
+  .connections-page {
+    --feature-card-radius: 20px;
+  }
+
+  .discover-page-head > .discover-header-bar,
+  .connections-page > .discover-header-bar {
+    margin-inline: -2px;
+    padding: 20px 18px;
+  }
+
+  .discover-page-head > .filter-chips {
+    margin-right: -14px;
+    padding-right: 14px;
+  }
+
+  .discover-page-head .stories-row {
+    margin-right: -14px;
+    padding-right: 14px;
+  }
+
+  .discover-page-head .discover-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .discover-page-head .profile-card-cover {
+    min-height: 0;
+    aspect-ratio: 1.12 / 1;
+  }
+
+  .discover-page-head .profile-card-cover-badges {
+    top: 12px;
+    left: 12px;
+    right: 12px;
+  }
+
+  .discover-page-head .social-style-tag {
+    font-size: 0.68rem;
+  }
+
+  .discover-page-head .profile-card-body {
+    padding: 18px 16px 16px;
+  }
+
+  .discover-page-head .profile-card-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .discover-page-head .profile-card-footer > div {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .discover-page-head .profile-card-footer button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .connections-page .switch-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+    padding: 18px !important;
+  }
+
+  .connections-page .toggle-switch {
+    align-self: flex-start;
+  }
+
+  .connections-page .card {
+    padding: 18px;
+  }
+
+  .connections-page .card > div[style*="display: flex"][style*="gap: 10"] {
+    flex-wrap: wrap;
+  }
+
+  .connections-page .card > div[style*="display: flex"][style*="gap: 10"] > button {
+    flex: 1 1 140px !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .discover-page-head .story {
+    flex-basis: 66px;
+  }
+
+  .discover-page-head .story-ring {
+    width: 56px;
+    height: 56px;
+  }
+
+  .discover-page-head .profile-card-footer > div {
+    grid-template-columns: 1fr;
+  }
+
+  .connections-page .card > div[style*="display: flex"][style*="gap: 10"] {
+    flex-direction: column;
+  }
+
+  .connections-page .card > div[style*="display: flex"][style*="gap: 10"] > button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .discover-page-head .discover-grid[aria-busy="true"] .card::after {
+    animation: none;
+  }
+
+  .discover-page-head .story-ring,
+  .discover-page-head .profile-card,
+  .connections-page .card {
+    transform: none !important;
+  }
+}

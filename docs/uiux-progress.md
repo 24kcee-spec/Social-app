@@ -39,3 +39,19 @@ Files: apps/web/app/shell-polish.css, apps/web/app/layout.tsx.
 - Added two-row tablet navigation and compact phone navigation so the five primary destinations remain usable without clipping.
 - Added reduced-motion handling for users who request it and removed decorative pulsing from the primary shell.
 - Kept authentication, routing, settings, API contracts and data behavior unchanged; this stage is presentation/accessibility only.
+
+## Stage E2: done (Discover experience polish)
+Files: apps/web/app/feature-polish.css, apps/web/app/layout.tsx.
+- Upgraded the Discover header into a stronger editorial hero while keeping the low-pressure product tone.
+- Reworked filter controls and fresh-introduction avatars into touch-friendly, horizontally scrollable rails that remain usable on narrow phones.
+- Improved profile-card proportions, image fallbacks, badges, shared-interest chips, prompts, card actions and responsive single-column behavior.
+- Added a restrained skeleton shimmer plus clearer empty/invite states and keyboard focus treatment.
+- Preserved discovery ranking, impressions, signed media loading, sharing, Say Hi, block management and pagination behavior.
+
+## Stage E3: done (Connections experience polish)
+Files: apps/web/app/feature-polish.css, apps/web/app/layout.tsx.
+- Brought the low-pressure mode card, incoming hellos, active connections and outgoing requests onto the same visual system as the polished app shell.
+- Improved card depth, spacing, verification badges, opener presentation, primary/secondary action hierarchy and mobile wrapping.
+- Normalized fallback avatars to the cobalt design language without changing connection data or client contracts.
+- Added stronger keyboard focus states and reduced-motion-safe hover treatment.
+- Kept request acceptance/decline, messaging handoff, low-pressure persistence and API behavior unchanged.
