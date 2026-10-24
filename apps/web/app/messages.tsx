@@ -57,6 +57,7 @@ export function Messages({
   const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
+    setLoading(true);
     setError(null);
     try {
       const list = await client.listConversations();
@@ -70,7 +71,7 @@ export function Messages({
           } catch {
             return null;
           }
-        })
+        }),
       );
       setPhotos(Object.fromEntries(pairs.filter((p): p is readonly [string, string] => p !== null)));
     } catch (err) {
@@ -94,7 +95,7 @@ export function Messages({
         const conversation = await client.openConversation(openWithUserId);
         if (cancelled) return;
         setConversations((list) =>
-          list.some((c) => c.id === conversation.id) ? list : [conversation, ...list]
+          list.some((c) => c.id === conversation.id) ? list : [conversation, ...list],
         );
         setOpenId(conversation.id);
       } catch (err) {
@@ -108,10 +109,10 @@ export function Messages({
     };
   }, [openWithUserId, client]);
 
+  const normalizedSearch = search.trim().toLocaleLowerCase();
   const filteredConversations = conversations.filter((c) =>
-    c.other.displayName.toLowerCase().includes(search.toLowerCase())
+    c.other.displayName.toLocaleLowerCase().includes(normalizedSearch),
   );
-
   const openConversation = conversations.find((c) => c.id === openId) ?? null;
 
   return (
@@ -129,29 +130,31 @@ export function Messages({
       {error && (
         <div className="notice err" role="alert">
           <span>{error}</span>
-          <button className="link" onClick={() => void load()}>Try again</button>
+          <button className="link" type="button" onClick={() => void load()}>Try again</button>
         </div>
       )}
 
       {loading ? (
-        <div className="empty-state-card">
-          <p className="muted">Loading your conversations…</p>
+        <div className="empty-state-card" aria-busy="true">
+          <p className="muted" role="status">Loading your conversations…</p>
         </div>
       ) : (
         <div className="messages-layout">
-          {/* Left Pane: Conversations List */}
           <div className="conversations-sidebar">
             <div className="conversations-head">
+              <label className="sidle-sr-only" htmlFor="conversation-search">Search conversations</label>
               <input
-                type="text"
+                id="conversation-search"
+                type="search"
                 placeholder="Search conversations…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                autoComplete="off"
                 style={{ padding: "8px 12px", fontSize: "0.88rem", minHeight: 38 }}
               />
             </div>
 
-            <ul className="conversations-list">
+            <ul className="conversations-list" aria-label="Conversation list">
               {filteredConversations.length === 0 ? (
                 <li style={{ padding: "32px 16px", textAlign: "center" }}>
                   <p className="muted" style={{ fontSize: "0.88rem", margin: 0 }}>
@@ -159,6 +162,9 @@ export function Messages({
                       ? "No active conversations yet. Say hi to someone in Discover to connect!"
                       : "No matching conversations found."}
                   </p>
+                  {normalizedSearch && conversations.length > 0 && (
+                    <button type="button" className="link" onClick={() => setSearch("")}>Clear search</button>
+                  )}
                 </li>
               ) : (
                 filteredConversations.map((c) => (
@@ -167,48 +173,42 @@ export function Messages({
                       type="button"
                       className={`conversation-item ${openId === c.id ? "active" : ""}`}
                       onClick={() => setOpenId(c.id)}
-                      aria-pressed={openId === c.id}
+                      aria-current={openId === c.id ? "true" : undefined}
+                      aria-label={`${c.other.displayName}${c.unreadCount ? `, ${c.unreadCount} unread message${c.unreadCount === 1 ? "" : "s"}` : ""}`}
                     >
-                    <Avatar
-                      name={c.other.displayName}
-                      url={photos[c.other.userId]}
-                      size={44}
-                    />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
-                          <span style={{ fontWeight: 650, fontSize: "0.92rem", color: "var(--text)" }}>
-                            {c.other.displayName}
-                          </span>
-                          {c.other.verificationLevel === "student_verified" && (
-                            <span className="campus-badge-dot" title="Campus Verified Student">✓</span>
-                          )}
+                      <Avatar name={c.other.displayName} url={photos[c.other.userId]} size={44} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 4, minWidth: 0 }}>
+                            <span style={{ fontWeight: 650, fontSize: "0.92rem", color: "var(--text)" }}>
+                              {c.other.displayName}
+                            </span>
+                            {c.other.verificationLevel === "student_verified" && (
+                              <span className="campus-badge-dot" title="Academic email confirmed" aria-label="Academic email confirmed">✓</span>
+                            )}
+                          </div>
+                          {c.unreadCount > 0 && <span className="nav-badge" aria-hidden="true">{c.unreadCount}</span>}
                         </div>
-                        {c.unreadCount > 0 && <span className="nav-badge">{c.unreadCount}</span>}
+                        <p
+                          className="muted"
+                          style={{
+                            margin: "2px 0 0",
+                            fontSize: "0.82rem",
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {c.lastMessage ? c.lastMessage.body : "Connected. Say hello!"}
+                        </p>
                       </div>
-                      <p
-                        className="muted"
-                        style={{
-                          margin: "2px 0 0",
-                          fontSize: "0.82rem",
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
-                      >
-                        {c.lastMessage ? c.lastMessage.body : "Connected. Say hello!"}
-                      </p>
-                    </div>
                     </button>
                   </li>
                 ))
               )}
             </ul>
+          </div>
 
-            {/* Notification settings toggle strip */}
-                </div>
-
-          {/* Right Pane: Active Chat Thread or Welcome Placeholder */}
           <div className="chat-thread-pane">
             {openConversation ? (
               <Thread
@@ -261,9 +261,11 @@ function Thread({
   const [status, setStatus] = useState<string>("connecting");
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const draftKey = `sidle-message-draft:${conversation.id}`;
 
   const merge = useCallback((incoming: Bubble[]) => {
     setMessages((current) => mergeMessages(current, incoming));
@@ -277,38 +279,55 @@ function Thread({
       setNextCursor(page.nextCursor);
       await client.markRead(conversation.id);
     } catch {
-      /* transient */
+      // A transient resync failure should not discard the local thread. Realtime can retry later.
     }
   }, [client, conversation.id, merge]);
 
   useEffect(() => {
     setMessages([]);
+    setError(null);
+    try {
+      setDraft(window.sessionStorage.getItem(draftKey) ?? "");
+    } catch {
+      setDraft("");
+    }
     void refetchLatest();
     const sub = subscribeToConversation(conversation.id, {
-      onMessage: (m) => {
-        merge([{ ...m, read: false }]);
-        if (m.senderId !== conversation.other.userId) return;
+      onMessage: (message) => {
+        merge([{ ...message, read: false }]);
+        if (message.senderId !== conversation.other.userId) return;
         void client.markRead(conversation.id);
       },
       onStatus: setStatus,
-      onRead: (r) => {
-        if (r.userId === conversation.other.userId) {
-          setMessages((current) => applyReadWatermark(current, conversation.other.userId, r.lastReadAt));
+      onRead: (read) => {
+        if (read.userId === conversation.other.userId) {
+          setMessages((current) => applyReadWatermark(current, conversation.other.userId, read.lastReadAt));
         }
       },
       onResync: () => void refetchLatest(),
     });
     return () => sub.close();
-  }, [conversation.id, conversation.other.userId, client, merge, refetchLatest]);
+  }, [conversation.id, conversation.other.userId, client, draftKey, merge, refetchLatest]);
+
+  useEffect(() => {
+    try {
+      if (draft) window.sessionStorage.setItem(draftKey, draft);
+      else window.sessionStorage.removeItem(draftKey);
+    } catch {
+      // Session storage is a convenience only; messaging continues without it.
+    }
+  }, [draft, draftKey]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [messages.length]);
 
   async function loadOlder() {
-    if (!nextCursor) return;
+    if (!nextCursor || loadingOlder) return;
     const el = scrollerRef.current;
     const previousHeight = el?.scrollHeight ?? 0;
+    setLoadingOlder(true);
+    setError(null);
     try {
       const page = await client.listMessages(conversation.id, { limit: 50, before: nextCursor });
       merge(page.messages);
@@ -319,6 +338,8 @@ function Thread({
       });
     } catch (err) {
       setError(errorMessage(err));
+    } finally {
+      setLoadingOlder(false);
     }
   }
 
@@ -329,11 +350,12 @@ function Thread({
       const saved = await client.sendMessage(conversation.id, body, tag);
       merge([saved]);
       setDraft("");
+      try { window.sessionStorage.removeItem(draftKey); } catch { /* optional */ }
     } catch (err) {
       setMessages((current) =>
-        current.map((m) =>
-          m.clientTag === tag && m.pending ? { ...m, pending: false, failed: true } : m
-        )
+        current.map((message) =>
+          message.clientTag === tag && message.pending ? { ...message, pending: false, failed: true } : message,
+        ),
       );
       setError(errorMessage(err));
     } finally {
@@ -363,9 +385,20 @@ function Thread({
     void send(body, tag);
   }
 
+  function retry(message: Bubble) {
+    if (!message.clientTag || sending) return;
+    setMessages((current) => current.map((item) => item.id === message.id ? { ...item, failed: false, pending: true } : item));
+    void send(message.body, message.clientTag);
+  }
+
+  const realtimeLabel = status === "live"
+    ? "Live updates connected"
+    : status === "connecting"
+      ? "Connecting live updates"
+      : "Live updates reconnecting";
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      {/* Thread Header */}
       <div className="chat-header">
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <Avatar name={conversation.other.displayName} url={photo} size={42} />
@@ -375,11 +408,12 @@ function Thread({
                 {conversation.other.displayName}
               </div>
               {conversation.other.verificationLevel === "student_verified" && (
-                <span className="campus-badge" title="Campus Verified Student">✓ Verified</span>
+                <span className="campus-badge" title="Academic email confirmed">✓ Academic email</span>
               )}
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }} role="status" aria-live="polite">
               <span
+                aria-hidden="true"
                 style={{
                   width: 7,
                   height: 7,
@@ -387,16 +421,12 @@ function Thread({
                   background: status === "live" ? "var(--success)" : "var(--text-muted)",
                 }}
               />
-              <span className="muted" style={{ fontSize: "0.76rem" }}>
-                {status === "live" ? "Online · Real-time" : "Connected"}
-              </span>
+              <span className="muted" style={{ fontSize: "0.76rem" }}>{realtimeLabel}</span>
             </div>
           </div>
         </div>
 
-        <button className="secondary compact" onClick={onBack}>
-          Close
-        </button>
+        <button type="button" className="secondary compact" onClick={onBack}>Close</button>
       </div>
 
       {error && (
@@ -405,39 +435,43 @@ function Thread({
         </div>
       )}
 
-      {/* Messages Scroll Area */}
-      <div className="chat-messages-scroll" ref={scrollerRef}>
+      <div className="chat-messages-scroll" ref={scrollerRef} aria-label={`Conversation with ${conversation.other.displayName}`}>
         {hasMore && (
           <div style={{ textAlign: "center" }}>
-            <button className="link" onClick={() => void loadOlder()} style={{ fontSize: "0.84rem" }}>
-              Load earlier messages
+            <button type="button" className="link" onClick={() => void loadOlder()} disabled={loadingOlder} style={{ fontSize: "0.84rem" }}>
+              {loadingOlder ? "Loading earlier messages…" : "Load earlier messages"}
             </button>
           </div>
         )}
 
         {messages.length === 0 ? (
           <div style={{ textAlign: "center", padding: "40px 0" }}>
-            <div style={{ fontSize: "2rem", marginBottom: 8 }}>👋</div>
+            <div style={{ fontSize: "2rem", marginBottom: 8 }} aria-hidden="true">👋</div>
             <h3 style={{ margin: 0 }}>Start the conversation</h3>
             <p className="muted" style={{ fontSize: "0.88rem", marginTop: 4 }}>
-              Break the ice! Ask about campus, favorite tracks, or weekend plans.
+              Break the ice with something from their profile, campus life, or a shared interest.
             </p>
           </div>
         ) : (
-          messages.map((m) => {
-            const isMine = m.senderId !== conversation.other.userId;
+          messages.map((message) => {
+            const isMine = message.senderId !== conversation.other.userId;
             return (
-              <div key={m.id} className={`chat-bubble-row ${isMine ? "mine" : "theirs"}`}>
+              <div key={message.id} className={`chat-bubble-row ${isMine ? "mine" : "theirs"}`}>
                 <div className="chat-bubble">
-                  <div>{m.body}</div>
+                  <div>{message.body}</div>
                   <span className="bubble-time">
-                    {m.pending
+                    {message.pending
                       ? "Sending…"
-                      : m.failed
-                      ? "Failed to send"
-                      : new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    {isMine && !m.pending && !m.failed && (m.read ? " · Read" : " · Sent")}
+                      : message.failed
+                        ? "Failed to send"
+                        : new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    {isMine && !message.pending && !message.failed && (message.read ? " · Read" : " · Sent")}
                   </span>
+                  {message.failed && isMine && (
+                    <button type="button" className="link message-retry" disabled={sending} onClick={() => retry(message)}>
+                      Retry
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -446,18 +480,20 @@ function Thread({
         <div ref={bottomRef} />
       </div>
 
-      {/* Chat Composer */}
-      <form className="chat-composer" onSubmit={submit}>
+      <form className="chat-composer" onSubmit={submit} aria-busy={sending}>
+        <label className="sidle-sr-only" htmlFor={`message-draft-${conversation.id}`}>Message {conversation.other.displayName}</label>
         <input
+          id={`message-draft-${conversation.id}`}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder={`Message ${conversation.other.displayName}…`}
           maxLength={2000}
-          aria-label="Write message"
+          autoComplete="off"
+          disabled={sending}
           autoFocus
         />
         <button type="submit" disabled={sending || !draft.trim()} className="compact">
-          {sending ? "…" : "Send"}
+          {sending ? "Sending…" : "Send"}
         </button>
       </form>
     </div>
