@@ -8,6 +8,7 @@ import "./release-hardening.css";
 import "./superb-design.css";
 import "./superb-pages.css";
 import "./superb-components.css";
+import "./plans-polish.css";
 import { ProductExperience } from "./product-experience";
 import { ShellAccessibility } from "./shell-accessibility";
 
