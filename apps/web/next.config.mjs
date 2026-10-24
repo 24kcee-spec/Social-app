@@ -22,10 +22,19 @@ const shellRedirects = [
   ["/settings/notifications", "/?view=notifications"],
 ].map(([source, destination]) => ({ source, destination, permanent: false }));
 
+const securityHeaders = [
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+  { key: "Cross-Origin-Resource-Policy", value: "same-site" },
+];
+
 /** @type {import('next').NextConfig} */
 export default {
   output: "standalone",
   reactStrictMode: true,
+  poweredByHeader: false,
   transpilePackages: ["@sp/auth-client", "@sp/profile-client", "@sp/validation", "@sp/types"],
   env: {
     NEXT_PUBLIC_SUPABASE_URL: process.env.SUPABASE_URL ?? "",
@@ -34,5 +43,8 @@ export default {
   },
   async redirects() {
     return shellRedirects;
+  },
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders }];
   },
 };
