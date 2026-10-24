@@ -1,0 +1,44 @@
+.sidle-plans-route {
+  padding-top: 36px;
+}
+
+.sidle-plans-hero {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 26px;
+  padding: clamp(24px, 5vw, 44px);
+  border: 1px solid var(--sidle-hairline);
+  border-radius: var(--sidle-radius-xl);
+  background:
+    radial-gradient(circle at 90% 10%, color-mix(in srgb, var(--sidle-mint) 13%, transparent), transparent 16rem),
+    linear-gradient(135deg, color-mix(in srgb, var(--sidle-brand) 8%, var(--sidle-panel-solid)), var(--sidle-panel-solid));
+  box-shadow: var(--sidle-shadow-md);
+}
+
+.sidle-plans-hero h1 {
+  font-size: clamp(2.2rem, 5vw, 4.2rem);
+  line-height: .96;
+  letter-spacing: -.065em;
+}
+
+.sidle-plans-hero p {
+  max-width: 680px;
+  margin: 12px 0 0;
+}
+
+/* The native /plans route supplies the product-level heading while the reused
+   Community component keeps all mature RSVP/group/chat behavior underneath. */
+.sidle-plans-route .community-page > .discover-header-bar:first-child {
+  display: none;
+}
+
+.sidle-plans-route .community-page > .card {
+  box-shadow: var(--sidle-shadow-sm);
+}
+
+@media (max-width: 720px) {
+  .sidle-plans-route { padding-top: 18px; }
+  .sidle-plans-hero { align-items: flex-start; flex-direction: column; border-radius: 25px; }
+}
