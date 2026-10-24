@@ -18,10 +18,15 @@ export function NotificationSettingsPage({ onBack }: { onBack: () => void }) {
     setLoading(true);
     setError(null);
     try {
-      setSettings(await client.getNotificationSettings());
-      setDelivery((await client.getNotificationDelivery()).provider);
+      const [nextSettings, nextDelivery] = await Promise.all([
+        client.getNotificationSettings(),
+        client.getNotificationDelivery(),
+      ]);
+      setSettings(nextSettings);
+      setDelivery(nextDelivery.provider);
     } catch (err) {
       setError(errorMessage(err));
+      setDelivery(null);
     } finally {
       setLoading(false);
     }
@@ -50,15 +55,21 @@ export function NotificationSettingsPage({ onBack }: { onBack: () => void }) {
     }
   }
 
+  const deliverySummary = delivery === "expo"
+    ? "Mobile message push is enabled on this server for devices that have registered a valid Expo push token."
+    : delivery === "disabled"
+      ? "Mobile push delivery is disabled on this server. Your category choices are still saved for in-app behavior and future delivery support."
+      : "The server did not return a delivery-provider status. Your saved category choices may still be available.";
+
   return (
-    <section className="settings-page" aria-labelledby="notifications-settings-title">
+    <section className="settings-page" aria-labelledby="notifications-settings-title" aria-busy={loading || saving !== null}>
       <header className="settings-page-header">
         <div>
           <span className="eyebrow">YOUR PREFERENCES</span>
           <h1 id="notifications-settings-title">Notifications</h1>
           <p className="muted">Choose the notification categories Sidle currently supports for your account.</p>
         </div>
-        <button type="button" className="secondary compact" onClick={onBack}>← Back to Settings</button>
+        <button type="button" className="secondary compact" onClick={onBack} disabled={saving !== null}>← Back to Settings</button>
       </header>
 
       {error && (
@@ -69,7 +80,7 @@ export function NotificationSettingsPage({ onBack }: { onBack: () => void }) {
           </button>
         </div>
       )}
-      {notice && <div className="notice ok" role="status">{notice}</div>}
+      {notice && <div className="notice ok" role="status" aria-live="polite">{notice}</div>}
 
       <section className="settings-panel" aria-labelledby="notification-categories-title">
         <div>
@@ -79,9 +90,10 @@ export function NotificationSettingsPage({ onBack }: { onBack: () => void }) {
         </div>
 
         {loading ? (
-          <p className="muted" role="status" style={{ marginTop: 18 }}>Loading your preferences…</p>
+          <p className="muted" role="status" aria-live="polite" style={{ marginTop: 18 }}>Loading your preferences…</p>
         ) : settings ? (
-          <div className="notification-preferences-list">
+          <fieldset className="notification-preferences-list" disabled={saving !== null} style={{ border: 0, padding: 0, margin: 0 }}>
+            <legend className="sidle-sr-only">Notification categories</legend>
             <label className="notification-preference-row">
               <span>
                 <strong>New messages</strong>
@@ -90,7 +102,6 @@ export function NotificationSettingsPage({ onBack }: { onBack: () => void }) {
               <input
                 type="checkbox"
                 checked={settings.messages}
-                disabled={saving !== null}
                 onChange={(event) => void updatePreference("messages", event.target.checked)}
                 aria-label="New message notifications"
               />
@@ -103,12 +114,11 @@ export function NotificationSettingsPage({ onBack }: { onBack: () => void }) {
               <input
                 type="checkbox"
                 checked={settings.connectionRequests}
-                disabled={saving !== null}
                 onChange={(event) => void updatePreference("connectionRequests", event.target.checked)}
                 aria-label="Connection request notifications"
               />
             </label>
-          </div>
+          </fieldset>
         ) : (
           <div className="settings-empty-error" role="status">
             <p className="muted">Your notification preferences could not be loaded.</p>
@@ -117,14 +127,14 @@ export function NotificationSettingsPage({ onBack }: { onBack: () => void }) {
             </button>
           </div>
         )}
-        {saving !== null && <p className="muted" role="status" style={{ marginTop: 12 }}>Saving your preference…</p>}
+        {saving !== null && <p className="muted" role="status" aria-live="polite" style={{ marginTop: 12 }}>Saving your preference…</p>}
       </section>
 
       <aside className="notification-delivery-note" aria-label="Notification delivery status">
-        <strong>About phone alerts</strong>
+        <strong>Delivery status</strong>
+        <p>{deliverySummary}</p>
         <p>
-          {delivery === "expo" ? "Message push is configured for registered mobile devices. Enable alerts in the installed mobile app and verify delivery on that device." : delivery === "disabled" ? "Phone alerts are disabled on this server. Your preferences remain saved." : "Phone-alert status could not be loaded. Retry above."}
-          {" "}Connection-request push and browser push are not supported yet. Messages still shows in-app unread counts.
+          Connection-request push and browser push are not implemented yet. The Messages and Connections tabs still show in-app unread or pending counts when those data are available.
         </p>
       </aside>
     </section>
