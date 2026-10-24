@@ -52,7 +52,8 @@ test("messaging preserves drafts, supports retry and does not call realtime pres
   const messages = read("app/messages.tsx");
   assert.match(messages, /sidle-message-draft:/);
   assert.match(messages, /sessionStorage\.setItem/);
-  assert.match(messages, />Retry</);
+  assert.match(messages, /className="link message-retry"/);
+  assert.match(messages, /onClick=\{\(\) => retry\(message\)\}/);
   assert.match(messages, /Live updates connected/);
   assert.doesNotMatch(messages, /Online · Real-time/);
 });
