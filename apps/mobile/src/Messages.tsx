@@ -1,4 +1,3 @@
-import * as ImagePicker from "expo-image-picker";
 import type { ConversationView } from "@sp/types";
 import { applyReadWatermark, mergeMessages, newClientTag, type ThreadMessage } from "@sp/profile-client";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -12,10 +11,14 @@ import { Avatar, Badge, Banner, Button, EmptyState, ReportSheet } from "./ui";
 export function Messages({
   onUnread,
   openWithUserId,
+  openConversationId,
+  onPushOpened,
   onOpened,
 }: {
   onUnread?: (total: number) => void;
   openWithUserId?: string | null;
+  openConversationId?: string | null;
+  onPushOpened?: () => void;
   onOpened?: () => void;
 }) {
   const { colors, radius, space, type, shadow } = useTheme();
@@ -77,6 +80,13 @@ export function Messages({
       cancelled = true;
     };
   }, [openWithUserId, client]);
+
+  useEffect(() => {
+    if (!openConversationId || loading) return;
+    if (conversations.some((c) => c.id === openConversationId)) setOpenId(openConversationId);
+    else setError("That conversation is no longer available to this account.");
+    onPushOpened?.();
+  }, [openConversationId, loading, conversations, onPushOpened]);
 
   const open = conversations.find((c) => c.id === openId) ?? null;
   if (open) {
@@ -421,32 +431,7 @@ function Thread({
 
       {/* Message Composer */}
       <View style={[styles.composer, { marginTop: space[3] }]}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Share photo"
-          onPress={async () => {
-            try {
-              const res = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ["images"],
-                allowsEditing: true,
-                quality: 0.8,
-              });
-              if (!res.canceled && res.assets[0]?.uri) {
-                setDraft((d) => (d ? `${d} (Photo attached)` : "Shared a photo"));
-              }
-            } catch {}
-          }}
-          style={[
-            styles.attachBtn,
-            {
-              backgroundColor: colors.surface,
-              borderColor: colors.lineStrong,
-              borderRadius: radius.sm,
-            },
-          ]}
-        >
-          <Text style={{ fontSize: 18, color: colors.accent }}>📷</Text>
-        </Pressable>
+
 
         <TextInput
           style={[

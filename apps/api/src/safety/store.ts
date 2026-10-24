@@ -254,6 +254,7 @@ export function createSafetyStore(db: SqlRunner, options: SafetyStoreOptions = {
           where user_id = $1`,
         [userId],
       );
+      await tx.query(`delete from push_delivery_receipts where token in (select token from device_push_tokens where user_id = $1)`, [userId]);
       for (const table of ["user_sessions", "device_push_tokens", "notification_settings", "profile_media", "user_interests", "prompt_answers", "event_rsvps", "group_members", "user_roles"]) {
         await tx.query(`delete from ${table} where user_id = $1`, [userId]);
       }

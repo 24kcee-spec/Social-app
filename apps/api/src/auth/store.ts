@@ -84,7 +84,11 @@ export function createAuthStore(db: SqlRunner) {
     /** Scoped by user_id: a user can only ever revoke their own sessions (no IDOR). */
     async revokeSession(userId: string, sessionId: string): Promise<boolean> {
       const { rows } = await db.query(
-        `update user_sessions set revoked_at = now() where id = $1 and user_id = $2 and revoked_at is null returning id`,
+        `with revoked as (
+          update user_sessions set revoked_at = now() where id = $1 and user_id = $2 and revoked_at is null returning id
+        ), removed as (
+          delete from device_push_tokens where session_id in (select id from revoked)
+        ) select id from revoked`,
         [sessionId, userId],
       );
       return rows.length > 0;

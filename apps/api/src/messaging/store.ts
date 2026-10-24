@@ -253,14 +253,14 @@ export function createMessagingStore(db: SqlRunner, clock: () => Date = () => ne
     return input;
   }
 
-  async function registerPushToken(me: string, platform: PushPlatform, token: string): Promise<void> {
+  async function registerPushToken(me: string, platform: PushPlatform, token: string, sessionId: string | null = null): Promise<void> {
     // A physical device belongs to whoever signed in last: drop the token from any other account so
     // a shared phone never delivers one person's notifications to the next person.
     await db.query(`delete from device_push_tokens where token = $1 and user_id <> $2`, [token, me]);
     await db.query(
-      `insert into device_push_tokens (user_id, platform, token, updated_at) values ($1, $2, $3, $4::timestamptz)
-       on conflict (user_id, token) do update set platform = excluded.platform, updated_at = excluded.updated_at`,
-      [me, platform, token, clock().toISOString()]);
+      `insert into device_push_tokens (user_id, platform, token, updated_at, session_id) values ($1, $2, $3, $4::timestamptz, $5)
+       on conflict (user_id, token) do update set platform = excluded.platform, updated_at = excluded.updated_at, session_id = excluded.session_id`,
+      [me, platform, token, clock().toISOString(), sessionId]);
   }
 
   async function removePushToken(me: string, token: string): Promise<void> {

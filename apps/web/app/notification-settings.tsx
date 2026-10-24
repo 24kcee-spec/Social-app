@@ -8,6 +8,7 @@ import { getMessagingClient } from "../lib/messaging";
 export function NotificationSettingsPage({ onBack }: { onBack: () => void }) {
   const client = getMessagingClient();
   const [settings, setSettings] = useState<NotificationSettings | null>(null);
+  const [delivery, setDelivery] = useState<"expo" | "disabled" | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<keyof NotificationSettings | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -18,6 +19,7 @@ export function NotificationSettingsPage({ onBack }: { onBack: () => void }) {
     setError(null);
     try {
       setSettings(await client.getNotificationSettings());
+      setDelivery((await client.getNotificationDelivery()).provider);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -121,8 +123,8 @@ export function NotificationSettingsPage({ onBack }: { onBack: () => void }) {
       <aside className="notification-delivery-note" aria-label="Notification delivery status">
         <strong>About phone alerts</strong>
         <p>
-          Your preference choices are stored, but live push delivery is not enabled yet. These settings do not
-          guarantee system notifications on your phone. The Messages area still shows your in-app unread count.
+          {delivery === "expo" ? "Message push is configured for registered mobile devices. Enable alerts in the installed mobile app and verify delivery on that device." : delivery === "disabled" ? "Phone alerts are disabled on this server. Your preferences remain saved." : "Phone-alert status could not be loaded. Retry above."}
+          {" "}Connection-request push and browser push are not supported yet. Messages still shows in-app unread counts.
         </p>
       </aside>
     </section>

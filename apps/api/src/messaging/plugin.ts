@@ -14,7 +14,7 @@ function validationPayload(result: { error: { issues: { path: (string | number)[
 }
 
 type Guard = (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>;
-export interface MessagingDeps { store: MessagingStore; requireAuth: Guard }
+export interface MessagingDeps { store: MessagingStore; requireAuth: Guard; pushEnabled?: boolean }
 
 export function registerMessaging(app: FastifyInstance, deps: MessagingDeps) {
   /** Maps typed domain errors to plain JSON; anything else falls through to the shared 500 handler. */
@@ -31,6 +31,7 @@ export function registerMessaging(app: FastifyInstance, deps: MessagingDeps) {
     };
   }
   const pre = { preHandler: deps.requireAuth };
+  app.get("/me/notification-delivery", pre, wrap(async (_req, reply) => reply.send({ provider: deps.pushEnabled ? "expo" : "disabled", categories: deps.pushEnabled ? ["messages"] : [] })));
 
   app.post<{ Body: unknown }>("/conversations", pre, wrap(async (req, reply, me) => {
     const parsed = openConversationSchema.safeParse(req.body);
@@ -70,7 +71,7 @@ export function registerMessaging(app: FastifyInstance, deps: MessagingDeps) {
   app.post<{ Body: unknown }>("/me/push-tokens", pre, wrap(async (req, reply, me) => {
     const parsed = pushTokenSchema.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send(validationPayload(parsed));
-    await deps.store.registerPushToken(me, parsed.data.platform, parsed.data.token);
+    await deps.store.registerPushToken(me, parsed.data.platform, parsed.data.token, req.auth!.sessionId);
     return reply.code(201).send({ registered: true });
   }));
 

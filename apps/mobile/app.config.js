@@ -75,7 +75,7 @@ module.exports = {
     orientation: "portrait",
     icon: "./assets/icon.png",
     scheme: "socialapp",
-    plugins: [["expo-image-picker", { photosPermission: "Allow Sidle to use your photos for your profile." }]],
+    plugins: [["expo-image-picker", { photosPermission: "Allow Sidle to use your photos for your profile." }], "expo-notifications"],
     ios: {
       supportsTablet: false,
       bundleIdentifier: process.env.IOS_BUNDLE_IDENTIFIER?.trim() || "app.social.dev",

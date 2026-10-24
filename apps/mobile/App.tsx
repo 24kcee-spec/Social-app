@@ -26,6 +26,7 @@ import { Discover } from "./src/Discover";
 import { getMessagingClient } from "./src/messagingClient";
 import { Messages } from "./src/Messages";
 import { NotificationSettingsScreen } from "./src/NotificationSettings";
+import { disableDevicePush, startPushLifecycle, subscribeToMessageAlerts } from "./src/push";
 import { deleteProfileImage, getProfileClient, getSignedMediaUrl, pickAndUploadProfileImage } from "./src/profile";
 import { getSafetyClient } from "./src/safetyClient";
 import { ThemeProvider, useTheme, type ThemePreference } from "./src/theme";
@@ -375,6 +376,10 @@ function ProfileHome({
     return () => subscription.remove();
   }, [navigate, shellView]);
 
+  const [pushConversation, setPushConversation] = useState<string | null>(null);
+  useEffect(() => startPushLifecycle(me.id), [me.id]);
+  useEffect(() => subscribeToMessageAlerts((id) => navigate(() => { setShellView("app"); setTab("messages"); setPushConversation(id); })), [navigate]);
+
   // Guard external navigation as well as tab/menu navigation.
   useEffect(() => {
     if (!pendingTarget) return;
@@ -427,7 +432,7 @@ function ProfileHome({
         text: "Sign out",
         style: "destructive",
         onPress: () => {
-          auth.signOut().then(onSignOut).catch((err) => setError(errorMessage(err)));
+          disableDevicePush(me.id).then(() => auth.signOut()).then(onSignOut).catch((err) => setError(errorMessage(err)));
         },
       },
     ]);
@@ -560,7 +565,7 @@ function ProfileHome({
                 onSignOut={onSignOut}
               />
             ) : shellView === "notifications" ? (
-              <NotificationSettingsScreen onBack={() => setShellView("settings")} />
+              <NotificationSettingsScreen userId={me.id} onBack={() => setShellView("settings")} />
             ) : shellView === "viewProfile" ? (
               <MobileMyProfileView
                 profile={profile}
@@ -581,6 +586,8 @@ function ProfileHome({
               <Messages
                 onUnread={setUnread}
                 openWithUserId={chatWith}
+                openConversationId={pushConversation}
+                onPushOpened={() => setPushConversation(null)}
                 onOpened={() => setChatWith(null)}
               />
             ) : tab === "community" ? (
@@ -740,6 +747,7 @@ function MobileSettingsOverview({
             setDeletingAccount(true);
             setSecurityError(null);
             try {
+              await disableDevicePush(me.id);
               await getSafetyClient().deleteAccount();
               await auth.signOut().catch(() => undefined);
               onSignOut();

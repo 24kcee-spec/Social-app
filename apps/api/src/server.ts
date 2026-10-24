@@ -18,6 +18,7 @@ import { registerDiscovery } from "./discovery/plugin";
 import { createMessagingStore } from "./messaging/store";
 import { createMessageNotifier, createExpoPushSender, noopPushSender } from "./messaging/notify";
 import { registerMessaging } from "./messaging/plugin";
+import { createReceiptWorker } from "./messaging/receipts";
 import { loadDotEnv } from "./env";
 import { createCommunityStore } from "./community/store";
 import { registerCommunity } from "./community/plugin";
@@ -52,10 +53,25 @@ if (pool && env.SUPABASE_URL) {
   registerProfile(app, { requireAuth, store: createProfileStore(db), readEmailProof: createEmailProofReader({ supabaseUrl: env.SUPABASE_URL, publishableKey: env.SUPABASE_PUBLISHABLE_KEY }) });
   registerDiscovery(app, { requireAuth, requireRole, store: createDiscoveryStore(db) });
   registerConnections(app, { requireAuth, requireRole, store: createConnectionsStore(db) });
-  // Push delivery: noopPushSender until real FCM/APNs credentials are wired (pre-pilot step).
-  // The notifier still enforces notification_settings and device tokens, so going live is a one-line swap.
-  const notifier = createMessageNotifier(db, noopPushSender, (msg, err) => app.log.warn({ err }, msg));
-  registerMessaging(app, { requireAuth, store: createMessagingStore(db, undefined, { onMessageSent: notifier.messageSent }) });
+  const pushEnabled = env.PUSH_PROVIDER === "expo";
+  const sender = pushEnabled ? createExpoPushSender({
+    accessToken: process.env.EXPO_ACCESS_TOKEN,
+    onUnregistered: async (token) => { await db.query("delete from device_push_tokens where token = $1", [token]); },
+    onTicket: async (id, token) => { await db.query("insert into push_delivery_receipts (ticket_id, token) values ($1, $2) on conflict do nothing", [id, token]); },
+  }) : noopPushSender;
+  const notifier = createMessageNotifier(db, sender, () => app.log.warn("Push delivery failed; message remains saved"));
+  registerMessaging(app, { requireAuth, pushEnabled, store: createMessagingStore(db, undefined, { onMessageSent: notifier.messageSent }) });
+  if (pushEnabled) {
+    const checkReceipts = createReceiptWorker(db, { accessToken: process.env.EXPO_ACCESS_TOKEN });
+    let checking = false;
+    const receiptTimer = setInterval(() => {
+      if (checking) return;
+      checking = true;
+      void checkReceipts().catch(() => app.log.warn("Push receipt check deferred")).finally(() => { checking = false; });
+    }, 60_000);
+    receiptTimer.unref();
+    app.addHook("onClose", async () => { clearInterval(receiptTimer); });
+  }
   registerCommunity(app, { requireAuth, store: createCommunityStore(db) });
   const withTransaction = async (work: (tx: typeof db) => Promise<void>) => {
     const client = await pool.connect();

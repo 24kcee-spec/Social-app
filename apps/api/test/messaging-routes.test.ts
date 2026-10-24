@@ -96,7 +96,7 @@ describe("messaging routes", () => {
     const { app, store } = makeApp();
     const res = await app.inject({ method: "POST", url: "/me/push-tokens", headers: h, payload: { platform: "android", token: "fcm-token-abc123" } });
     expect(res.statusCode).toBe(201);
-    expect(store.registerPushToken).toHaveBeenCalledWith(ME, "android", "fcm-token-abc123");
+    expect(store.registerPushToken).toHaveBeenCalledWith(ME, "android", "fcm-token-abc123", "s");
     expect((await app.inject({ method: "POST", url: "/me/push-tokens", headers: h, payload: { platform: " toaster ", token: "x" } })).statusCode).toBe(400);
     expect((await app.inject({ method: "DELETE", url: "/me/push-tokens", headers: h, payload: { token: "fcm-token-abc123" } })).statusCode).toBe(204);
     expect(store.removePushToken).toHaveBeenCalledWith(ME, "fcm-token-abc123");

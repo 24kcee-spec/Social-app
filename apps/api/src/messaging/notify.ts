@@ -19,10 +19,10 @@ export interface PushPayload {
  * changes here.
  */
 export interface PushSender {
-  send(tokens: PushToken[], payload: PushPayload): Promise<void>;
+  send(tokens: PushToken[], payload: PushPayload): Promise<number | void>;
 }
 
-export const noopPushSender: PushSender = { send: async () => {} };
+export const noopPushSender: PushSender = { send: async () => 0 };
 
 /** Lock screens are public: the payload carries no sender name and no message text, only a pointer. */
 export const GENERIC_PUSH = { title: "New message", body: "Open the app to read it" } as const;
@@ -46,12 +46,12 @@ export function createMessageNotifier(db: SqlRunner, sender: PushSender, log: (m
     if (tokens.length === 0) return { sent: 0 };
 
     try {
-      await sender.send(tokens, {
+      const accepted = await sender.send(tokens, {
         title: GENERIC_PUSH.title,
         body: GENERIC_PUSH.body,
         data: { type: "message", conversationId: event.conversationId, messageId: event.messageId },
       });
-      return { sent: tokens.length };
+      return { sent: typeof accepted === "number" ? accepted : tokens.length };
     } catch (err) {
       log("push send failed", err);
       return { sent: 0 };
@@ -62,35 +62,41 @@ export function createMessageNotifier(db: SqlRunner, sender: PushSender, log: (m
 }
 export type MessageNotifier = ReturnType<typeof createMessageNotifier>;
 
-/**
- * Production Expo Push Notification Sender.
- * Sends notifications to iOS and Android devices via the Expo Push API.
- */
-export function createExpoPushSender(log: (msg: string, err?: unknown) => void = () => {}): PushSender {
+/** Expo tickets confirm queue acceptance, not delivery to a physical device. */
+export function createExpoPushSender(options: {
+  fetchImpl?: typeof fetch;
+  accessToken?: string;
+  onUnregistered?: (token: string) => Promise<void>;
+  onTicket?: (id: string, token: string) => Promise<void>;
+} = {}): PushSender {
   return {
-    async send(tokens: PushToken[], payload: PushPayload): Promise<void> {
-      const expoTokens = tokens.filter((t) => t.token.startsWith("ExponentPushToken[") || t.token.startsWith("ExpoPushToken["));
-      if (expoTokens.length === 0) return;
-
-      const messages = expoTokens.map((t) => ({
-        to: t.token,
-        sound: "default",
-        title: payload.title,
-        body: payload.body,
-        data: payload.data,
-        priority: "high",
-        channelId: "messages",
-      }));
-
-      try {
-        await fetch("https://exp.host/--/api/v2/push/send", {
+    async send(tokens, payload) {
+      let accepted = 0;
+      const expoTokens = tokens.filter((t) => /^(ExponentPushToken|ExpoPushToken)\[[A-Za-z0-9_-]+\]$/.test(t.token));
+      for (let offset = 0; offset < expoTokens.length; offset += 100) {
+        const batch = expoTokens.slice(offset, offset + 100);
+        const response = await (options.fetchImpl ?? fetch)("https://exp.host/--/api/v2/push/send", {
           method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify(messages),
+          headers: { "Content-Type": "application/json", Accept: "application/json", ...(options.accessToken ? { authorization: `Bearer ${options.accessToken}` } : {}) },
+          body: JSON.stringify(batch.map((t) => ({ to: t.token, sound: "default", title: payload.title, body: payload.body, data: payload.data, priority: "high", channelId: "messages" }))),
+          signal: AbortSignal.timeout(10_000), redirect: "error",
         });
-      } catch (err) {
-        log("Failed to deliver push to Expo service", err);
+        // Do not retry ambiguous POST outcomes: Expo does not guarantee idempotency.
+        if (!response.ok) throw new Error("Expo push request rejected");
+        const result = await response.json() as { data?: { status: string; id?: string; details?: { error?: string } }[] };
+        if (!Array.isArray(result.data) || result.data.length !== batch.length) throw new Error("Invalid Expo push response");
+        let rejected = false;
+        for (const [index, ticket] of result.data.entries()) {
+          if (ticket.status === "error" && ticket.details?.error === "DeviceNotRegistered") {
+            await options.onUnregistered?.(batch[index]!.token);
+          } else if (ticket.status === "ok" && typeof ticket.id === "string") {
+            await options.onTicket?.(ticket.id, batch[index]!.token);
+            accepted++;
+          } else rejected = true;
+        }
+        if (rejected) throw new Error("Expo push ticket rejected");
       }
+      return accepted;
     },
   };
 }
