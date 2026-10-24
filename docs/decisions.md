@@ -141,3 +141,6 @@ Local account removal atomically anonymizes contact/profile data, disables disco
 
 ## D-046 | 2026-10-24 | Readiness includes release schema, automated API journey is separate from live gates
 The running API checks that its exact numbered migration ledger matches the target database and that pilot security SQL is installed. A successful `select 1` alone cannot establish release readiness. The automated PGlite core-loop test exercises real registered routes and domain stores with substituted provider token verification; it does not replace browser/device, actual provider identity or hosted Realtime evidence.
+
+## D-047 | 2026-10-24 | Native links use configured domains and actual release identities
+`PUBLIC_WEB_URL` supplies the native HTTPS app-link host. EAS remote builds require the linked `EAS_PROJECT_ID`. Web association documents require explicit Android package/signing fingerprints or Apple team/bundle identifiers and publish empty associations when absent. The built-in development certificate and placeholder Apple team have been removed. Signing identities remain deployment configuration, not guessed product decisions. An installed-device link test remains mandatory.

@@ -101,3 +101,6 @@ The structure mirrors the web app’s social flows:
 - messages
 - profile and connections
 - say-hi interactions
+
+### Native link configuration update (24 October 2026)
+Set `EAS_PROJECT_ID` to the linked Expo project's UUID in preview/production. App/Universal Link hosts now come from `PUBLIC_WEB_URL`; there is no `.local` release host. On the web deployment configure `ANDROID_PACKAGE` and comma-separated `ANDROID_SIGNING_SHA256` certificates from the actual EAS/Play signing identity. For iOS set `APPLE_TEAM_ID` and `IOS_BUNDLE_IDENTIFIER` on web and keep the native bundle identifier aligned. Missing release identities publish empty association documents, not development certificates or placeholder team IDs. Test installed cold/warm share links against those exact deployed documents. Remote build and physical-device validation still require the actual Expo project and device; no APK is claimed built here.
