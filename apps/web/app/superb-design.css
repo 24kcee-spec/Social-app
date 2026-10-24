@@ -1,0 +1,767 @@
+/* Sidle Superb Design System -------------------------------------------------
+   Final cascade layer for the 2026 product refresh. Existing component class
+   names remain valid while this file centralises the visual language and the
+   phone/tablet/desktop composition rules. */
+
+:root {
+  --sidle-brand: #315ee7;
+  --sidle-brand-strong: #2148bf;
+  --sidle-brand-soft: color-mix(in srgb, var(--sidle-brand) 12%, transparent);
+  --sidle-brand-softer: color-mix(in srgb, var(--sidle-brand) 6%, transparent);
+  --sidle-violet: #7557db;
+  --sidle-mint: #24a887;
+  --sidle-warm: #f0a45d;
+  --sidle-page: #f6f7fb;
+  --sidle-panel: rgba(255, 255, 255, 0.86);
+  --sidle-panel-solid: #ffffff;
+  --sidle-panel-muted: #f0f2f7;
+  --sidle-ink: #161923;
+  --sidle-ink-2: #4a5061;
+  --sidle-ink-3: #777f91;
+  --sidle-hairline: rgba(28, 35, 52, 0.09);
+  --sidle-shadow-sm: 0 8px 24px rgba(29, 39, 66, 0.07);
+  --sidle-shadow-md: 0 16px 42px rgba(29, 39, 66, 0.11);
+  --sidle-shadow-lg: 0 30px 80px rgba(29, 39, 66, 0.15);
+  --sidle-radius-xs: 10px;
+  --sidle-radius-sm: 14px;
+  --sidle-radius-md: 20px;
+  --sidle-radius-lg: 28px;
+  --sidle-radius-xl: 36px;
+  --sidle-content: 1180px;
+  --sidle-readable: 720px;
+  --sidle-header-height: 74px;
+  --sidle-ease: cubic-bezier(.2,.75,.25,1);
+  --sidle-fast: 140ms;
+  --sidle-normal: 220ms;
+}
+
+html[data-theme="dark"] {
+  --sidle-page: #0d1018;
+  --sidle-panel: rgba(20, 24, 35, 0.88);
+  --sidle-panel-solid: #141823;
+  --sidle-panel-muted: #191e2a;
+  --sidle-ink: #f4f6fb;
+  --sidle-ink-2: #c7ccda;
+  --sidle-ink-3: #8f98aa;
+  --sidle-hairline: rgba(240, 244, 255, 0.09);
+  --sidle-shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.22);
+  --sidle-shadow-md: 0 18px 50px rgba(0, 0, 0, 0.32);
+  --sidle-shadow-lg: 0 34px 90px rgba(0, 0, 0, 0.42);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]) {
+    --sidle-page: #0d1018;
+    --sidle-panel: rgba(20, 24, 35, 0.88);
+    --sidle-panel-solid: #141823;
+    --sidle-panel-muted: #191e2a;
+    --sidle-ink: #f4f6fb;
+    --sidle-ink-2: #c7ccda;
+    --sidle-ink-3: #8f98aa;
+    --sidle-hairline: rgba(240, 244, 255, 0.09);
+    --sidle-shadow-sm: 0 8px 24px rgba(0, 0, 0, 0.22);
+    --sidle-shadow-md: 0 18px 50px rgba(0, 0, 0, 0.32);
+    --sidle-shadow-lg: 0 34px 90px rgba(0, 0, 0, 0.42);
+  }
+}
+
+html,
+body {
+  background-color: var(--sidle-page);
+}
+
+body {
+  color: var(--sidle-ink);
+  background-image:
+    radial-gradient(circle at 12% -10%, color-mix(in srgb, var(--sidle-brand) 10%, transparent), transparent 34rem),
+    radial-gradient(circle at 92% 6%, color-mix(in srgb, var(--sidle-violet) 8%, transparent), transparent 32rem);
+  background-attachment: fixed;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--sidle-brand) 24%, transparent);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--sidle-ink);
+}
+
+p,
+.muted {
+  color: var(--sidle-ink-2);
+}
+
+/* App shell ---------------------------------------------------------------- */
+.app-wrapper {
+  min-height: 100dvh;
+}
+
+.app-header {
+  min-height: var(--sidle-header-height);
+  border-bottom: 1px solid var(--sidle-hairline);
+  background: color-mix(in srgb, var(--sidle-panel-solid) 80%, transparent);
+  box-shadow: 0 1px 0 rgba(255,255,255,.35);
+}
+
+@supports (backdrop-filter: blur(20px)) {
+  .app-header {
+    backdrop-filter: saturate(145%) blur(22px);
+    -webkit-backdrop-filter: saturate(145%) blur(22px);
+  }
+}
+
+.app-header-inner {
+  max-width: calc(var(--sidle-content) + 96px);
+  min-height: var(--sidle-header-height);
+  padding: 10px 28px;
+}
+
+.brand-home-button {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 4px !important;
+  color: inherit !important;
+}
+
+.sidle-mark-header {
+  width: 38px;
+  height: 38px;
+  filter: drop-shadow(0 7px 14px color-mix(in srgb, var(--sidle-brand) 25%, transparent));
+}
+
+.sidle-wordmark {
+  font-size: 1.28rem;
+  letter-spacing: -.055em;
+}
+
+.brand-tagline {
+  color: var(--sidle-ink-3);
+  font-weight: 540;
+}
+
+.nav-pill-bar {
+  gap: 2px;
+  padding: 4px;
+  background: color-mix(in srgb, var(--sidle-panel-muted) 82%, transparent);
+  border: 1px solid var(--sidle-hairline);
+  box-shadow: none;
+}
+
+.nav-pill-btn {
+  min-height: 42px;
+  padding: 8px 14px;
+  gap: 7px;
+  color: var(--sidle-ink-2);
+  font-weight: 650;
+  transition:
+    color var(--sidle-fast) var(--sidle-ease),
+    background var(--sidle-fast) var(--sidle-ease),
+    transform var(--sidle-fast) var(--sidle-ease),
+    box-shadow var(--sidle-fast) var(--sidle-ease);
+}
+
+.nav-pill-btn:hover {
+  transform: translateY(-1px);
+  color: var(--sidle-ink);
+  background: color-mix(in srgb, var(--sidle-panel-solid) 72%, transparent);
+}
+
+.nav-pill-btn.active,
+.nav-pill-btn[aria-current="page"],
+.nav-pill-btn[aria-current="true"] {
+  background: var(--sidle-panel-solid);
+  color: var(--sidle-brand);
+  box-shadow: var(--sidle-shadow-sm);
+}
+
+.nav-badge {
+  min-width: 19px;
+  height: 19px;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 5px;
+  background: var(--sidle-brand);
+  color: white;
+  font-size: .69rem;
+  font-weight: 800;
+}
+
+main#main {
+  width: min(var(--sidle-content), calc(100% - 40px));
+  margin: 0 auto;
+  padding-top: 34px;
+  padding-bottom: 72px;
+}
+
+.footer-note {
+  margin-top: 64px;
+  text-align: center;
+  color: var(--sidle-ink-3);
+}
+
+/* Surface language --------------------------------------------------------- */
+.card,
+.empty-state-card,
+.settings-card,
+.auth-card-editorial,
+.profile-card,
+.messages-layout,
+.settings-help-card {
+  border-color: var(--sidle-hairline) !important;
+  background: var(--sidle-panel-solid);
+}
+
+.card,
+.empty-state-card,
+.settings-card,
+.settings-help-card {
+  border-radius: var(--sidle-radius-md) !important;
+  box-shadow: var(--sidle-shadow-sm);
+}
+
+.card {
+  padding: clamp(18px, 2.4vw, 28px);
+}
+
+.empty-state-card {
+  padding: clamp(30px, 5vw, 56px) !important;
+}
+
+.empty-state-icon {
+  width: 54px;
+  height: 54px;
+  margin-inline: auto;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: var(--sidle-brand-soft);
+  color: var(--sidle-brand);
+  font-size: 1.35rem;
+}
+
+.notice {
+  border-radius: var(--sidle-radius-sm) !important;
+  border-width: 1px !important;
+  box-shadow: none !important;
+}
+
+/* Controls ----------------------------------------------------------------- */
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button:not(.link):not(.brand-home-button):not(.nav-pill-btn):not(.account-menu-trigger):not(.story) {
+  border-radius: var(--sidle-radius-xs);
+  transition:
+    transform var(--sidle-fast) var(--sidle-ease),
+    box-shadow var(--sidle-fast) var(--sidle-ease),
+    background var(--sidle-fast) var(--sidle-ease),
+    border-color var(--sidle-fast) var(--sidle-ease);
+}
+
+button:not(:disabled):active {
+  transform: translateY(1px) scale(.99);
+}
+
+input,
+textarea,
+select {
+  border-radius: 13px !important;
+  border-color: var(--sidle-hairline) !important;
+  background: color-mix(in srgb, var(--sidle-panel-solid) 92%, var(--sidle-panel-muted)) !important;
+  color: var(--sidle-ink) !important;
+  min-height: 44px;
+  transition: border-color var(--sidle-fast), box-shadow var(--sidle-fast), background var(--sidle-fast);
+}
+
+textarea {
+  min-height: 92px;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: color-mix(in srgb, var(--sidle-brand) 62%, transparent) !important;
+  box-shadow: 0 0 0 4px var(--sidle-brand-soft) !important;
+  outline: none;
+}
+
+.chip,
+.chip-btn,
+.shared-chip,
+.social-style-tag,
+.campus-badge {
+  border-radius: 999px !important;
+}
+
+.chip-btn,
+.chip {
+  background: var(--sidle-panel-solid);
+  border-color: var(--sidle-hairline) !important;
+}
+
+.chip-btn.on,
+.chip.selected {
+  color: var(--sidle-brand) !important;
+  border-color: color-mix(in srgb, var(--sidle-brand) 28%, transparent) !important;
+  background: var(--sidle-brand-soft) !important;
+}
+
+/* Discover ----------------------------------------------------------------- */
+.discover-page-head,
+.messages-page {
+  display: block;
+}
+
+.discover-header-bar {
+  margin-bottom: 20px;
+  align-items: end;
+}
+
+.discover-header-bar h1 {
+  font-size: clamp(2rem, 4vw, 3.15rem) !important;
+  line-height: .98 !important;
+  letter-spacing: -.055em !important;
+}
+
+.filter-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 3px 2px 12px;
+  scrollbar-width: none;
+}
+.filter-chips::-webkit-scrollbar { display: none; }
+
+.stories-row {
+  gap: 14px !important;
+  margin: 2px 0 24px !important;
+  padding: 10px 2px 6px !important;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+}
+.stories-row::-webkit-scrollbar { display: none; }
+.story { scroll-snap-align: start; }
+.story-ring {
+  box-shadow: 0 0 0 3px var(--sidle-page), 0 0 0 5px color-mix(in srgb, var(--sidle-brand) 42%, transparent) !important;
+}
+
+.discover-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px !important;
+}
+
+.profile-card {
+  overflow: clip;
+  border-radius: var(--sidle-radius-lg) !important;
+  box-shadow: var(--sidle-shadow-sm) !important;
+  transition: transform var(--sidle-normal) var(--sidle-ease), box-shadow var(--sidle-normal) var(--sidle-ease);
+}
+
+.profile-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--sidle-shadow-md) !important;
+}
+
+.profile-card-cover {
+  aspect-ratio: 4 / 3.25;
+  min-height: 220px;
+}
+
+.profile-card-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-card-body {
+  padding: 20px !important;
+}
+
+.profile-card-name {
+  font-size: 1.2rem !important;
+  letter-spacing: -.025em;
+}
+
+.profile-card-bio {
+  color: var(--sidle-ink-2) !important;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.prompt-quote-box {
+  border: 0 !important;
+  background: var(--sidle-panel-muted) !important;
+  border-radius: var(--sidle-radius-sm) !important;
+}
+
+.profile-card-footer {
+  border-top-color: var(--sidle-hairline) !important;
+}
+
+.sidle-why {
+  margin: 12px 0 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--sidle-brand-softer);
+}
+
+.sidle-why summary {
+  cursor: pointer;
+  color: var(--sidle-brand);
+  font-weight: 750;
+  list-style: none;
+}
+.sidle-why summary::-webkit-details-marker { display: none; }
+.sidle-why-list { margin: 9px 0 0; padding-left: 18px; color: var(--sidle-ink-2); }
+.sidle-why-list li + li { margin-top: 4px; }
+
+.sidle-discover-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin: 4px 0 14px;
+}
+
+.sidle-searchbox {
+  position: relative;
+}
+.sidle-searchbox input { width: 100%; padding-left: 42px !important; }
+.sidle-searchbox-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: var(--sidle-ink-3);
+}
+
+.sidle-save-button[aria-pressed="true"] {
+  color: var(--sidle-brand) !important;
+  border-color: color-mix(in srgb, var(--sidle-brand) 28%, transparent) !important;
+  background: var(--sidle-brand-soft) !important;
+}
+
+/* Messaging ---------------------------------------------------------------- */
+.messages-layout {
+  border-radius: var(--sidle-radius-lg) !important;
+  min-height: min(680px, calc(100dvh - 190px));
+  box-shadow: var(--sidle-shadow-sm) !important;
+  overflow: hidden;
+}
+
+.conversations-sidebar {
+  background: color-mix(in srgb, var(--sidle-panel-muted) 56%, var(--sidle-panel-solid));
+  border-right-color: var(--sidle-hairline) !important;
+}
+
+.conversation-item {
+  border-radius: 14px !important;
+  margin: 3px 8px;
+  width: calc(100% - 16px) !important;
+  border: 0 !important;
+}
+
+.conversation-item:hover,
+.conversation-item.active {
+  background: var(--sidle-panel-solid) !important;
+  box-shadow: var(--sidle-shadow-sm);
+}
+
+.chat-thread-pane {
+  background: var(--sidle-panel-solid);
+}
+
+/* Settings/profile --------------------------------------------------------- */
+.settings-grid,
+.settings-help-grid {
+  gap: 14px !important;
+}
+
+.settings-card,
+.settings-help-card {
+  transition: transform var(--sidle-fast) var(--sidle-ease), box-shadow var(--sidle-fast) var(--sidle-ease);
+}
+.settings-card:hover,
+.settings-help-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--sidle-shadow-md);
+}
+
+.my-profile-photo-grid img,
+.profile-media img {
+  border-radius: var(--sidle-radius-md) !important;
+}
+
+/* Global product-experience controls -------------------------------------- */
+.sidle-offline-bar {
+  position: fixed;
+  z-index: 1300;
+  left: 50%;
+  top: 14px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: calc(100% - 28px);
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--sidle-warm) 35%, var(--sidle-hairline));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--sidle-panel-solid) 94%, var(--sidle-warm));
+  box-shadow: var(--sidle-shadow-md);
+  color: var(--sidle-ink);
+  font-size: .86rem;
+  font-weight: 650;
+}
+
+.sidle-command-trigger {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 700;
+  min-height: 42px;
+  padding: 0 14px !important;
+  border: 1px solid var(--sidle-hairline) !important;
+  background: color-mix(in srgb, var(--sidle-panel-solid) 88%, transparent) !important;
+  color: var(--sidle-ink-2) !important;
+  box-shadow: var(--sidle-shadow-md) !important;
+  backdrop-filter: blur(18px);
+}
+
+.sidle-command-trigger kbd {
+  margin-left: 8px;
+  padding: 2px 6px;
+  border: 1px solid var(--sidle-hairline);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--sidle-panel-muted);
+  color: var(--sidle-ink-3);
+  font-size: .72rem;
+}
+
+.sidle-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  display: grid;
+  align-items: start;
+  justify-items: center;
+  padding: min(14vh, 120px) 18px 30px;
+  background: rgba(8, 12, 22, .48);
+  backdrop-filter: blur(12px);
+  animation: sidle-fade-in var(--sidle-fast) ease-out;
+}
+
+.sidle-command-palette {
+  width: min(640px, 100%);
+  overflow: hidden;
+  border: 1px solid var(--sidle-hairline);
+  border-radius: var(--sidle-radius-lg);
+  background: var(--sidle-panel-solid);
+  box-shadow: var(--sidle-shadow-lg);
+  animation: sidle-pop-in var(--sidle-normal) var(--sidle-ease);
+}
+
+.sidle-command-search {
+  width: 100%;
+  min-height: 64px;
+  padding: 0 20px !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--sidle-hairline) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  font-size: 1rem;
+}
+
+.sidle-command-list {
+  max-height: min(52vh, 430px);
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.sidle-command-item {
+  display: grid;
+  grid-template-columns: 38px minmax(0,1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 58px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  color: inherit;
+  text-decoration: none;
+}
+.sidle-command-item:hover,
+.sidle-command-item:focus-visible {
+  background: var(--sidle-panel-muted);
+  outline: none;
+}
+.sidle-command-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--sidle-brand-soft);
+}
+.sidle-command-label { font-weight: 750; color: var(--sidle-ink); }
+.sidle-command-hint { display: block; color: var(--sidle-ink-3); font-size: .8rem; font-weight: 500; }
+.sidle-command-arrow { color: var(--sidle-ink-3); }
+.sidle-command-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--sidle-hairline);
+  color: var(--sidle-ink-3);
+  font-size: .76rem;
+}
+
+.sidle-install-card {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  z-index: 650;
+  width: min(360px, calc(100% - 36px));
+  padding: 16px;
+  border: 1px solid var(--sidle-hairline);
+  border-radius: var(--sidle-radius-md);
+  background: color-mix(in srgb, var(--sidle-panel-solid) 94%, transparent);
+  box-shadow: var(--sidle-shadow-md);
+  backdrop-filter: blur(18px);
+}
+.sidle-install-card p { margin: 4px 0 12px; font-size: .85rem; }
+.sidle-install-actions { display: flex; gap: 8px; }
+
+@keyframes sidle-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sidle-pop-in { from { opacity: 0; transform: translateY(-8px) scale(.985); } to { opacity: 1; transform: none; } }
+
+/* Tablet ------------------------------------------------------------------- */
+@media (max-width: 1040px) {
+  .brand-tagline { display: none; }
+  .app-header-inner { padding-inline: 18px; }
+  .nav-pill-btn { padding-inline: 11px; }
+  .nav-pill-btn > span:nth-child(2) { font-size: .82rem; }
+  .discover-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  main#main { width: min(940px, calc(100% - 30px)); }
+}
+
+/* Phone -------------------------------------------------------------------- */
+@media (max-width: 720px) {
+  :root { --sidle-header-height: 62px; }
+
+  body { background-image: none; }
+
+  .app-header-inner {
+    min-height: var(--sidle-header-height);
+    padding: 8px 14px;
+  }
+
+  .sidle-mark-header { width: 34px; height: 34px; }
+  .brand-text-wrap { display: none; }
+  .user-bar { margin-left: auto; }
+
+  .nav-pill-bar {
+    position: fixed;
+    z-index: 1000;
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1px;
+    min-height: 64px;
+    padding: 5px;
+    border-radius: 22px;
+    background: color-mix(in srgb, var(--sidle-panel-solid) 92%, transparent);
+    box-shadow: 0 18px 55px rgba(20, 28, 48, .22);
+    backdrop-filter: blur(22px) saturate(150%);
+  }
+
+  .nav-pill-btn {
+    min-width: 0;
+    min-height: 54px;
+    padding: 5px 2px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    border-radius: 17px;
+    font-size: .68rem;
+  }
+
+  .nav-pill-btn > span:first-child { font-size: 1.05rem; line-height: 1; }
+  .nav-pill-btn > span:nth-child(2) {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: .63rem;
+  }
+  .nav-pill-btn .nav-badge {
+    position: absolute;
+    margin: -28px 0 0 25px;
+    min-width: 17px;
+    height: 17px;
+    font-size: .62rem;
+  }
+
+  main#main {
+    width: min(100% - 22px, 620px);
+    padding-top: 22px;
+    padding-bottom: calc(106px + env(safe-area-inset-bottom));
+  }
+
+  .discover-header-bar h1 { font-size: clamp(2rem, 11vw, 2.75rem) !important; }
+  .discover-grid { grid-template-columns: 1fr; gap: 14px !important; }
+  .profile-card { border-radius: 24px !important; }
+  .profile-card:hover { transform: none; }
+  .profile-card-cover { aspect-ratio: 16 / 12; min-height: 0; }
+
+  .sidle-discover-toolbar { grid-template-columns: 1fr; }
+
+  .messages-layout {
+    min-height: calc(100dvh - 185px);
+    border-radius: 22px !important;
+  }
+  .conversations-sidebar { width: 100% !important; border-right: 0 !important; }
+
+  .sidle-command-trigger { display: none; }
+  .sidle-command-palette { border-radius: 22px; }
+  .sidle-modal-backdrop { padding-top: 10vh; align-items: start; }
+  .sidle-install-card { bottom: calc(88px + env(safe-area-inset-bottom)); }
+}
+
+@media (max-width: 390px) {
+  main#main { width: calc(100% - 16px); }
+  .app-header-inner { padding-inline: 10px; }
+  .nav-pill-bar { left: 6px; right: 6px; bottom: max(6px, env(safe-area-inset-bottom)); }
+  .profile-card-body { padding: 16px !important; }
+  .card { padding: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}
+
+@media (forced-colors: active) {
+  .profile-card,
+  .card,
+  .nav-pill-bar,
+  .sidle-command-palette,
+  .sidle-install-card { border: 1px solid CanvasText !important; }
+  .nav-pill-btn.active { outline: 2px solid Highlight; }
+}
