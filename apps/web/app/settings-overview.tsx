@@ -41,7 +41,6 @@ export function SettingsOverview({
 }: SettingsOverviewProps) {
   const isStudentVerified = profile?.verificationLevel === "student_verified";
   const [studentEmail, setStudentEmail] = useState(me.email?.includes(".ac.") || me.email?.includes(".edu") ? me.email : "");
-  const [studentId, setStudentId] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [verifyMsg, setVerifyMsg] = useState<string | null>(null);
   const [verifyError, setVerifyError] = useState<string | null>(null);
@@ -72,18 +71,18 @@ export function SettingsOverview({
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span className="eyebrow" style={{ margin: 0 }}>CAMPUS AFFILIATION</span>
               {isStudentVerified ? (
-                <span className="campus-badge">✓ Campus Verified</span>
+                <span className="campus-badge">✓ Academic email</span>
               ) : (
                 <span className="campus-badge" style={{ background: "var(--surface-sunken)", color: "var(--text-muted)", borderColor: "var(--line)" }}>Unverified</span>
               )}
             </div>
             <h2 id="verification-title" style={{ margin: "6px 0 4px" }}>
-              {isStudentVerified ? "National University of Science and Technology (NUST)" : "Verify Student Standing"}
+              {isStudentVerified ? "Academic email confirmed" : "Confirm your academic email"}
             </h2>
             <p className="muted" style={{ margin: 0, fontSize: "0.9rem", maxWidth: 540 }}>
               {isStudentVerified
-                ? "Your account has official campus-verified student standing. Peers in Discovery, Connections, and Community can see your badge."
-                : "Enter your official student email (@students.nust.ac.zw or recognized academic domain) to unlock your Campus Verified badge and study circles."}
+                ? "Your confirmed sign-in email belongs to a supported institution. This badge verifies email access, not current enrollment or identity."
+                : "Sign in with a supported university email and confirm it through the email link first. The address below must match your confirmed sign-in email."}
             </p>
           </div>
         </div>
@@ -97,8 +96,8 @@ export function SettingsOverview({
               setVerifyError(null);
               setVerifyMsg(null);
               try {
-                await onVerifyStudent(studentEmail.trim(), studentId.trim() || undefined, "National University of Science and Technology (NUST)");
-                setVerifyMsg("✓ Successfully verified student status! Your Campus Verified badge is now active.");
+                await onVerifyStudent(studentEmail.trim(), undefined);
+                setVerifyMsg("Academic email ownership confirmed.");
               } catch (err: unknown) {
                 setVerifyError(err instanceof Error ? err.message : "Failed to verify. Please make sure you enter a valid university email.");
               } finally {
@@ -116,17 +115,11 @@ export function SettingsOverview({
                 required
                 style={{ flex: 1, minWidth: 240, padding: "8px 12px", fontSize: "0.9rem" }}
               />
-              <input
-                type="text"
-                placeholder="Student ID (e.g. N02420280Y)"
-                value={studentId}
-                onChange={(e) => setStudentId(e.target.value)}
-                style={{ width: 180, padding: "8px 12px", fontSize: "0.9rem" }}
-              />
+
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <button type="submit" disabled={verifying} className="compact" style={{ alignSelf: "flex-start" }}>
-                {verifying ? "Verifying…" : "Verify Student Email"}
+                {verifying ? "Verifying…" : "Confirm academic email"}
               </button>
             </div>
             {verifyMsg && <p className="notice ok" style={{ margin: 0 }}>{verifyMsg}</p>}

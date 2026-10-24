@@ -34,6 +34,7 @@ describe("migration runner", () => {
       "0008_community_hardening.sql",
       "0009_safety_and_moderation.sql",
       "0010_media_messages.sql",
+      "0011_academic_email_proof.sql",
     ]);
   });
 });

@@ -657,7 +657,6 @@ function MobileSettingsOverview({
   const [studentEmail, setStudentEmail] = useState(
     me.email?.includes("@students.") || me.email?.includes(".ac.zw") ? me.email : ""
   );
-  const [studentId, setStudentId] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [verifyMsg, setVerifyMsg] = useState<string | null>(null);
   const [verifyError, setVerifyError] = useState<string | null>(null);
@@ -764,20 +763,20 @@ function MobileSettingsOverview({
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <Text style={[styles.eyebrow, { color: colors.accent }]}>CAMPUS VERIFICATION</Text>
           {isStudentVerified ? (
-            <Badge label="✓ Campus Verified" tone="success" compact />
+            <Badge label="✓ Academic email" tone="success" compact />
           ) : (
             <Badge label="Unverified" tone="neutral" compact />
           )}
         </View>
 
         <Text style={[styles.h2, { color: colors.text }]}>
-          {isStudentVerified ? "Verified Campus Student" : "Verify Student Standing"}
+          {isStudentVerified ? "Academic email confirmed" : "Confirm academic email"}
         </Text>
 
         <Text style={[styles.muted, { color: colors.textMuted }]}>
           {isStudentVerified
-            ? "Your campus status is confirmed. You display the '✓ Campus Verified' badge across Discover, Connections, and Messages."
-            : "Connect your official university or college email (e.g. @students.nust.ac.zw or *.ac.zw) to unlock the Campus Verified badge."}
+            ? "This confirms access to your sign-in email at a supported institution, not enrollment or personal identity."
+            : "Sign in with a supported university email and confirm its email link first. Enter that same sign-in email here."}
         </Text>
 
         {!isStudentVerified && onVerifyStudent ? (
@@ -791,19 +790,13 @@ function MobileSettingsOverview({
               onChangeText={setStudentEmail}
             />
 
-            <Field
-              label="Student ID / Reg No (Optional)"
-              value={studentId}
-              placeholder="e.g. N0241234X"
-              autoCapitalize="characters"
-              onChangeText={setStudentId}
-            />
+
 
             {verifyMsg ? <Banner tone="success">{verifyMsg}</Banner> : null}
             {verifyError ? <Banner tone="error">{verifyError}</Banner> : null}
 
             <Button
-              label={verifying ? "Verifying…" : "Verify Student Status"}
+              label={verifying ? "Verifying…" : "Confirm academic email"}
               disabled={verifying || !studentEmail.trim()}
               onPress={async () => {
                 if (!studentEmail.trim()) return;
@@ -811,8 +804,8 @@ function MobileSettingsOverview({
                 setVerifyError(null);
                 setVerifyMsg(null);
                 try {
-                  await onVerifyStudent(studentEmail.trim(), studentId.trim() || undefined);
-                  setVerifyMsg("Campus status verified! Your profile now carries the verified badge.");
+                  await onVerifyStudent(studentEmail.trim());
+                  setVerifyMsg("Academic email ownership confirmed.");
                 } catch (err) {
                   setVerifyError(errorMessage(err));
                 } finally {
@@ -995,7 +988,7 @@ function MobileMyProfileView({ profile, onBack, onEdit }: { profile: Profile; on
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <Text style={[styles.h1, { color: colors.text, fontSize: type.title.size }]}>{profile.displayName}</Text>
           {profile.verificationLevel === "student_verified" ? (
-            <Badge label="✓ Campus Verified" tone="success" compact />
+            <Badge label="✓ Academic email" tone="success" compact />
           ) : profile.verificationLevel === "trusted" ? (
             <Badge label="✓ Verified" tone="accent" compact />
           ) : null}

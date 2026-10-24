@@ -8,6 +8,7 @@ import { createTokenVerifier } from "./auth/verify";
 import { makePool } from "./db";
 import { createProfileStore } from "./profile/store";
 import { registerProfile } from "./profile/plugin";
+import { createEmailProofReader } from "./profile/email-proof";
 import { createConnectionsStore } from "./connections/store";
 import { registerConnections } from "./connections/plugin";
 import { createDiscoveryStore } from "./discovery/store";
@@ -43,7 +44,7 @@ if (pool && env.SUPABASE_URL) {
   const db = { exec: (sql: string) => pool.query(sql), query: (sql: string, params?: unknown[]) => pool.query(sql, params as unknown[]) as never };
   const store = createAuthStore(db);
   const { requireAuth, requireRole } = registerAuth(app, { verify, store });
-  registerProfile(app, { requireAuth, store: createProfileStore(db) });
+  registerProfile(app, { requireAuth, store: createProfileStore(db), readEmailProof: createEmailProofReader({ supabaseUrl: env.SUPABASE_URL, publishableKey: env.SUPABASE_PUBLISHABLE_KEY }) });
   registerDiscovery(app, { requireAuth, requireRole, store: createDiscoveryStore(db) });
   registerConnections(app, { requireAuth, requireRole, store: createConnectionsStore(db) });
   // Push delivery: noopPushSender until real FCM/APNs credentials are wired (pre-pilot step).

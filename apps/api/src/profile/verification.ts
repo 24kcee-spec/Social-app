@@ -32,25 +32,15 @@ export function isAcademicEmail(email: string | null | undefined): boolean {
   const domain = lower.slice(atIndex + 1);
   if (!domain) return false;
 
-  if (ACADEMIC_DOMAINS[domain]) return true;
-
-  // General academic suffixes
-  return (
-    domain.endsWith(".ac.zw") ||
-    domain.endsWith(".edu.zw") ||
-    domain.endsWith(".ac.za") ||
-    domain.endsWith(".ac.uk") ||
-    domain.endsWith(".edu") ||
-    domain.includes(".edu.") ||
-    domain.includes(".ac.")
-  );
+  return Object.hasOwn(ACADEMIC_DOMAINS, domain);
 }
 
 /**
  * Retrieves a human-readable institution name from an academic email domain.
  */
 export function getInstitutionName(email: string | null | undefined, custom?: string): string {
-  if (custom && custom.trim()) return custom.trim();
+  // Institution labels come from the allowlist, never a user-supplied claim.
+  void custom;
   if (!email) return "Campus Community";
   const lower = email.trim().toLowerCase();
   const domain = lower.split("@")[1] ?? "";
@@ -62,44 +52,38 @@ export function getInstitutionName(email: string | null | undefined, custom?: st
 }
 
 /**
- * Determines appropriate verification level based on primary email.
- */
-export function computeVerificationLevel(email: string | null | undefined): VerificationLevel {
-  if (!email || !email.trim()) return "unverified";
-  if (isAcademicEmail(email)) return "student_verified";
-  return "email_verified";
-}
-
-/**
  * Evaluates student verification input.
  */
 export function verifyStudentCredentials(input: {
   studentEmail: string;
   studentId?: string;
   institution?: string;
-}): {
+}, verifiedEmail: string | null): {
   verified: boolean;
   level: VerificationLevel;
   institution: string;
   message: string;
 } {
   const email = input.studentEmail.trim().toLowerCase();
+  if (!verifiedEmail || email !== verifiedEmail.trim().toLowerCase()) {
+    return { verified: false, level: "unverified", institution: "Unverified", message: "Sign in with this university email and confirm it using the Supabase email link first. The entered email must match your confirmed sign-in email." };
+  }
   if (!isAcademicEmail(email)) {
     return {
       verified: false,
-      level: "email_verified",
+      level: "unverified",
       institution: "Unrecognized Institution",
-      message: "The provided email is not a recognized university or academic domain (.ac.zw, .edu, etc.). Please use your official student email address.",
+      message: "The provided email is not a recognized university or academic domain on the supported institution list. Please use your official student email address.",
     };
   }
 
   const institution = getInstitutionName(email, input.institution);
-  const idNote = input.studentId ? ` (Student ID: ${input.studentId.trim().toUpperCase()})` : "";
+
 
   return {
     verified: true,
     level: "student_verified",
     institution,
-    message: `Student status successfully verified for ${institution}${idNote}! You now have campus-verified standing across all discovery cards and events.`,
+    message: `Academic email ownership confirmed for ${institution}. This verifies email access, not current enrollment or personal identity.`,
   };
 }

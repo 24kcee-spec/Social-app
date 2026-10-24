@@ -47,7 +47,7 @@ function makeAppForTest(store = makeStore()) {
     if (req.headers.authorization !== "Bearer test-token") return reply.code(401).send({ error: "unauthorized" });
     req.auth = { user: { id: USER_ID, email: "user@example.com", phone: null, status: "active", roles: ["user"], createdAt: new Date(), lastActiveAt: null }, sessionId: "session-1" };
   };
-  registerProfile(app, { requireAuth, store });
+  registerProfile(app, { requireAuth, store, readEmailProof: async () => "n02420280y@students.nust.ac.zw" });
   return { app, store };
 }
 
@@ -249,7 +249,7 @@ describe("profile routes", () => {
       studentEmail: "n02420280y@students.nust.ac.zw",
       studentId: "N02420280Y",
       institution: "NUST",
-    });
+    }, "n02420280y@students.nust.ac.zw");
   });
 
   it("returns 400 for invalid email on /me/verify-student", async () => {

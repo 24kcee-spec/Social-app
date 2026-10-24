@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeVerificationLevel, getInstitutionName, isAcademicEmail, verifyStudentCredentials } from "../src/profile/verification";
+import { getInstitutionName, isAcademicEmail, verifyStudentCredentials } from "../src/profile/verification";
 
 describe("academic student verification engine", () => {
   it("recognizes NUST student emails", () => {
@@ -16,10 +16,10 @@ describe("academic student verification engine", () => {
     expect(isAcademicEmail("user@africau.edu")).toBe(true);
   });
 
-  it("recognizes general .ac.zw, .edu, .ac.za academic domains", () => {
-    expect(isAcademicEmail("student@college.ac.zw")).toBe(true);
+  it("accepts only explicitly supported academic domains", () => {
+    expect(isAcademicEmail("student@college.ac.zw")).toBe(false);
     expect(isAcademicEmail("user@uct.ac.za")).toBe(true);
-    expect(isAcademicEmail("person@mit.edu")).toBe(true);
+    expect(isAcademicEmail("person@mit.edu")).toBe(false);
   });
 
   it("rejects commercial and personal email providers", () => {
@@ -30,31 +30,31 @@ describe("academic student verification engine", () => {
     expect(isAcademicEmail("")).toBe(false);
   });
 
-  it("computes verification levels accurately", () => {
-    expect(computeVerificationLevel("n02420280y@students.nust.ac.zw")).toBe("student_verified");
-    expect(computeVerificationLevel("user@gmail.com")).toBe("email_verified");
-    expect(computeVerificationLevel("")).toBe("unverified");
-    expect(computeVerificationLevel(null)).toBe("unverified");
+  it("rejects unproven academic email and domain lookalikes", () => {
+    expect(verifyStudentCredentials({ studentEmail: "someone@students.nust.ac.zw" }, null).verified).toBe(false);
+    expect(verifyStudentCredentials({ studentEmail: "someone@students.nust.ac.zw" }, "other@students.nust.ac.zw").verified).toBe(false);
+    expect(isAcademicEmail("user@college.ac.attacker.example")).toBe(false);
+    expect(isAcademicEmail("user@students.nust.ac.zw.attacker.example")).toBe(false);
   });
 
   it("verifies valid student credentials with institution details", () => {
     const res = verifyStudentCredentials({
       studentEmail: "n02420280y@students.nust.ac.zw",
       studentId: "N02420280Y",
-      institution: "NUST",
-    });
+      institution: "Made up institution",
+    }, "n02420280y@students.nust.ac.zw");
     expect(res.verified).toBe(true);
     expect(res.level).toBe("student_verified");
-    expect(res.institution).toBe("NUST");
-    expect(res.message).toContain("N02420280Y");
+    expect(res.institution).toBe("National University of Science and Technology (NUST)");
+    expect(res.message).toContain("not current enrollment");
   });
 
   it("rejects non-academic emails with helpful guidance", () => {
     const res = verifyStudentCredentials({
       studentEmail: "user@gmail.com",
-    });
+    }, "user@gmail.com");
     expect(res.verified).toBe(false);
-    expect(res.level).toBe("email_verified");
+    expect(res.level).toBe("unverified");
     expect(res.message).toContain("official student email");
   });
 });
