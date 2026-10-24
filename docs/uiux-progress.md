@@ -31,3 +31,11 @@ Files: apps/mobile/src/components/EditorialCard.tsx, apps/mobile/src/Discover.ts
 - EditorialCard.tsx: Refactored to import `useTheme` and consume shared design tokens (`colors.surface`, `colors.line`, `colors.accent`, `colors.text`, etc.) instead of hardcoded hex values. Documented relationship with production `Discover.tsx`.
 - CampusPulseRadar.tsx: Confirmed omitted from production UI (no backend, avoids fabricated social counts).
 
+## Stage E1: done (Web application shell polish)
+Files: apps/web/app/shell-polish.css, apps/web/app/layout.tsx.
+- Replaced platform-dependent emoji in primary navigation with consistent vector mask icons without adding a dependency.
+- Standardized the same icon language for account-menu and settings entry points.
+- Improved sticky-header depth, active/hover/focus states, badge treatment and account-chip polish.
+- Added two-row tablet navigation and compact phone navigation so the five primary destinations remain usable without clipping.
+- Added reduced-motion handling for users who request it and removed decorative pulsing from the primary shell.
+- Kept authentication, routing, settings, API contracts and data behavior unchanged; this stage is presentation/accessibility only.
