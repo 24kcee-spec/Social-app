@@ -4,6 +4,8 @@ import "./globals.css";
 import "./shell-polish.css";
 import "./feature-polish.css";
 import "./brand-polish.css";
+import "./release-hardening.css";
+import { ShellAccessibility } from "./shell-accessibility";
 
 const description =
   "Find your people. At your pace. Sidle is a low-pressure campus social space for genuine conversations, groups and plans.";
@@ -43,6 +45,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en">
       <body>
         <a className="skip-link" href="#main">Skip to main content</a>
+        <ShellAccessibility />
         <div id="app">{children}</div>
       </body>
     </html>

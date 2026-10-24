@@ -1,0 +1,121 @@
+/* Release hardening — keyboard, narrow-screen and high-contrast behavior. */
+
+.sidle-sr-only {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+:where(button, a, input, textarea, select, [tabindex]):focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+#main:focus,
+.settings-page:focus,
+#profile-details:focus,
+#privacy-settings:focus,
+#account-sessions:focus,
+#account-data:focus {
+  outline: none;
+}
+
+#profile-details,
+#privacy-settings,
+#account-sessions,
+#account-data {
+  scroll-margin-top: 116px;
+}
+
+.app-header .nav-pill-btn,
+.app-header .account-menu-trigger,
+.settings-page .settings-tile,
+.settings-page button:not(.link) {
+  min-height: 44px;
+}
+
+.account-menu-popover {
+  max-width: min(340px, calc(100vw - 24px));
+}
+
+@media (max-width: 640px) {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  .app-header-inner {
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+
+  .app-header .nav-pill-bar {
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 4px;
+  }
+
+  .app-header .nav-pill-btn {
+    min-height: 46px;
+    scroll-snap-align: center;
+    touch-action: manipulation;
+  }
+
+  .account-menu-popover {
+    right: 0;
+    max-height: min(70vh, 520px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .settings-page-header,
+  .settings-panel-heading {
+    align-items: stretch;
+  }
+
+  .settings-page-header > button,
+  .settings-panel-heading > button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 380px) {
+  .app-header .nav-pill-bar {
+    gap: 0;
+    padding-inline: 3px;
+  }
+
+  .app-header .nav-pill-btn {
+    min-width: 44px;
+    padding-inline: 6px;
+  }
+
+  .settings-theme-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (forced-colors: active) {
+  :where(button, a, input, textarea, select, [tabindex]):focus-visible {
+    outline: 3px solid Highlight;
+  }
+
+  .app-header .nav-pill-btn.active,
+  .settings-theme-option.selected,
+  .campus-badge {
+    border: 2px solid Highlight;
+    forced-color-adjust: auto;
+  }
+
+  .nav-badge,
+  .settings-status {
+    border: 1px solid CanvasText;
+  }
+}
