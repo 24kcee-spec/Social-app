@@ -55,7 +55,9 @@ test("Discover is explainable tuneable saveable and undoable without public popu
   const discover = read("app/discover.tsx");
   assert.match(discover, /Why you’re seeing/);
   assert.match(discover, /card\.reasons\.slice/);
-  assert.match(discover, /sidle-saved-introductions-v1/);
+  assert.match(discover, /getProductClient\(\)\.setSaved/);
+  assert.match(discover, /sync across devices/);
+  assert.doesNotMatch(discover, /localStorage/);
   assert.match(discover, /undoSkip/);
   assert.match(discover, /Report profile/);
   assert.match(discover, /Tune my profile/);

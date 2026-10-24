@@ -5,6 +5,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { errorMessage } from "../lib/auth";
 import { getConnectionsClient } from "../lib/connections";
 import { getSignedMediaUrl } from "../lib/profile";
+import { getProductClient } from "../lib/product";
+import type { PeopleContext } from "@sp/profile-client";
+import { INTENT_LABELS, AVAILABILITY_LABELS } from "./social-context";
 
 type ConnectionLabel = "friend" | "classmate" | "study" | "sport" | "networking" | "other";
 const LABELS: { value: ConnectionLabel; label: string }[] = [
@@ -57,6 +60,23 @@ export function Connections({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [contexts, setContexts] = useState<Record<string, PeopleContext>>({});
+  const [contextNow, setContextNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    let alive = true;
+    const refresh = () => {
+      setContextNow(Date.now());
+      if (!connections.length) return;
+      void getProductClient().getPeopleContext(connections.map(connection => connection.other.userId))
+        .then(rows => { if (alive) setContexts(Object.fromEntries(rows.map(row => [row.userId, row]))); })
+        .catch(() => { if (alive) setContexts({}); });
+    };
+    refresh();
+    const timer = setInterval(refresh, 60_000);
+    window.addEventListener('focus', refresh);
+    return () => { alive = false; clearInterval(timer); window.removeEventListener('focus', refresh); };
+  }, [connections]);
 
   useEffect(() => {
     try {
@@ -262,6 +282,10 @@ export function Connections({
                         </div>
                       </div>
                       {connection.other.bio && <p className="muted" style={{ fontSize: ".88rem" }}>{connection.other.bio}</p>}
+                      {contexts[connection.other.userId] && <div className="shared-interests-row">
+                        {contexts[connection.other.userId]!.intents.map(intent => <span className="social-style-tag" key={intent}>{INTENT_LABELS[intent]}</span>)}
+                        {contexts[connection.other.userId]!.availability && Date.parse(contexts[connection.other.userId]!.expiresAt ?? '') > contextNow && <span className="social-style-tag">{AVAILABILITY_LABELS[contexts[connection.other.userId]!.availability!]}</span>}
+                      </div>}
                       <label className="sidle-private-label-field">
                         <span>Private label</span>
                         <select value={privateLabel} onChange={(event) => setPrivateLabel(connection.other.userId, event.target.value as "" | ConnectionLabel)}>

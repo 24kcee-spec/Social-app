@@ -10,6 +10,10 @@ import { getSignedMediaUrl } from "../lib/profile";
 import { SayHi } from "./say-hi";
 import { ReportModal } from "./report-modal";
 import { ShareModal } from "./share-modal";
+import { getProductClient } from "../lib/product";
+import type { PeopleContext } from "@sp/profile-client";
+import { SocialContextEditor, INTENT_LABELS, AVAILABILITY_LABELS } from "./social-context";
+import { SavedIntroductions } from "./saved-introductions";
 
 const STYLE_LABELS: Record<SocialStyle, string> = {
   small_group: "Small groups",
@@ -20,7 +24,6 @@ const STYLE_LABELS: Record<SocialStyle, string> = {
 };
 
 const PAGE = 12;
-const SAVED_KEY = "sidle-saved-introductions-v1";
 
 type PendingHide = { card: DiscoveryCard; index: number };
 
@@ -41,20 +44,29 @@ export function Discover() {
   const [filterStyle, setFilterStyle] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [savedReady, setSavedReady] = useState(false);
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [contexts, setContexts] = useState<Record<string, PeopleContext>>({});
+  const [contextNow, setContextNow] = useState(() => Date.now());
   const [pendingHide, setPendingHide] = useState<PendingHide | null>(null);
   const seen = useRef<Set<string>>(new Set());
   const pendingIgnoreTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingIgnoreCard = useRef<DiscoveryCard | null>(null);
 
   useEffect(() => {
-    if (!webFeatureFlags.savedIntroductions) return;
-    try {
-      const parsed = JSON.parse(window.localStorage.getItem(SAVED_KEY) ?? "[]") as unknown;
-      if (Array.isArray(parsed)) setSavedIds(new Set(parsed.filter((value): value is string => typeof value === "string")));
-    } catch {
-      // Saved introductions are a convenience; storage restrictions must not block Discover.
-    }
-  }, []);
+    let alive = true;
+    const refresh = () => {
+      setContextNow(Date.now());
+      if (!people.length) return;
+      void getProductClient().getPeopleContext(people.map(person => person.userId))
+        .then(rows => { if (alive) setContexts(Object.fromEntries(rows.map(row => [row.userId, row]))); })
+        .catch(() => { if (alive) setContexts({}); });
+    };
+    refresh();
+    const timer = setInterval(refresh, 60_000);
+    window.addEventListener('focus', refresh);
+    return () => { alive = false; clearInterval(timer); window.removeEventListener('focus', refresh); };
+  }, [people]);
 
   const loadPhotos = useCallback(async (cards: DiscoveryCard[]) => {
     const pairs = await Promise.all(
@@ -96,6 +108,10 @@ export function Discover() {
       setHasMore(feed.hasMore);
       track(feed.people);
       void loadPhotos(feed.people);
+      if (webFeatureFlags.savedIntroductions) {
+        const ids = await getProductClient().listSaved();
+        setSavedIds(new Set(ids)); setSavedReady(true);
+      }
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -181,21 +197,16 @@ export function Discover() {
     trackProductEvent("recommendation_undo");
   }
 
-  function toggleSaved(card: DiscoveryCard) {
-    if (!webFeatureFlags.savedIntroductions) return;
-    setSavedIds((current) => {
-      const next = new Set(current);
-      const wasSaved = next.has(card.userId);
-      if (wasSaved) next.delete(card.userId);
-      else next.add(card.userId);
-      try {
-        window.localStorage.setItem(SAVED_KEY, JSON.stringify([...next]));
-      } catch {
-        setNotice("This browser is not allowing Sidle to save introductions on this device.");
-      }
+  async function toggleSaved(card: DiscoveryCard) {
+    if (!webFeatureFlags.savedIntroductions || savingId || !savedReady) return;
+    const wasSaved = savedIds.has(card.userId);
+    setSavingId(card.userId); setError(null);
+    try {
+      const saved = await getProductClient().setSaved(card.userId, !wasSaved);
+      setSavedIds(current => { const next = new Set(current); if (saved) next.add(card.userId); else next.delete(card.userId); return next; });
+      setNotice(saved ? 'Introduction saved to your account.' : 'Saved introduction removed.');
       trackProductEvent(wasSaved ? "recommendation_unsaved" : "recommendation_saved");
-      return next;
-    });
+    } catch (err) { setError(errorMessage(err)); } finally { setSavingId(null); }
   }
 
   async function block(card: DiscoveryCard) {
@@ -204,6 +215,7 @@ export function Discover() {
       commitPendingIgnore();
       await client.block(card.userId);
       setPeople((p) => p.filter((x) => x.userId !== card.userId));
+      setSavedIds(current => { const next = new Set(current); next.delete(card.userId); return next; });
       setNotice(`${card.displayName} has been blocked.`);
       if (blocks) setBlocks(await client.listBlocks());
     } catch (err) {
@@ -269,6 +281,7 @@ export function Discover() {
         </div>
       </div>
 
+      <SocialContextEditor />
       {webFeatureFlags.recommendationTuning && (
         <div className="sidle-discover-toolbar">
           <div className="sidle-searchbox">
@@ -305,7 +318,7 @@ export function Discover() {
 
       {webFeatureFlags.savedIntroductions && (
         <p className="muted" style={{ marginTop: -4, fontSize: ".78rem" }}>
-          Saved introductions are private to this browser for now; saving does not notify the other person.
+          Saved introductions are private to your account and sync across devices; saving does not notify the other person.
         </p>
       )}
 
@@ -324,7 +337,8 @@ export function Discover() {
         </div>
       )}
 
-      {!loading && filteredPeople.length > 0 && (
+      {filterStyle === 'saved' && <SavedIntroductions search={search} onRemoved={id => setSavedIds(current => { const next = new Set(current); next.delete(id); return next; })} />}
+      {filterStyle !== 'saved' && !loading && filteredPeople.length > 0 && (
         <div className="stories-row" aria-label="Fresh introductions">
           {filteredPeople.slice(0, 12).map((person) => (
             <button
@@ -341,7 +355,7 @@ export function Discover() {
         </div>
       )}
 
-      {loading ? (
+      {filterStyle === 'saved' ? null : loading ? (
         <div className="discover-grid" aria-busy="true" aria-label="Loading introductions">
           {[1, 2, 3].map((i) => (
             <div className="card" key={i} style={{ minHeight: 360, opacity: 0.72 }}>
@@ -426,6 +440,10 @@ export function Discover() {
                   </div>
 
                   {card.bio && <p className="profile-card-bio">{card.bio}</p>}
+                  {contexts[card.userId] && <div className="shared-interests-row">
+                    {contexts[card.userId]!.intents.map(intent => <span className="social-style-tag" key={intent}>{INTENT_LABELS[intent]}</span>)}
+                    {contexts[card.userId]!.availability && Date.parse(contexts[card.userId]!.expiresAt ?? '') > contextNow && <span className="social-style-tag">{AVAILABILITY_LABELS[contexts[card.userId]!.availability!]}</span>}
+                  </div>}
 
                   <div className="shared-interests-row">
                     {card.interests.slice(0, isOpen ? 12 : 5).map((interest) => {
@@ -492,8 +510,9 @@ export function Discover() {
                           type="button"
                           className="secondary compact sidle-save-button"
                           aria-pressed={isSaved}
-                          onClick={() => toggleSaved(card)}
-                          title={isSaved ? "Remove from saved introductions" : "Save privately on this device"}
+                          onClick={() => void toggleSaved(card)}
+                          disabled={!savedReady || savingId !== null}
+                          title={isSaved ? "Remove from saved introductions" : "Save privately to your account"}
                         >
                           {isSaved ? "Saved" : "Save"}
                         </button>

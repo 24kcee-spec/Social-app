@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ProductFeedbackForm } from "../product-feedback";
 
 export const metadata: Metadata = {
   title: "Help & safety",
@@ -64,6 +65,7 @@ export default function HelpPage() {
         </div>
       </section>
 
+      <ProductFeedbackForm />
       <aside className="notification-delivery-note" aria-label="Support readiness note">
         <strong>Before the wider pilot</strong>
         <p>

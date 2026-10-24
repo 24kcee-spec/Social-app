@@ -12,7 +12,7 @@ export function SayHi({
   onSent,
   onClose,
 }: {
-  card: DiscoveryCard;
+  card: Pick<DiscoveryCard, "userId" | "displayName">;
   onSent: (message: string) => void;
   onClose: () => void;
 }) {

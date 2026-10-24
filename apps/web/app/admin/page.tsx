@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { errorMessage, getAuth } from "../../lib/auth";
 import { getConnectionsClient } from "../../lib/connections";
 import { getSafetyClient } from "../../lib/safety";
+import { FeedbackQueue } from "../product-feedback";
 
 type Draft = { actionTaken: ReportAction; resolutionNotes: string };
 
@@ -117,6 +118,7 @@ export default function AdminPage() {
         <a className="secondary compact" href="/discover">Back to app</a>
       </div>
 
+      {allowed && <FeedbackQueue />}
       {error && <div className="notice err" role="alert"><span>{error}</span><button className="link" onClick={() => void load()}>Retry</button></div>}
       {notice && <div className="notice ok" role="status"><span>{notice}</span><button className="link" onClick={() => setNotice(null)}>Dismiss</button></div>}
 

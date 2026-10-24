@@ -1,10 +1,11 @@
 # Sidle — current status and remaining work
 
-Updated: 24 October 2026. This supersedes the older build-phase handovers and 22 October audit. Detailed live evidence: [supabase-live-validation.md](supabase-live-validation.md).
+Updated: 24 October 2026. This supersedes the older build-phase handovers and 22 October audit. Detailed live evidence: [supabase-live-validation.md](supabase-live-validation.md) and [product persistence](supabase-product-persistence.md).
 
 ## Working and verified
 
 - Supabase project `mdekznpqmadhhsmouuhx` has **all 15 numbered migrations applied** and the final security SQL installed. No pending or unrecognized migrations.
+- The independently versioned Supabase product migration `202610240001_social_context.sql` is applied and checksum-verified. Social intent, expiring availability, private cross-device saved introductions and feedback/admin review now persist through session-checked RPCs. New data is removed on account anonymization; privacy and block changes are enforced in the database. The portable API ledger remains 0001–0015.
 - The hosted API returns **HTTP 200 / ready** with configuration, database and schema checks passing. Database TLS verifies chains/hostnames using the official provider CA; server-side SSL enforcement is enabled. The production web origin passes CORS and matches Auth redirects.
 - All public app tables have RLS. Privileged helper implementations are outside the exposed API schema; anonymous execution and direct badge/report writes are denied. Missing foreign-key indexes are fixed. Performance advisor has no warnings; the only security warning is the provider-plan-blocked leaked-password feature.
 - **45 live API assertions passed** using isolated temporary accounts: authentication, private onboarding/profile persistence, messaging/retries/read receipts, notification preferences, unowned-email rejection, moderator-role denial, groups, event RSVP/waitlist promotion/chat, report/block, session revocation, account removal and background Auth erasure.
@@ -12,7 +13,7 @@ Updated: 24 October 2026. This supersedes the older build-phase handovers and 22
 - Live rollback-only SQL probes verified members/nonmembers, private originals/connected thumbnails, blocked pairs, revoked sessions, forged writes and deleted accounts. Temporary Auth/application/group data was removed; original account counts were restored.
 - Account removal now has an authenticated Supabase Edge worker and an idle-safe once-per-minute scheduler. The scheduled path completed actual throwaway-account erasure. Its credential is stored in Edge secrets and encrypted Vault; clients cannot read it. Failed jobs remain retryable.
 - Web privacy/account settings are separate screens. Mobile profile drafts have Save/Discard, validation, partial-save recovery and navigation guards. Unsupported chat photo attachment controls are removed. Native links use actual configured domains/signing identities.
-- **431 automated tests pass**: API 318, auth-client 19, profile-client 58, validation 27, config 7, design tokens 2. All workspace typechecks and the web production build pass. Browser/device interaction is separate from API/SQL evidence.
+- **464 automated tests pass**: API 319, auth-client 19, profile-client 67, validation 27, config 7, design tokens 2, web 23. All workspace typechecks and the web production build pass. Browser/device interaction is separate from API/SQL evidence.
 
 ## Remaining work, in order
 
@@ -32,6 +33,10 @@ python scripts/supabase-maintenance.py
 
 # Live rollback-only RLS checks
 python scripts/supabase-maintenance.py --verify-rls
+
+# Independent Supabase product migration inventory/checksums and rollback-only probes
+python scripts/supabase-product-maintenance.py
+python scripts/supabase-product-maintenance.py --verify
 
 # Only after reviewing every pending migration against this project
 python scripts/supabase-maintenance.py --apply --security

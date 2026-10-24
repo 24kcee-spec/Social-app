@@ -39,14 +39,21 @@ export default {
   env: {
     NEXT_PUBLIC_SUPABASE_URL: process.env.SUPABASE_URL ?? "",
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.SUPABASE_PUBLISHABLE_KEY ?? "",
-    NEXT_PUBLIC_API_URL: process.env.PUBLIC_API_URL || "http://localhost:4000",
+    NEXT_PUBLIC_API_URL: "/api/sidle",
   },
   async redirects() {
     return shellRedirects;
   },
+  async rewrites() {
+    // Preview hosts change per commit. Keep browser requests on the web origin
+    // while the existing API continues to validate the user's bearer session.
+    const api = (process.env.PUBLIC_API_URL || "http://localhost:4000").replace(/\/+$/, "");
+    return [{ source: "/api/sidle/:path*", destination: `${api}/:path*` }];
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
+      { source: "/api/sidle/:path*", headers: [{ key: "Cache-Control", value: "private, no-store" }] },
       {
         source: "/sw.js",
         headers: [

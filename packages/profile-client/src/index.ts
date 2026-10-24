@@ -93,6 +93,7 @@ export { mergeMessages, mergeEventMessages, applyReadWatermark, type ThreadMessa
 export { subscribeToConversationMessages, type ConversationSubscription, type ConversationSubscriptionOptions, type RealtimeChannelFactory, type RealtimeChannelLike, type RealtimeStatus, type ReadReceipt } from "./realtime";
 
 export { createSafetyClient, type SafetyClient } from "./safety";
+export { createProductClient, SOCIAL_INTENTS, type ProductClient, type SocialContext, type SocialIntent, type Availability, type PeopleContext, type ProductFeedback, type SavedPerson } from "./product";
 export {
   createShareClient,
   type ShareClient,

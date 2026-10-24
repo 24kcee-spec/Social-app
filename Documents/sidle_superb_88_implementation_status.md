@@ -12,8 +12,8 @@ Status key: **NEW** = implemented or materially upgraded in this pass; **EXISTIN
 | 4 | **NEW** | Phone/tablet/desktop compositions now reflow intentionally; Discover, connections, pages and messaging receive breakpoint-specific treatment. |
 | 5 | **NEW** | Discover gets the strongest visual treatment plus recommendation context, search, filters, save/hide/undo and clearer media hierarchy. |
 | 6 | **NEW** | Current introductions can be searched and filtered by shared passions/social style/saved state. Server-wide faculty/year/campus filters need those authoritative fields first. |
-| 7 | **PARTIAL** | Existing persisted `socialStyles` already express social pace. A separate synced “looking for study/coffee/gaming/etc.” intent requires a new persisted contract/migration. |
-| 8 | **GATE** | Temporary availability/status is not faked in browser storage because a trustworthy cross-device expiring status needs a persisted schema/API plus live migration. |
+| 7 | **NEW** | Account-synced social intent now has a dedicated Supabase contract and Discover editor: up to three choices, connections-only by default, with explicit discovery sharing. Profile privacy and blocks apply. |
+| 8 | **NEW** | Optional preset availability persists with server-generated expiry (1 hour to 7 days), clear/save controls and audience enforcement. Expired status is omitted on reads; it never represents online presence. |
 | 9 | **NEW + EXISTING** | Existing `CommunityEvent` already had time, general area, capacity, RSVP/waitlist, sharing and attendee chat. It is promoted to a first-class native `/plans` product route instead of duplicating the schema. |
 | 10 | **EXISTING/PARTIAL** | Groups already support activities, area, capacity, membership, moderators and events. Featured/trending ranking remains future ranking work. |
 | 11 | **EXISTING** | Web onboarding is already progressive across profile basics/social style, interests, prompts and privacy. The new visual system improves that same path rather than duplicating it. |
@@ -45,7 +45,7 @@ Status key: **NEW** = implemented or materially upgraded in this pass; **EXISTIN
 | 37 | **PRINCIPLE** | Any future home/activity surface is constrained to useful people/community/plan actions rather than passive consumption. |
 | 38 | **PRINCIPLE + EXISTING** | Sidle is connection-based; public follower counts are not introduced. |
 | 39 | **PRINCIPLE** | Public popularity is intentionally not centered; Discover even explains that recommendation context is not a popularity score. |
-| 40 | **NEW/PARTIAL** | Discover introductions can be privately saved on the current browser without notifying the other person. Cross-device saved items need persistence. |
+| 40 | **NEW** | Private introductions now sync to the account with idempotent saves and an independent saved-people view across devices. Privacy/block checks are enforced in Supabase; browser-only historical saves are not silently attributed to an account. |
 | 41 | **EXISTING + NEW DOCS** | Discoverability/message/story/activity privacy controls exist; new `/privacy` explains their product intent in plain language. |
 | 42 | **EXISTING/PARTIAL** | Granular profile privacy categories already exist. Per-field audience ACLs would require a larger schema/product model and are not guessed. |
 | 43 | **NEW + EXISTING** | Report/Block are now visibly reachable from expanded Discover profiles; community/message safety surfaces already existed. |
@@ -66,7 +66,7 @@ Status key: **NEW** = implemented or materially upgraded in this pass; **EXISTIN
 | 58 | **NEW/PARTIAL** | Admin dashboard covers activation and safety reports. Broader DAU/API/delivery metrics need first-party telemetry/ops data sources. |
 | 59 | **NEW** | Build-time public UX feature flags gate command palette, install prompt, recommendation tuning and saved introductions; comments make clear they are not authorization. |
 | 60 | **NEW SEAM/GATE** | Privacy-conscious client telemetry event seam exists and stores only a bounded session diagnostic trail. No external monitoring vendor is silently configured. |
-| 61 | **GATE** | Durable user feedback submission needs an accountable support/feedback destination or persisted endpoint. The app does not pretend browser-local text was “sent.” |
+| 61 | **NEW** | `/help` now saves feedback to Supabase with receipts, retry IDs and account limits; `/admin` has a protected review queue. This does not claim staffed support or emergency coverage. |
 | 62 | **NEW** | `/whats-new` provides a calm beta release-summary surface without notification spam. |
 | 63 | **NEW/PARTIAL** | `/privacy`, `/community-guidelines` and `/help` are branded, linked and honest. Formal legal approval/ownership remains external. |
 | 64 | **NEW + EXISTING** | Desktop receives richer multi-column discovery/connection composition while existing desktop messaging layout is retained. |
@@ -91,15 +91,15 @@ Status key: **NEW** = implemented or materially upgraded in this pass; **EXISTIN
 | 83 | **PRINCIPLE** | Aggressive daily-use streak mechanics are explicitly excluded from the product vision and remain absent. |
 | 84 | **PARTIAL** | Discover remains the signed-in shell home while Plans/command navigation improve breadth. A combined home dashboard is not rushed in without usage evidence. |
 | 85 | **EXISTING + NEW UI** | Progressive onboarding → interests/prompts/privacy → contextual Discover → structured hello already forms the first-value loop; the refresh strengthens the destination. |
-| 86 | **PARTIAL/GATE** | Low-pressure discovery and real Plans are strong differentiators now. Rich synced activity intent needs the persisted intent contract noted in #7. |
+| 86 | **NEW/PARTIAL** | Low-pressure discovery, real Plans and persisted social intent/expiring availability now form a shared connection model. Native UI/device delivery and pilot evidence remain separate gates. |
 | 87 | **PRINCIPLE** | The product vision intentionally avoids cloning every Instagram/TikTok feature; the implementation adds connection utility rather than an engagement feed. |
 | 88 | **NEW** | Discover, Connections, Plans, global product chrome, trust pages and operations now share one coordinated Sidle design/product layer instead of another isolated CSS patch. |
 
 ## Database/migration decision
 
-No new migration is required for the code-ready work above. Existing models already cover profiles, social styles, prompts/interests/media, privacy, discovery reasons/events, connections/starters, messages, communities, events/RSVP/waitlist/event chat, reports/moderation and activation milestones. Creating duplicate tables just to claim more “features” would make the product worse.
+The visual transformation reused the existing portable models (migrations 0001–0015). The subsequent persistence work adds `supabase/migrations/202610240001_social_context.sql` for the genuinely new concepts in #7, #8, #40 and #61, without duplicating existing profile/community/message models.
 
-The remaining truly persisted concepts — especially synced social intent, expiring availability/status, cross-device saved items and durable product-feedback intake — should be designed together as the next additive schema version rather than smuggled into unrelated columns. Applying that schema to production requires authenticated Supabase access and RLS/API validation; repository SQL alone is not proof that production migrated.
+The new migration is applied to the configured Supabase project and verified with the same rollback-only authorization/expiry/retry/erasure probes used in automated PostgreSQL tests. Its private checksum ledger is independent of the portable API ledger, preserving the existing API's exact-ledger readiness check. See [implementation and evidence](../docs/supabase-product-persistence.md). Native controls, cross-device connection labels and other remaining concepts retain their separate scopes.
 
 ## External/human gates that remain gates
 
