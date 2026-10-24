@@ -46,7 +46,7 @@ export function MyProfileView({ profile, onBack, onEdit }: MyProfileViewProps) {
           <p className="muted">A read-only view of your saved profile details. Edit them separately when something changes.</p>
         </div>
         <div className="settings-page-actions">
-          <button className="secondary compact" type="button" onClick={onBack}>← Back to Social</button>
+          <button className="secondary compact" type="button" onClick={onBack}>← Back to Sidle</button>
           <button className="compact" type="button" onClick={onEdit}>Edit profile</button>
         </div>
       </header>

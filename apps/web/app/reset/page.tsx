@@ -48,7 +48,7 @@ function ResetForm() {
   if (done) {
     return (
       <div className="auth-card-editorial">
-        <div className="auth-brand-badge">✦ Social Connection</div>
+        <div className="auth-brand-badge">SIDLE · LOW-PRESSURE CONNECTION</div>
         <h1>Password updated</h1>
         <p className="ok" role="status">Your password has been successfully updated.</p>
         <div style={{ marginTop: 24 }}>
@@ -63,7 +63,7 @@ function ResetForm() {
   if (!ready) {
     return (
       <div className="auth-card-editorial">
-        <div className="auth-brand-badge">✦ Social Connection</div>
+        <div className="auth-brand-badge">SIDLE · LOW-PRESSURE CONNECTION</div>
         <h1>Reset your password</h1>
         <p className="muted">
           Open this page from the link sent in your password recovery email. If the link has expired or is invalid, please request a new one.
@@ -80,7 +80,7 @@ function ResetForm() {
   return (
     <div className="auth-card-editorial">
       <header>
-        <div className="auth-brand-badge">✦ Social Connection</div>
+        <div className="auth-brand-badge">SIDLE · LOW-PRESSURE CONNECTION</div>
         <h1>Choose a new password</h1>
         <p className="muted">Create a strong, memorable password for your account.</p>
       </header>

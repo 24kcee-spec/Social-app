@@ -90,7 +90,7 @@ export function Community({
     try {
       await Share.share({
         title,
-        message: `Check out "${title}" on Social App: https://social-app.local/share/${type}/${id}`,
+        message: `Check out "${title}" on Sidle: https://social-app.local/share/${type}/${id}`,
         url: `https://social-app.local/share/${type}/${id}`,
       });
     } catch {}

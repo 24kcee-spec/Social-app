@@ -161,8 +161,8 @@ export function Discover() {
   const shareCard = async (card: DiscoveryCard) => {
     try {
       await Share.share({
-        title: `${card.displayName} on Social App`,
-        message: `Meet ${card.displayName} on Social App: https://social-app.local/share/profile/${card.userId}`,
+        title: `${card.displayName} on Sidle`,
+        message: `Meet ${card.displayName} on Sidle: https://social-app.local/share/profile/${card.userId}`,
         url: `https://social-app.local/share/profile/${card.userId}`,
       });
     } catch {}

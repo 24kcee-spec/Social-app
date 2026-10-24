@@ -41,21 +41,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   if (!preview) {
     return {
-      title: "Shared Link · Social App",
+      title: "Shared Link · Sidle",
       description: "Find people, conversations and activities at your pace.",
     };
   }
 
   const title =
     targetType === "group"
-      ? `${(preview as GroupSharePreview).name} · Social Group`
+      ? `${(preview as GroupSharePreview).name} · Sidle Group`
       : targetType === "event"
-      ? `${(preview as EventSharePreview).title} · Social Event`
-      : `${(preview as ProfileSharePreview).displayName} · Social App Profile`;
+      ? `${(preview as EventSharePreview).title} · Sidle Event`
+      : `${(preview as ProfileSharePreview).displayName} · Sidle Profile`;
 
   const description =
     ("description" in preview ? preview.description : preview.bio) ||
-    "Join the conversation on Social App.";
+    "Find your people. At your pace.";
 
   const baseUrl = process.env.PUBLIC_WEB_URL || "https://social-app.local";
   const canonicalUrl = `${baseUrl}/share/${targetType}/${id}`;
@@ -67,7 +67,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title,
       description,
       url: canonicalUrl,
-      siteName: "Social App",
+      siteName: "Sidle",
       type: "website",
     },
     twitter: {

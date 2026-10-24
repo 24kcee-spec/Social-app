@@ -236,7 +236,7 @@ export function Discover() {
             <h2>Grow your circle</h2>
             <p className="muted">The best introductions come from real friends. Invite someone, or add more interests and prompts so we can match you better.</p>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button onClick={() => { const t = "Join me on Social, a calm place to meet people who share your interests."; if (navigator.share) { void navigator.share({ title: "Social", text: t, url: window.location.origin }).catch(() => undefined); } else { void navigator.clipboard?.writeText(`${t} ${window.location.origin}`); setNotice("Invite link copied."); } }}>Invite a friend</button>
+              <button onClick={() => { const t = "Join me on Sidle — a calm place to find people, conversations and plans at your pace."; if (navigator.share) { void navigator.share({ title: "Sidle", text: t, url: window.location.origin }).catch(() => undefined); } else { void navigator.clipboard?.writeText(`${t} ${window.location.origin}`); setNotice("Invite link copied."); } }}>Invite a friend</button>
             </div>
           </div>
         </div>

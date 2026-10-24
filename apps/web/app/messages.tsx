@@ -118,10 +118,10 @@ export function Messages({
     <section aria-label="Messages" className="messages-page">
       <div className="discover-header-bar">
         <div>
-          <span className="eyebrow">✦ SECURE CONVERSATIONS</span>
+          <span className="eyebrow">SIDLE · CONVERSATIONS</span>
           <h1 style={{ margin: "2px 0 0" }}>Messages</h1>
           <div className="discover-philosophy" style={{ marginTop: 8 }}>
-            <span>Direct, end-to-end authenticated conversations with verified connections.</span>
+            <span>Direct conversations with your connections, without public counts or pressure.</span>
           </div>
         </div>
       </div>
@@ -162,11 +162,13 @@ export function Messages({
                 </li>
               ) : (
                 filteredConversations.map((c) => (
-                  <li
-                    key={c.id}
-                    className={`conversation-item ${openId === c.id ? "active" : ""}`}
-                    onClick={() => setOpenId(c.id)}
-                  >
+                  <li key={c.id}>
+                    <button
+                      type="button"
+                      className={`conversation-item ${openId === c.id ? "active" : ""}`}
+                      onClick={() => setOpenId(c.id)}
+                      aria-pressed={openId === c.id}
+                    >
                     <Avatar
                       name={c.other.displayName}
                       url={photos[c.other.userId]}
@@ -197,6 +199,7 @@ export function Messages({
                         {c.lastMessage ? c.lastMessage.body : "Connected. Say hello!"}
                       </p>
                     </div>
+                    </button>
                   </li>
                 ))
               )}
@@ -228,12 +231,10 @@ export function Messages({
                   textAlign: "center",
                 }}
               >
-                <div className="brand-mark-glow" style={{ width: 56, height: 56, fontSize: "1.75rem", marginBottom: 16 }}>
-                  💬
-                </div>
+                <img className="sidle-mark sidle-mark-empty" src="/brand/sidle-mark.svg" alt="" aria-hidden="true" />
                 <h2>Your Conversations</h2>
                 <p className="muted" style={{ maxWidth: 400 }}>
-                  Select a chat on the left to start writing, or discover classmates to expand your circle.
+                  Choose a conversation, or discover someone new when you feel like widening your circle.
                 </p>
               </div>
             )}

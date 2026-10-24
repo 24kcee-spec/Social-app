@@ -25,7 +25,7 @@ export function ShareModal({
   const shareUrl = `${baseUrl}/share/${targetType}/${targetId}`;
 
   const whatsappMessage = encodeURIComponent(
-    `Check out "${title}" on Social App (${areaOrLocation || "Bulawayo"}):\n${shareUrl}`
+    `Check out "${title}" on Sidle (${areaOrLocation || "Bulawayo"}):\n${shareUrl}`
   );
   const whatsappUrl = `https://wa.me/?text=${whatsappMessage}`;
 

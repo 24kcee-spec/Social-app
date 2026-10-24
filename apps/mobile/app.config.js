@@ -63,12 +63,13 @@ if (easProfile === "production") {
 
 module.exports = {
   expo: {
-    name: "Social app",
+    name: "Sidle",
     slug: "social-app",
     version: "0.0.1",
     orientation: "portrait",
+    icon: "./assets/icon.png",
     scheme: "socialapp",
-    plugins: [["expo-image-picker", { photosPermission: "Allow Social app to use your photos for your profile." }]],
+    plugins: [["expo-image-picker", { photosPermission: "Allow Sidle to use your photos for your profile." }]],
     ios: {
       supportsTablet: false,
       bundleIdentifier: "app.social.dev",
@@ -76,6 +77,7 @@ module.exports = {
     },
     android: {
       package: androidPackage,
+      adaptiveIcon: { foregroundImage: "./assets/adaptive-icon.png", backgroundColor: "#F7F6F2" },
       intentFilters: [
         {
           action: "VIEW",

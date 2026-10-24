@@ -113,7 +113,7 @@ export function Community() {
       {/* Header */}
       <div className="discover-header-bar">
         <div>
-          <span className="eyebrow">✦ LOCAL SPACES</span>
+          <span className="eyebrow">SIDLE · LOCAL SPACES</span>
           <h1 style={{ margin: "2px 0 0" }}>Community & Events</h1>
           <div className="discover-philosophy" style={{ marginTop: 8 }}>
             <span>Small groups, authentic campus meetups, and low-key events. No exact addresses published publicly.</span>
@@ -143,7 +143,7 @@ export function Community() {
               className={`nav-pill-btn ${view === "events" ? "active" : ""}`}
               onClick={() => setView("events")}
             >
-              <span>📅</span>
+              <span className="community-tab-icon community-tab-icon-events" aria-hidden="true">Events</span>
               <span>Events ({events.length})</span>
             </button>
             <button
@@ -152,7 +152,7 @@ export function Community() {
               className={`nav-pill-btn ${view === "groups" ? "active" : ""}`}
               onClick={() => setView("groups")}
             >
-              <span>👥</span>
+              <span className="community-tab-icon community-tab-icon-groups" aria-hidden="true">Groups</span>
               <span>Groups ({groups.length})</span>
             </button>
           </div>
@@ -221,7 +221,7 @@ export function Community() {
       ) : view === "events" ? (
         events.length === 0 ? (
           <div className="empty-state-card">
-            <div className="empty-state-icon">📅</div>
+            <img className="sidle-mark sidle-mark-empty community-empty-events" src="/brand/sidle-mark.svg" alt="" aria-hidden="true" />
             <h2>No upcoming events in this area yet</h2>
             <p className="muted" style={{ maxWidth: 440, margin: "0 auto 16px" }}>
               Join a group to suggest an activity, or create a new student group to host study sessions, gaming nights, or sports.
@@ -316,7 +316,7 @@ export function Community() {
         )
       ) : groups.length === 0 ? (
         <div className="empty-state-card">
-          <div className="empty-state-icon">👥</div>
+          <img className="sidle-mark sidle-mark-empty community-empty-groups" src="/brand/sidle-mark.svg" alt="" aria-hidden="true" />
           <h2>No groups formed yet in this area</h2>
           <p className="muted" style={{ maxWidth: 440, margin: "0 auto 16px" }}>
             Start the very first club or interest group on campus and invite classmates!

@@ -54,7 +54,7 @@ export function NotificationSettingsPage({ onBack }: { onBack: () => void }) {
         <div>
           <span className="eyebrow">YOUR PREFERENCES</span>
           <h1 id="notifications-settings-title">Notifications</h1>
-          <p className="muted">Choose the notification categories Social currently supports for your account.</p>
+          <p className="muted">Choose the notification categories Sidle currently supports for your account.</p>
         </div>
         <button type="button" className="secondary compact" onClick={onBack}>← Back to Settings</button>
       </header>

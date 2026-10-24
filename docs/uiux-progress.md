@@ -55,3 +55,18 @@ Files: apps/web/app/feature-polish.css, apps/web/app/layout.tsx.
 - Normalized fallback avatars to the cobalt design language without changing connection data or client contracts.
 - Added stronger keyboard focus states and reduced-motion-safe hover treatment.
 - Kept request acceptance/decline, messaging handoff, low-pressure persistence and API behavior unchanged.
+
+## Stage E4: done (Messages experience polish)
+- Responsive two-pane conversation surface refined for desktop and compact screens, with calmer hierarchy, improved focus/touch states and branded empty state.
+- Conversation rows are keyboard-accessible buttons rather than clickable list items.
+- Trust copy no longer overstates end-to-end encryption; wording reflects the implemented authenticated messaging experience.
+
+## Stage E5: done (Community experience polish)
+- Community/events now matches the Discover/Connections visual language: premium header, filters, cards, capacity treatment, action hierarchy and responsive layouts.
+- Platform-dependent emoji tabs/empty-state art replaced with Sidle/vector treatments and accessible UI states.
+
+## Brand release: Sidle
+- Public product identity is **Sidle** with the line **“Find your people. At your pace.”**
+- Brand palette is derived from the approved wordmark: cobalt `#1F4FD8`, companion blue `#A9BDF2`, ink `#14181F`, warm canvas `#F7F6F2`.
+- Added reusable mark/wordmark assets, favicon/app metadata, Apple icon, web manifest, social preview image and Expo mobile icon/adaptive icon.
+- Existing package IDs, Expo slug and `socialapp://` deep-link scheme remain unchanged in this release for backwards compatibility; these are implementation identifiers, not the public brand.

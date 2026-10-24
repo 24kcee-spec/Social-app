@@ -52,7 +52,7 @@ export function ShareClientView({
       const desc = "description" in preview ? preview.description : preview.bio;
       try {
         await navigator.share({
-          title: `${title} · Social App`,
+          title: `${title} · Sidle`,
           text: desc || undefined,
           url: canonicalUrl,
         });
@@ -66,7 +66,7 @@ export function ShareClientView({
     return (
       <div className="auth-wrapper">
         <div className="auth-card-editorial" style={{ textAlign: "center" }}>
-          <div className="auth-brand-badge">✦ Social Connection</div>
+          <div className="auth-brand-badge">SIDLE · LOW-PRESSURE CONNECTION</div>
           <h2 style={{ margin: "12px 0 6px" }}>
             {error === "private" ? "Private content" : "Link unavailable"}
           </h2>
@@ -76,7 +76,7 @@ export function ShareClientView({
               : "This share link may have expired, been removed, or does not exist."}
           </p>
           <Link href="/" className="auth-submit-btn" style={{ textDecoration: "none" }}>
-            Explore Social App
+            Explore Sidle
           </Link>
         </div>
       </div>
@@ -205,7 +205,7 @@ export function ShareClientView({
             onClick={openApp}
             style={{ margin: 0 }}
           >
-            {attemptedApp ? "Opening app…" : "Open in Social App"}
+            {attemptedApp ? "Opening app…" : "Open in Sidle"}
           </button>
 
           <Link
@@ -239,7 +239,7 @@ export function ShareClientView({
 
         <footer style={{ marginTop: 20, textAlign: "center" }}>
           <p className="muted" style={{ fontSize: "0.8rem", margin: 0 }}>
-            Social App is a low-pressure community platform. Your exact location is never shared.
+            Sidle is a low-pressure campus social space. Your exact location is never shared.
           </p>
         </footer>
       </div>

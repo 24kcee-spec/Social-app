@@ -52,9 +52,9 @@ export function SettingsOverview({
         <div>
           <span className="eyebrow">YOUR SPACE</span>
           <h1 id="settings-title">Settings</h1>
-          <p className="muted">Make Social feel right for you. Changes to your profile and privacy are saved through your account.</p>
+          <p className="muted">Make Sidle feel right for you. Changes to your profile and privacy are saved through your account.</p>
         </div>
-        <button className="secondary compact" type="button" onClick={onBack}>← Back to Social</button>
+        <button className="secondary compact" type="button" onClick={onBack}>← Back to Sidle</button>
       </header>
 
       <section className="settings-account-summary" aria-label="Signed-in account">
@@ -162,7 +162,7 @@ export function SettingsOverview({
         <div>
           <span className="eyebrow">PERSONALISE</span>
           <h2 id="appearance-title">Appearance</h2>
-          <p className="muted">Choose how Social looks on this device. System follows your operating-system preference.</p>
+          <p className="muted">Choose how Sidle looks on this device. System follows your operating-system preference.</p>
         </div>
         <div className="settings-theme-options" role="group" aria-label="Appearance theme">
           {THEMES.map((item) => (

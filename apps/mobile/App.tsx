@@ -707,7 +707,7 @@ function MobileSettingsOverview({
   const confirmDeleteAccount = () => {
     Alert.alert(
       "Delete account and personal data?",
-      "This permanently deletes your Social account and cannot be undone. Make sure you really want to continue.",
+      "This permanently deletes your Sidle account and cannot be undone. Make sure you really want to continue.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -891,7 +891,7 @@ function MobileSettingsOverview({
         )}
         <View style={{ borderTopWidth: 1, borderTopColor: colors.line, paddingTop: space[3], gap: 8 }}>
           <Text style={[styles.h2, { color: colors.text }]}>Delete account</Text>
-          <Text style={[styles.muted, { color: colors.textMuted }]}>Permanently delete your Social account and personal data. This cannot be undone.</Text>
+          <Text style={[styles.muted, { color: colors.textMuted }]}>Permanently delete your Sidle account and personal data. This cannot be undone.</Text>
           <Button
             label={deletingAccount ? "Deleting account…" : "Delete my account"}
             danger

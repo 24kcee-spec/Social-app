@@ -93,7 +93,7 @@ export function NotificationSettingsScreen({ onBack }: { onBack: () => void }) {
           </Text>
           <Text style={{ color: colors.text, fontSize: type.title.size, fontWeight: "800" }}>Notifications</Text>
           <Text style={{ color: colors.textMuted, lineHeight: 20 }}>
-            Choose the notification categories Social currently supports for your account.
+            Choose the notification categories Sidle currently supports for your account.
           </Text>
         </View>
         <Button label="Back" secondary compact onPress={onBack} />

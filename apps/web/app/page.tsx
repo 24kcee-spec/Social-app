@@ -135,7 +135,7 @@ export default function Home() {
     return (
       <div className="auth-wrapper">
         <div className="auth-card-editorial" style={{ textAlign: "center" }}>
-          <div className="brand-mark" style={{ margin: "0 auto 16px" }}>S</div>
+          <img className="sidle-mark sidle-mark-loading" src="/brand/sidle-mark.svg" alt="Sidle" />
           <h2>Loading your space…</h2>
           <p className="muted">Retrieving your account details.</p>
         </div>
@@ -231,7 +231,7 @@ function AuthForm() {
     <div className="auth-wrapper">
       <div className="auth-card-editorial">
         <header>
-          <div className="auth-brand-badge">S · SOCIAL</div>
+          <div className="auth-brand-badge">SIDLE · CAMPUS CONNECTION</div>
           <h1>{mode === "signin" ? "Welcome back" : mode === "signup" ? "Join the community" : "Reset your password"}</h1>
           <p className="muted">
             {mode === "signin"
@@ -460,7 +460,7 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
 
   useEffect(() => {
     try {
-      const saved = window.localStorage.getItem("social-app-theme");
+      const saved = window.localStorage.getItem("sidle-theme") ?? window.localStorage.getItem("social-app-theme");
       if (saved === "system" || saved === "light" || saved === "dark") setThemePreference(saved);
     } catch {
       // Private browsing or storage restrictions should not prevent app use.
@@ -472,7 +472,7 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
     if (themePreference === "system") root.removeAttribute("data-theme");
     else root.dataset.theme = themePreference;
     try {
-      window.localStorage.setItem("social-app-theme", themePreference);
+      window.localStorage.setItem("sidle-theme", themePreference);
     } catch {
       // The selected appearance still applies for this session.
     }
@@ -581,10 +581,10 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
       <header className="app-header" role="banner">
         <div className="app-header-inner">
           <button type="button" className="brand-group brand-home-button" onClick={() => navigateTab("discover")} aria-label="Go to Discover">
-            <div className="brand-mark-glow" aria-hidden="true">S</div>
+            <img className="sidle-mark sidle-mark-header" src="/brand/sidle-mark.svg" alt="" aria-hidden="true" />
             <div className="brand-text-wrap">
-              <span className="brand-title">Social</span>
-              <span className="brand-tagline">Low-pressure connection</span>
+              <span className="brand-title sidle-wordmark">sidle</span>
+              <span className="brand-tagline">Find your people. At your pace.</span>
             </div>
           </button>
 
@@ -734,7 +734,7 @@ function Account({ me, sessions, reload }: { me: Me; sessions: DeviceSession[]; 
 
         {profile?.onboardingCompleted && (
           <p className="footer-note">
-            <span>✦ Social · Designed for authentic campus connection without vanity metrics or pressure.</span>
+            <span><strong>Sidle</strong> · Find your people. At your pace.</span>
           </p>
         )}
       </main>
