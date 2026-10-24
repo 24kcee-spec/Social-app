@@ -8,6 +8,20 @@ try {
   if (err?.code !== "ENOENT") throw err;
 }
 
+const shellRedirects = [
+  ["/discover", "/?tab=discover"],
+  ["/connections", "/?tab=connections"],
+  ["/messages", "/?tab=messages"],
+  ["/community", "/?tab=community"],
+  ["/profile", "/?view=profile-preview"],
+  ["/profile/edit", "/?tab=profile&section=profile-details"],
+  ["/settings", "/?view=settings"],
+  ["/settings/privacy", "/?tab=profile&section=privacy-settings"],
+  ["/settings/account", "/?tab=profile&section=account-sessions"],
+  ["/settings/data", "/?tab=profile&section=account-data"],
+  ["/settings/notifications", "/?view=notifications"],
+].map(([source, destination]) => ({ source, destination, permanent: false }));
+
 /** @type {import('next').NextConfig} */
 export default {
   output: "standalone",
@@ -17,5 +31,8 @@ export default {
     NEXT_PUBLIC_SUPABASE_URL: process.env.SUPABASE_URL ?? "",
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.SUPABASE_PUBLISHABLE_KEY ?? "",
     NEXT_PUBLIC_API_URL: process.env.PUBLIC_API_URL || "http://localhost:4000",
+  },
+  async redirects() {
+    return shellRedirects;
   },
 };
