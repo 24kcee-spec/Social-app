@@ -102,6 +102,13 @@ export function createProfileClient(config: ProfileClientConfig) {
       request<Profile>('/me/onboarding', { method: 'PUT', body: input }),
     registerMedia: (input: ProfileMediaRegistrationInput) =>
       request<ProfileMedia>('/me/profile/media', { method: 'POST', body: input }),
+    replaceMedia: (id: string, input: ProfileMediaRegistrationInput) =>
+      request<ProfileMedia>(`/me/profile/media/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        body: input,
+      }),
+    makePrimaryMedia: (id: string) =>
+      request<Profile>(`/me/profile/media/${encodeURIComponent(id)}/primary`, { method: 'PUT' }),
     deleteMedia: async (id: string) => {
       const token = await config.getAccessToken();
       let response: Response;

@@ -1,14 +1,39 @@
-import type { ContentVisibility, Interest, InterestStrength, MessagePermission, Profile, ProfileMedia, PromptAnswer, PromptDefinition, SocialStyle, StudentVerificationResult, VerificationLevel } from "@sp/types";
-import type { InterestSelectionsRequest, OnboardingInput, ProfileMediaRegistrationInput, ProfileUpdateInput, PromptAnswersRequest, StudentVerificationInput } from "@sp/validation";
-import type { SqlRunner } from "../migrate";
-import { getInstitutionName, verifyStudentCredentials } from "./verification";
+import type {
+  ContentVisibility,
+  Interest,
+  InterestStrength,
+  MessagePermission,
+  Profile,
+  ProfileMedia,
+  PromptAnswer,
+  PromptDefinition,
+  SocialStyle,
+  StudentVerificationResult,
+  VerificationLevel,
+} from '@sp/types';
+import type {
+  InterestSelectionsRequest,
+  OnboardingInput,
+  ProfileMediaRegistrationInput,
+  ProfileUpdateInput,
+  PromptAnswersRequest,
+  StudentVerificationInput,
+} from '@sp/validation';
+import type { SqlRunner } from '../migrate';
+import { getInstitutionName, verifyStudentCredentials } from './verification';
 
 export class ProfileValidationError extends Error {}
 export class ProfileMediaLimitError extends Error {}
 
-const SOCIAL_STYLES = new Set<SocialStyle>(["small_group", "one_to_one", "text_first", "voice_first", "low_pressure"]);
-const MESSAGE_PERMISSIONS = new Set<MessagePermission>(["everyone", "connections", "nobody"]);
-const CONTENT_VISIBILITIES = new Set<ContentVisibility>(["public", "connections", "private"]);
+const SOCIAL_STYLES = new Set<SocialStyle>([
+  'small_group',
+  'one_to_one',
+  'text_first',
+  'voice_first',
+  'low_pressure',
+]);
+const MESSAGE_PERMISSIONS = new Set<MessagePermission>(['everyone', 'connections', 'nobody']);
+const CONTENT_VISIBILITIES = new Set<ContentVisibility>(['public', 'connections', 'private']);
 
 const text = (value: unknown): string => String(value);
 
@@ -23,15 +48,24 @@ function mapPrivacy(row: Record<string, unknown>) {
 
 function mapMedia(row: Record<string, unknown>): ProfileMedia {
   return {
-    id: text(row.id), kind: row.kind as ProfileMedia["kind"], storagePath: text(row.storage_path), thumbnailPath: text(row.thumbnail_path),
-    contentType: text(row.content_type), sizeBytes: Number(row.size_bytes), width: Number(row.width), height: Number(row.height),
-    sortOrder: Number(row.sort_order), createdAt: new Date(row.created_at as string | Date).toISOString(),
+    id: text(row.id),
+    kind: row.kind as ProfileMedia['kind'],
+    storagePath: text(row.storage_path),
+    thumbnailPath: text(row.thumbnail_path),
+    contentType: text(row.content_type),
+    sizeBytes: Number(row.size_bytes),
+    width: Number(row.width),
+    height: Number(row.height),
+    sortOrder: Number(row.sort_order),
+    createdAt: new Date(row.created_at as string | Date).toISOString(),
   };
 }
 
 export function createProfileStore(db: SqlRunner) {
   async function ensureProfile(userId: string) {
-    await db.query(`insert into profiles (user_id) values ($1) on conflict (user_id) do nothing`, [userId]);
+    await db.query(`insert into profiles (user_id) values ($1) on conflict (user_id) do nothing`, [
+      userId,
+    ]);
   }
 
   async function fetchProfile(userId: string): Promise<Profile> {
@@ -43,61 +77,120 @@ export function createProfileStore(db: SqlRunner) {
     );
     const row = p.rows[0]!;
     const userEmail = (row.email as string | null) ?? null;
-    let currentVerif = (row.verification_level as VerificationLevel) || "unverified";
+    let currentVerif = (row.verification_level as VerificationLevel) || 'unverified';
 
     // Never promote from an email string alone. Legacy/unmatched proof fails closed.
-    if (currentVerif === "student_verified" && (!row.verified_student_email || row.verified_student_email !== userEmail)) {
-      await db.query(`update profiles set verification_level = 'unverified', verified_student_email = null where user_id = $1`, [userId]);
-      currentVerif = "unverified";
+    if (
+      currentVerif === 'student_verified' &&
+      (!row.verified_student_email || row.verified_student_email !== userEmail)
+    ) {
+      await db.query(
+        `update profiles set verification_level = 'unverified', verified_student_email = null where user_id = $1`,
+        [userId],
+      );
+      currentVerif = 'unverified';
     }
 
-    const i = await db.query<Record<string, unknown>>(`select i.id, i.name, i.category, i.slug, i.sort_order, ui.strength from user_interests ui join interests i on i.id=ui.interest_id where ui.user_id=$1 and i.active=true order by i.category,i.sort_order,i.name`, [userId]);
-    const prompts = await db.query<Record<string, unknown>>(`select a.prompt_id, c.prompt, c.category, a.answer, a.updated_at from prompt_answers a join prompt_catalog c on c.id=a.prompt_id where a.user_id=$1 and c.active=true order by c.sort_order,c.id`, [userId]);
-    const media = await db.query<Record<string, unknown>>(`select id, kind::text, storage_path, thumbnail_path, content_type, size_bytes, width, height, sort_order, created_at from profile_media where user_id=$1 order by sort_order,created_at`, [userId]);
+    const i = await db.query<Record<string, unknown>>(
+      `select i.id, i.name, i.category, i.slug, i.sort_order, ui.strength from user_interests ui join interests i on i.id=ui.interest_id where ui.user_id=$1 and i.active=true order by i.category,i.sort_order,i.name`,
+      [userId],
+    );
+    const prompts = await db.query<Record<string, unknown>>(
+      `select a.prompt_id, c.prompt, c.category, a.answer, a.updated_at from prompt_answers a join prompt_catalog c on c.id=a.prompt_id where a.user_id=$1 and c.active=true order by c.sort_order,c.id`,
+      [userId],
+    );
+    const media = await db.query<Record<string, unknown>>(
+      `select id, kind::text, storage_path, thumbnail_path, content_type, size_bytes, width, height, sort_order, created_at from profile_media where user_id=$1 order by sort_order,created_at`,
+      [userId],
+    );
     return {
-      userId: text(row.user_id), displayName: text(row.display_name), bio: text(row.bio),
-      socialStyles: (row.social_styles as SocialStyle[]) ?? ["low_pressure"], privacy: mapPrivacy(row),
-      onboardingCompleted: Boolean(row.onboarding_completed), verificationLevel: currentVerif,
-      createdAt: new Date(row.created_at as string | Date).toISOString(), updatedAt: new Date(row.updated_at as string | Date).toISOString(),
-      interests: i.rows.map((r: Record<string, unknown>) => ({ id: text(r.id), name: text(r.name), category: text(r.category), slug: text(r.slug), sortOrder: Number(r.sort_order), strength: Number(r.strength) as InterestStrength })),
-      prompts: prompts.rows.map((r: Record<string, unknown>) => ({ promptId: text(r.prompt_id), prompt: text(r.prompt), category: text(r.category), answer: text(r.answer), updatedAt: new Date(r.updated_at as string | Date).toISOString() })),
+      userId: text(row.user_id),
+      displayName: text(row.display_name),
+      bio: text(row.bio),
+      socialStyles: (row.social_styles as SocialStyle[]) ?? ['low_pressure'],
+      privacy: mapPrivacy(row),
+      onboardingCompleted: Boolean(row.onboarding_completed),
+      verificationLevel: currentVerif,
+      createdAt: new Date(row.created_at as string | Date).toISOString(),
+      updatedAt: new Date(row.updated_at as string | Date).toISOString(),
+      interests: i.rows.map((r: Record<string, unknown>) => ({
+        id: text(r.id),
+        name: text(r.name),
+        category: text(r.category),
+        slug: text(r.slug),
+        sortOrder: Number(r.sort_order),
+        strength: Number(r.strength) as InterestStrength,
+      })),
+      prompts: prompts.rows.map((r: Record<string, unknown>) => ({
+        promptId: text(r.prompt_id),
+        prompt: text(r.prompt),
+        category: text(r.category),
+        answer: text(r.answer),
+        updatedAt: new Date(r.updated_at as string | Date).toISOString(),
+      })),
       media: media.rows.map(mapMedia),
     };
   }
 
   function assertBusinessValues(input: ProfileUpdateInput) {
-    if (input.socialStyles && (input.socialStyles.length === 0 || input.socialStyles.some((x) => !SOCIAL_STYLES.has(x)))) throw new ProfileValidationError("Choose at least one valid social style");
-    if (input.privacy && (!MESSAGE_PERMISSIONS.has(input.privacy.messagePermission) || !CONTENT_VISIBILITIES.has(input.privacy.storyVisibility) || !CONTENT_VISIBILITIES.has(input.privacy.activityVisibility))) throw new ProfileValidationError("Invalid privacy settings");
+    if (
+      input.socialStyles &&
+      (input.socialStyles.length === 0 || input.socialStyles.some((x) => !SOCIAL_STYLES.has(x)))
+    )
+      throw new ProfileValidationError('Choose at least one valid social style');
+    if (
+      input.privacy &&
+      (!MESSAGE_PERMISSIONS.has(input.privacy.messagePermission) ||
+        !CONTENT_VISIBILITIES.has(input.privacy.storyVisibility) ||
+        !CONTENT_VISIBILITIES.has(input.privacy.activityVisibility))
+    )
+      throw new ProfileValidationError('Invalid privacy settings');
   }
 
   async function knownInterests(input: InterestSelectionsRequest) {
     const ids = input.interests.map((x) => x.interestId);
     if (!ids.length) return;
-    const found = await db.query<{ id: string }>(`select id from interests where active=true and id=any($1::uuid[])`, [ids]);
+    const found = await db.query<{ id: string }>(
+      `select id from interests where active=true and id=any($1::uuid[])`,
+      [ids],
+    );
     const set = new Set(found.rows.map((r: { id: string }) => r.id));
-    if (ids.find((id) => !set.has(id))) throw new ProfileValidationError("One or more selected interests are unavailable");
+    if (ids.find((id) => !set.has(id)))
+      throw new ProfileValidationError('One or more selected interests are unavailable');
   }
 
   async function knownPrompts(input: PromptAnswersRequest) {
     const ids = input.answers.map((x) => x.promptId);
     if (!ids.length) return;
-    const found = await db.query<{ id: string }>(`select id from prompt_catalog where active=true and id=any($1::text[])`, [ids]);
+    const found = await db.query<{ id: string }>(
+      `select id from prompt_catalog where active=true and id=any($1::text[])`,
+      [ids],
+    );
     const set = new Set(found.rows.map((r: { id: string }) => r.id));
-    if (ids.find((id) => !set.has(id))) throw new ProfileValidationError("One or more selected prompts are unavailable");
+    if (ids.find((id) => !set.has(id)))
+      throw new ProfileValidationError('One or more selected prompts are unavailable');
   }
 
+  // Data-modifying CTEs need an explicit dependency. Without reading the
+  // deletion result, PostgreSQL may insert first and hit the existing unique key.
   async function replaceInterests(userId: string, input: InterestSelectionsRequest) {
     await knownInterests(input);
     const ids = input.interests.map((x) => x.interestId);
     const strengths = input.interests.map((x) => x.strength);
-    await db.query(`with deleted as (delete from user_interests where user_id=$1) insert into user_interests (user_id,interest_id,strength) select $1, x.id, x.strength from unnest($2::uuid[],$3::smallint[]) as x(id,strength)`, [userId, ids, strengths]);
+    await db.query(
+      `with deleted as (delete from user_interests where user_id=$1 returning user_id) insert into user_interests (user_id,interest_id,strength) select $1, x.id, x.strength from unnest($2::uuid[],$3::smallint[]) as x(id,strength) where (select count(*) from deleted)>=0`,
+      [userId, ids, strengths],
+    );
   }
 
   async function replacePrompts(userId: string, input: PromptAnswersRequest) {
     await knownPrompts(input);
     const ids = input.answers.map((x) => x.promptId);
     const answers = input.answers.map((x) => x.answer);
-    await db.query(`with deleted as (delete from prompt_answers where user_id=$1) insert into prompt_answers (user_id,prompt_id,answer) select $1,x.prompt_id,x.answer from unnest($2::text[],$3::text[]) as x(prompt_id,answer)`, [userId, ids, answers]);
+    await db.query(
+      `with deleted as (delete from prompt_answers where user_id=$1 returning user_id) insert into prompt_answers (user_id,prompt_id,answer) select $1,x.prompt_id,x.answer from unnest($2::text[],$3::text[]) as x(prompt_id,answer) where (select count(*) from deleted)>=0`,
+      [userId, ids, answers],
+    );
   }
 
   return {
@@ -106,15 +199,40 @@ export function createProfileStore(db: SqlRunner) {
     async updateProfile(userId: string, input: ProfileUpdateInput): Promise<Profile> {
       assertBusinessValues(input);
       await ensureProfile(userId);
-      const current = await db.query<Record<string, unknown>>(`select display_name,bio,social_styles,discoverable,message_permission::text,story_visibility::text,activity_visibility::text from profiles where user_id=$1`, [userId]);
+      const current = await db.query<Record<string, unknown>>(
+        `select display_name,bio,social_styles,discoverable,message_permission::text,story_visibility::text,activity_visibility::text from profiles where user_id=$1`,
+        [userId],
+      );
       const row = current.rows[0]!;
       const privacy = input.privacy ?? mapPrivacy(row);
-      await db.query(`update profiles set display_name=$2,bio=$3,social_styles=$4,discoverable=$5,message_permission=$6,story_visibility=$7,activity_visibility=$8,updated_at=now() where user_id=$1`, [userId, input.displayName ?? text(row.display_name), input.bio ?? text(row.bio), input.socialStyles ?? row.social_styles, privacy.discoverable, privacy.messagePermission, privacy.storyVisibility, privacy.activityVisibility]);
+      await db.query(
+        `update profiles set display_name=$2,bio=$3,social_styles=$4,discoverable=$5,message_permission=$6,story_visibility=$7,activity_visibility=$8,updated_at=now() where user_id=$1`,
+        [
+          userId,
+          input.displayName ?? text(row.display_name),
+          input.bio ?? text(row.bio),
+          input.socialStyles ?? row.social_styles,
+          privacy.discoverable,
+          privacy.messagePermission,
+          privacy.storyVisibility,
+          privacy.activityVisibility,
+        ],
+      );
       return fetchProfile(userId);
     },
 
-    async updateInterests(userId: string, input: InterestSelectionsRequest): Promise<Profile> { await ensureProfile(userId); await replaceInterests(userId, input); await db.query(`update profiles set updated_at=now() where user_id=$1`, [userId]); return fetchProfile(userId); },
-    async updatePrompts(userId: string, input: PromptAnswersRequest): Promise<Profile> { await ensureProfile(userId); await replacePrompts(userId, input); await db.query(`update profiles set updated_at=now() where user_id=$1`, [userId]); return fetchProfile(userId); },
+    async updateInterests(userId: string, input: InterestSelectionsRequest): Promise<Profile> {
+      await ensureProfile(userId);
+      await replaceInterests(userId, input);
+      await db.query(`update profiles set updated_at=now() where user_id=$1`, [userId]);
+      return fetchProfile(userId);
+    },
+    async updatePrompts(userId: string, input: PromptAnswersRequest): Promise<Profile> {
+      await ensureProfile(userId);
+      await replacePrompts(userId, input);
+      await db.query(`update profiles set updated_at=now() where user_id=$1`, [userId]);
+      return fetchProfile(userId);
+    },
 
     async completeOnboarding(userId: string, input: OnboardingInput): Promise<Profile> {
       await knownInterests({ interests: input.interests });
@@ -130,37 +248,168 @@ export function createProfileStore(db: SqlRunner) {
            on conflict (user_id) do update set display_name=excluded.display_name,bio=excluded.bio,social_styles=excluded.social_styles,discoverable=excluded.discoverable,message_permission=excluded.message_permission,story_visibility=excluded.story_visibility,activity_visibility=excluded.activity_visibility,onboarding_completed=true,updated_at=now()
            returning user_id
          ),
-         deleted_i as (delete from user_interests where user_id=$1),
-         inserted_i as (insert into user_interests (user_id,interest_id,strength) select $1,x.id,x.strength from unnest($9::uuid[],$10::smallint[]) as x(id,strength)),
-         deleted_p as (delete from prompt_answers where user_id=$1),
-         inserted_p as (insert into prompt_answers (user_id,prompt_id,answer) select $1,x.prompt_id,x.answer from unnest($11::text[],$12::text[]) as x(prompt_id,answer))
+         deleted_i as (delete from user_interests where user_id=$1 returning user_id),
+         inserted_i as (insert into user_interests (user_id,interest_id,strength) select $1,x.id,x.strength from unnest($9::uuid[],$10::smallint[]) as x(id,strength) where (select count(*) from deleted_i)>=0),
+         deleted_p as (delete from prompt_answers where user_id=$1 returning user_id),
+         inserted_p as (insert into prompt_answers (user_id,prompt_id,answer) select $1,x.prompt_id,x.answer from unnest($11::text[],$12::text[]) as x(prompt_id,answer) where (select count(*) from deleted_p)>=0)
          select 1 as ok from upsert_profile`,
-        [userId,input.displayName,input.bio,input.socialStyles,input.privacy.discoverable,input.privacy.messagePermission,input.privacy.storyVisibility,input.privacy.activityVisibility,ids,strengths,promptIds,answers],
+        [
+          userId,
+          input.displayName,
+          input.bio,
+          input.socialStyles,
+          input.privacy.discoverable,
+          input.privacy.messagePermission,
+          input.privacy.storyVisibility,
+          input.privacy.activityVisibility,
+          ids,
+          strengths,
+          promptIds,
+          answers,
+        ],
       );
       return fetchProfile(userId);
     },
 
-    async listInterests(): Promise<Interest[]> { const { rows } = await db.query<Record<string, unknown>>(`select id,name,category,slug,sort_order from interests where active=true order by category,sort_order,name`); return rows.map((r: Record<string, unknown>) => ({ id:text(r.id),name:text(r.name),category:text(r.category),slug:text(r.slug),sortOrder:Number(r.sort_order) })); },
-    async listPrompts(): Promise<PromptDefinition[]> { const { rows } = await db.query<Record<string, unknown>>(`select id,prompt,category,sort_order,active from prompt_catalog where active=true order by sort_order,id`); return rows.map((r: Record<string, unknown>) => ({ id:text(r.id),prompt:text(r.prompt),category:text(r.category),sortOrder:Number(r.sort_order),active:Boolean(r.active) })); },
+    async listInterests(): Promise<Interest[]> {
+      const { rows } = await db.query<Record<string, unknown>>(
+        `select id,name,category,slug,sort_order from interests where active=true order by category,sort_order,name`,
+      );
+      return rows.map((r: Record<string, unknown>) => ({
+        id: text(r.id),
+        name: text(r.name),
+        category: text(r.category),
+        slug: text(r.slug),
+        sortOrder: Number(r.sort_order),
+      }));
+    },
+    async listPrompts(): Promise<PromptDefinition[]> {
+      const { rows } = await db.query<Record<string, unknown>>(
+        `select id,prompt,category,sort_order,active from prompt_catalog where active=true order by sort_order,id`,
+      );
+      return rows.map((r: Record<string, unknown>) => ({
+        id: text(r.id),
+        prompt: text(r.prompt),
+        category: text(r.category),
+        sortOrder: Number(r.sort_order),
+        active: Boolean(r.active),
+      }));
+    },
 
     async addMedia(userId: string, input: ProfileMediaRegistrationInput): Promise<ProfileMedia> {
-      if (!input.storagePath.startsWith(`${userId}/`) || !input.thumbnailPath.startsWith(`${userId}/`) || input.storagePath.includes("..") || input.thumbnailPath.includes("..")) throw new ProfileValidationError("Media paths must belong to the signed-in user");
-      const existing = await db.query<{ count: string }>(`select count(*)::text as count from profile_media where user_id=$1`, [userId]);
-      if (Number(existing.rows[0]?.count ?? 0) >= 6) throw new ProfileMediaLimitError("You can keep up to 6 profile images");
-      const dup = await db.query(`select id from profile_media where user_id=$1 and (storage_path=$2 or thumbnail_path=$3 or storage_path=$3 or thumbnail_path=$2)`, [userId,input.storagePath,input.thumbnailPath]);
-      if (dup.rows.length) throw new ProfileValidationError("That media item is already registered");
-      const { rows } = await db.query<Record<string, unknown>>(`insert into profile_media (user_id,kind,storage_path,thumbnail_path,content_type,size_bytes,width,height,sort_order) values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning id,kind::text,storage_path,thumbnail_path,content_type,size_bytes,width,height,sort_order,created_at`, [userId,input.kind,input.storagePath,input.thumbnailPath,input.contentType,input.sizeBytes,input.width,input.height,input.sortOrder]);
+      if (
+        !input.storagePath.startsWith(`${userId}/`) ||
+        !input.thumbnailPath.startsWith(`${userId}/`) ||
+        input.storagePath.includes('..') ||
+        input.thumbnailPath.includes('..')
+      )
+        throw new ProfileValidationError('Media paths must belong to the signed-in user');
+      const existing = await db.query<{ count: string }>(
+        `select count(*)::text as count from profile_media where user_id=$1`,
+        [userId],
+      );
+      if (Number(existing.rows[0]?.count ?? 0) >= 6)
+        throw new ProfileMediaLimitError('You can keep up to 6 profile images');
+      const dup = await db.query(
+        `select id from profile_media where user_id=$1 and (storage_path=$2 or thumbnail_path=$3 or storage_path=$3 or thumbnail_path=$2)`,
+        [userId, input.storagePath, input.thumbnailPath],
+      );
+      if (dup.rows.length)
+        throw new ProfileValidationError('That media item is already registered');
+      const { rows } = await db.query<Record<string, unknown>>(
+        `insert into profile_media (user_id,kind,storage_path,thumbnail_path,content_type,size_bytes,width,height,sort_order) values ($1,$2,$3,$4,$5,$6,$7,$8,$9) returning id,kind::text,storage_path,thumbnail_path,content_type,size_bytes,width,height,sort_order,created_at`,
+        [
+          userId,
+          input.kind,
+          input.storagePath,
+          input.thumbnailPath,
+          input.contentType,
+          input.sizeBytes,
+          input.width,
+          input.height,
+          input.sortOrder,
+        ],
+      );
       return mapMedia(rows[0]!);
     },
-    async deleteMedia(userId: string, mediaId: string): Promise<boolean> { const { rows } = await db.query(`delete from profile_media where id=$1 and user_id=$2 returning id`, [mediaId,userId]); return rows.length>0; },
+    async deleteMedia(userId: string, mediaId: string): Promise<boolean> {
+      const { rows } = await db.query(
+        `delete from profile_media where id=$1 and user_id=$2 returning id`,
+        [mediaId, userId],
+      );
+      return rows.length > 0;
+    },
 
-    async verifyStudent(userId: string, input: StudentVerificationInput, verifiedEmail: string | null): Promise<StudentVerificationResult> {
+    async replaceMedia(
+      userId: string,
+      mediaId: string,
+      input: ProfileMediaRegistrationInput,
+    ): Promise<ProfileMedia | null> {
+      if (
+        !input.storagePath.startsWith(`${userId}/`) ||
+        !input.thumbnailPath.startsWith(`${userId}/`) ||
+        input.storagePath.includes('..') ||
+        input.thumbnailPath.includes('..') ||
+        input.storagePath === input.thumbnailPath
+      )
+        throw new ProfileValidationError('Media paths must belong to the signed-in user');
+      // New immutable objects are uploaded first. Preserve this row's identity/order and
+      // never remove the old photo to make room, including at the six-photo limit.
+      const duplicate = await db.query(
+        `select id from profile_media where user_id=$1 and (storage_path=any($2::text[]) or thumbnail_path=any($2::text[]))`,
+        [userId, [input.storagePath, input.thumbnailPath]],
+      );
+      if (duplicate.rows.length) throw new ProfileValidationError('Choose a newly uploaded photo');
+      const { rows } = await db.query<Record<string, unknown>>(
+        `update profile_media set kind=$3,storage_path=$4,thumbnail_path=$5,content_type=$6,size_bytes=$7,width=$8,height=$9 where user_id=$1 and id=$2 returning id,kind::text,storage_path,thumbnail_path,content_type,size_bytes,width,height,sort_order,created_at`,
+        [
+          userId,
+          mediaId,
+          input.kind,
+          input.storagePath,
+          input.thumbnailPath,
+          input.contentType,
+          input.sizeBytes,
+          input.width,
+          input.height,
+        ],
+      );
+      return rows[0] ? mapMedia(rows[0]) : null;
+    },
+
+    async makePrimaryMedia(userId: string, mediaId: string): Promise<boolean> {
+      // Reinsert the same rows/IDs within one atomic statement so the immediate
+      // unique (user_id, sort_order) index never sees an intermediate slot collision.
+      // Storage bytes and every other member's records are untouched.
+      const { rows } = await db.query(
+        `with removed as (
+        delete from profile_media where user_id=$1 and exists (select 1 from profile_media where user_id=$1 and id=$2) returning *
+      ), ranked as (
+        select *, (row_number() over (order by (id=$2::uuid) desc,sort_order,created_at,id)-1)::smallint as position from removed
+      ) insert into profile_media (id,user_id,kind,storage_path,thumbnail_path,content_type,size_bytes,width,height,sort_order,created_at)
+        select id,user_id,kind,storage_path,thumbnail_path,content_type,size_bytes,width,height,position,created_at from ranked returning id`,
+        [userId, mediaId],
+      );
+      return rows.length > 0;
+    },
+
+    async verifyStudent(
+      userId: string,
+      input: StudentVerificationInput,
+      verifiedEmail: string | null,
+    ): Promise<StudentVerificationResult> {
       const evaluation = verifyStudentCredentials(input, verifiedEmail);
       if (!evaluation.verified) {
         return evaluation;
       }
-      const proof = await db.query(`update profiles set verification_level = 'student_verified', verified_student_email = $2 where user_id = $1 and exists (select 1 from users where id = $1 and email = $2) returning user_id`, [userId, verifiedEmail]);
-      if (!proof.rows.length) throw new ProfileValidationError("Your sign-in email changed. Sign in again before verifying.");
+      const proof = await db.query(
+        `update profiles set verification_level = 'student_verified', verified_student_email = $2 where user_id = $1 and exists (select 1 from users where id = $1 and email = $2) returning user_id`,
+        [userId, verifiedEmail],
+      );
+      if (!proof.rows.length)
+        throw new ProfileValidationError(
+          'Your sign-in email changed. Sign in again before verifying.',
+        );
       return evaluation;
     },
 
@@ -171,9 +420,9 @@ export function createProfileStore(db: SqlRunner) {
         [userId],
       );
       const r = rows[0];
-      const level = (r?.verification_level as VerificationLevel) || "unverified";
+      const level = (r?.verification_level as VerificationLevel) || 'unverified';
       const inst = getInstitutionName(r?.email);
-      if (level === "student_verified") {
+      if (level === 'student_verified') {
         return {
           verified: true,
           level,
@@ -181,19 +430,22 @@ export function createProfileStore(db: SqlRunner) {
           message: `Academic email access confirmed for ${inst}. This does not verify current enrollment.`,
         };
       }
-      if (level === "trusted") {
+      if (level === 'trusted') {
         return {
           verified: true,
           level,
           institution: inst,
-          message: "Trusted community standing.",
+          message: 'Trusted community standing.',
         };
       }
       return {
         verified: false,
         level,
         institution: inst,
-        message: level === "email_verified" ? "Email verified. Provide a student email to get your Campus Verified badge." : "Unverified account.",
+        message:
+          level === 'email_verified'
+            ? 'Email verified. Provide a student email to get your Campus Verified badge.'
+            : 'Unverified account.',
       };
     },
   };

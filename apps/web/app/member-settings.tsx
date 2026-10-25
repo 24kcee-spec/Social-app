@@ -6,7 +6,10 @@ import { getConnectionsClient } from '../lib/connections';
 import { getAuth, errorMessage } from '../lib/auth';
 import { SocialContextEditor } from './social-context';
 
-export function MemberSettings() {
+export type MemberSettingsSection =
+  'overview' | 'profile' | 'connections' | 'messaging' | 'appearance' | 'security' | 'data';
+
+export function MemberSettings({ section = 'connections' }: { section?: MemberSettingsSection }) {
   const [lowPressure, setLowPressure] = useState(false);
   const [prefs, setPrefs] = useState<MemberPreferences | null>(null);
   const [details, setDetails] = useState<ProfileDetails | null>(null);
@@ -41,9 +44,19 @@ export function MemberSettings() {
   }
   return (
     <>
-      <section className="connection-settings" aria-labelledby="connection-preferences-title">
-        <h2 id="connection-preferences-title">Connection preferences</h2>
-        <label className="switch-row">
+      <section
+        className="connection-settings"
+        hidden={!(['connections', 'messaging', 'data'] as string[]).includes(section)}
+        aria-labelledby="connection-preferences-title"
+      >
+        <h2 id="connection-preferences-title">
+          {section === 'messaging'
+            ? 'Messages & notifications'
+            : section === 'data'
+              ? 'Your data & media'
+              : 'Connection preferences'}
+        </h2>
+        <label className="switch-row" hidden={section !== 'connections'}>
           <div>
             <strong>Low-pressure mode</strong>
             <p className="muted">
@@ -65,7 +78,7 @@ export function MemberSettings() {
           />
         </label>
         {prefs && (
-          <>
+          <div hidden={section !== 'messaging'}>
             <label className="switch-row">
               <div>
                 <strong>Share read receipts</strong>
@@ -155,9 +168,9 @@ export function MemberSettings() {
               Quiet hours use UTC and suppress configured message push delivery. In-app activity
               remains visible. Device/provider delivery still requires configuration.
             </p>
-          </>
+          </div>
         )}
-        <div className="card-actions">
+        <div className="card-actions" hidden={section !== 'data'}>
           <button
             className="secondary"
             disabled={busy}
@@ -187,19 +200,19 @@ export function MemberSettings() {
             Live location
           </a>
         </div>
-        {error && (
-          <p role="alert" className="notice err">
-            {error}
-          </p>
-        )}
-        {notice && (
-          <p role="status" className="notice ok">
-            {notice}
-          </p>
-        )}
       </section>
+      {error && (
+        <p role="alert" className="notice err">
+          {error}
+        </p>
+      )}
+      {notice && (
+        <p role="status" className="notice ok">
+          {notice}
+        </p>
+      )}
       {prefs && prefs.mutedUsers.length > 0 && (
-        <section className="settings-panel">
+        <section className="settings-panel" hidden={section !== 'connections'}>
           <h2>Muted accounts</h2>
           <p>
             Muted members are hidden from your feed and configured message push. Muting does not
@@ -227,9 +240,16 @@ export function MemberSettings() {
           ))}
         </section>
       )}
-      <SocialContextEditor />
+      <div hidden={section !== 'connections'}>
+        <details className="settings-disclosure">
+          <summary>
+            Introductions & temporary availability<span>Choose what you are open to</span>
+          </summary>
+          <SocialContextEditor />
+        </details>
+      </div>
       {details && (
-        <section className="settings-panel">
+        <section className="settings-panel" hidden={section !== 'profile'}>
           <h2>Profile details</h2>
           <form
             onSubmit={(event) => {
@@ -290,7 +310,7 @@ export function MemberSettings() {
           </form>
         </section>
       )}
-      <section className="settings-panel">
+      <section className="settings-panel" hidden={section !== 'security'}>
         <h2>Security</h2>
         <p>
           Manage authenticator verification for this account. Administrators should enroll before

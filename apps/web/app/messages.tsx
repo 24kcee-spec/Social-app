@@ -161,7 +161,7 @@ export function Messages({
           </p>
         </div>
       ) : (
-        <div className="messages-layout">
+        <div className={`messages-layout ${openConversation ? 'has-open-thread' : ''}`}>
           <div className="conversations-sidebar">
             <div className="conversations-head">
               <label className="sidle-sr-only" htmlFor="conversation-search">
@@ -258,6 +258,7 @@ export function Messages({
           <div className="chat-thread-pane">
             {openConversation ? (
               <Thread
+                key={openConversation.id}
                 conversation={openConversation}
                 photo={photos[openConversation.other.userId]}
                 onBack={() => {
@@ -312,6 +313,7 @@ function Thread({
   const [hasMore, setHasMore] = useState(false);
   const [status, setStatus] = useState<string>('connecting');
   const [loadingOlder, setLoadingOlder] = useState(false);
+  const [loadingThread, setLoadingThread] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -328,9 +330,13 @@ function Thread({
       merge(page.messages);
       setHasMore(page.hasMore);
       setNextCursor(page.nextCursor);
+      setError(null);
       await client.markRead(conversation.id);
-    } catch {
+    } catch (err) {
       // A transient resync failure should not discard the local thread. Realtime can retry later.
+      setError(errorMessage(err));
+    } finally {
+      setLoadingThread(false);
     }
   }, [client, conversation.id, merge]);
 
@@ -408,7 +414,7 @@ function Thread({
         : 'Live updates reconnecting';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className="chat-thread">
       <div className="chat-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Avatar name={conversation.other.displayName} url={photo} size={42} />
@@ -452,12 +458,18 @@ function Thread({
       {error && (
         <div className="notice err" role="alert" style={{ margin: '10px 16px 0' }}>
           <span>{error}</span>
+          <button type="button" className="link" onClick={() => void refetchLatest()}>
+            Try again
+          </button>
         </div>
       )}
 
       <div
         className="chat-messages-scroll"
         ref={scrollerRef}
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions text"
         aria-label={`Conversation with ${conversation.other.displayName}`}
       >
         {hasMore && (
@@ -474,7 +486,11 @@ function Thread({
           </div>
         )}
 
-        {messages.length === 0 ? (
+        {loadingThread ? (
+          <p className="muted chat-loading" role="status">
+            Loading conversation…
+          </p>
+        ) : messages.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 0' }}>
             <div style={{ fontSize: '2rem', marginBottom: 8 }} aria-hidden="true">
               👋
@@ -488,13 +504,31 @@ function Thread({
           messages.map((message) => {
             const isMine = message.senderId !== conversation.other.userId;
             return (
-              <div key={message.id} className={`chat-bubble-row ${isMine ? 'mine' : 'theirs'}`}>
+              <div
+                key={message.id}
+                className={`chat-bubble-row ${isMine ? 'mine' : 'theirs'}`}
+                aria-label={
+                  isMine ? 'Message from you' : `Message from ${conversation.other.displayName}`
+                }
+                data-message-id={message.id}
+              >
                 <div className="chat-bubble">
-                  <div>{details[message.id]?.deleted ? '[Message removed]' : message.body}</div>
+                  <span className="message-sender">
+                    {isMine ? 'You' : conversation.other.displayName}
+                  </span>
+                  {details[message.id]?.replyTo && !details[message.id]?.deleted && (
+                    <blockquote className="message-quoted-reply">
+                      {details[message.id]?.replyBody ?? 'Earlier message'}
+                    </blockquote>
+                  )}
+                  <div className="message-body">
+                    {details[message.id]?.deleted ? 'Message removed' : message.body}
+                  </div>
                   {details[message.id] && (
                     <MessageDetails
                       message={details[message.id]!}
                       mine={isMine}
+                      body={message.body}
                       onReply={() => setReplyTo({ id: message.id, body: message.body })}
                       onChanged={changed}
                     />

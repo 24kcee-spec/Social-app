@@ -5,6 +5,9 @@ import type { OnboardingInput } from '@sp/validation';
 import { AuthClientError, type DeviceSession, type Me } from '@sp/auth-client';
 import { type ProfileClient, parseShareUrl, validateSafeRedirect } from '@sp/profile-client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
+import { UiIcon } from './ui-icon';
+import { IcebreakerEditor } from './icebreaker-editor';
 import { errorMessage, getAuth, isConfigured } from '../lib/auth';
 import { Connections } from './connections';
 import { Discover } from './discover';
@@ -14,6 +17,7 @@ import { getMessagingClient } from '../lib/messaging';
 import { getSafetyClient } from '../lib/safety';
 import {
   deleteProfileImage,
+  downloadProfileImage,
   getProfileClient,
   getSignedMediaUrl,
   uploadProfileImage,
@@ -25,6 +29,8 @@ import { NotificationSettingsPage } from './notification-settings';
 import { PrivacySettings } from './privacy-settings';
 import { ProfileDashboard } from './profile-dashboard';
 import { SocialFeed } from './social-feed';
+
+const PhotoEditor = dynamic(() => import('./photo-editor'), { ssr: false });
 
 const SOCIAL_STYLE_LABELS: Record<SocialStyle, string> = {
   small_group: 'Small groups',
@@ -1163,6 +1169,15 @@ function ProfileEditor({
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
+  const [editorSection, setEditorSection] = useState<
+    'details' | 'photos' | 'interests' | 'icebreakers'
+  >('details');
+  const [photoDraft, setPhotoDraft] = useState<{
+    file: File;
+    replacing?: Profile['media'][number];
+  } | null>(null);
+  const photoInput = useRef<HTMLInputElement>(null);
+  const replacePhoto = useRef<Profile['media'][number] | undefined>(undefined);
 
   const draftFingerprint = JSON.stringify({ displayName, bio, styles, privacy, selected, answers });
   const liveDraftFingerprint = useRef(draftFingerprint);
@@ -1234,20 +1249,20 @@ function ProfileEditor({
   }, [refreshMedia]);
 
   useEffect(() => {
-    onDirtyChange(hasUnsavedChanges, busy || mediaBusy);
-  }, [hasUnsavedChanges, busy, mediaBusy, onDirtyChange]);
+    onDirtyChange(hasUnsavedChanges, busy || mediaBusy || photoDraft !== null);
+  }, [hasUnsavedChanges, busy, mediaBusy, photoDraft, onDirtyChange]);
 
   useEffect(() => () => onDirtyChange(false), [onDirtyChange]);
 
   useEffect(() => {
-    if (!hasUnsavedChanges) return;
+    if (!hasUnsavedChanges && !photoDraft) return;
     const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = '';
     };
     window.addEventListener('beforeunload', warnBeforeLeaving);
     return () => window.removeEventListener('beforeunload', warnBeforeLeaving);
-  }, [hasUnsavedChanges]);
+  }, [hasUnsavedChanges, photoDraft]);
 
   function clearFeedback() {
     setError(null);
@@ -1330,14 +1345,41 @@ function ProfileEditor({
     }
   }
 
-  async function addImage(file: File) {
-    if (busy || mediaBusy || profile.media.length >= 6) return;
+  async function savePhoto(file: File) {
+    if (busy || mediaBusy) return;
     setMediaBusy(true);
     clearFeedback();
     try {
-      const media = await uploadProfileImage(file, profile.media);
-      onSaved({ ...profile, media: [...profile.media, media] });
-      setMessage('Photo uploaded and saved immediately.');
+      const replacing = photoDraft?.replacing;
+      const media = await uploadProfileImage(file, profile.media, replacing);
+      const items = replacing
+        ? profile.media.map((item) => (item.id === replacing.id ? media : item))
+        : [...profile.media, media];
+      onSaved({ ...profile, media: items.sort((a, b) => a.sortOrder - b.sortOrder) });
+      setMessage('Photo saved.');
+    } finally {
+      setMediaBusy(false);
+    }
+  }
+
+  async function editPhoto(media: Profile['media'][number]) {
+    setMediaBusy(true);
+    clearFeedback();
+    try {
+      setPhotoDraft({ file: await downloadProfileImage(media), replacing: media });
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setMediaBusy(false);
+    }
+  }
+
+  async function makePrimary(media: Profile['media'][number]) {
+    setMediaBusy(true);
+    clearFeedback();
+    try {
+      onSaved(await client.makePrimaryMedia(media.id));
+      setMessage('Profile picture updated.');
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -1371,225 +1413,67 @@ function ProfileEditor({
     }
   }
 
-  const activePrompt = prompts.find((p) => (answers[p.id] ?? '').trim().length > 0);
+  const activePrompt = prompts.find((prompt) => (answers[prompt.id] ?? '').trim());
   const primaryMedia = profile.media[0];
-  const answeredPromptCount = nonEmptyAnswers.length;
-  const verificationLabel =
-    profile.verificationLevel === 'student_verified'
-      ? 'Student verified'
-      : profile.verificationLevel === 'trusted'
-        ? 'Trusted member'
-        : profile.verificationLevel === 'email_verified'
-          ? 'Email verified'
-          : null;
-
+  const sections = [
+    { id: 'details', label: 'About you', icon: 'user', detail: 'Name, bio & style' },
+    { id: 'photos', label: 'Photos', icon: 'image', detail: `${profile.media.length}/6 photos` },
+    {
+      id: 'interests',
+      label: 'Interests',
+      icon: 'heart',
+      detail: `${selectedDraft.length} selected`,
+    },
+    {
+      id: 'icebreakers',
+      label: 'Icebreakers',
+      icon: 'sparkles',
+      detail: `${nonEmptyAnswers.length}/3 answered`,
+    },
+  ] as const;
   return (
-    <div className="profile-dashboard">
-      {/* Profile Header Hero */}
-      <div
-        className="card"
-        style={{
-          marginBottom: 28,
-          padding: '28px 32px',
-          background: 'linear-gradient(135deg, var(--surface) 0%, var(--surface-sunken) 100%)',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 20,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-            <div style={{ position: 'relative' }}>
-              <div
-                style={{
-                  width: 84,
-                  height: 84,
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #6366F1 0%, #A855F7 100%)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff',
-                  fontSize: '2rem',
-                  fontWeight: 800,
-                  boxShadow: '0 8px 24px rgba(99, 102, 241, 0.35)',
-                  overflow: 'hidden',
-                }}
-              >
-                {primaryMedia && mediaUrls[primaryMedia.id] ? (
-                  <img
-                    src={mediaUrls[primaryMedia.id]}
-                    alt={displayName || 'Profile photo'}
-                    onError={() =>
-                      setMediaUrls((current) => ({ ...current, [primaryMedia.id]: '' }))
-                    }
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                ) : (
-                  <span className="profile-card-initial">
-                    {profile.displayName.charAt(0).toUpperCase()}
-                  </span>
-                )}
-              </div>
-            </div>
-            <div>
-              <span className="eyebrow">PROFILE STUDIO</span>
-              <h1 style={{ fontSize: '1.75rem', margin: '2px 0 6px' }}>
-                {displayName.trim() || 'Your Space'}
-              </h1>
-              <p className="muted" style={{ margin: 0 }}>
-                {selectedDraft.length} interests · {styles.length} social styles ·{' '}
-                {privacy.discoverable ? 'Discoverable' : 'Not discoverable'}
-              </p>
-            </div>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
-            <button
-              type="button"
-              className="secondary compact"
-              onClick={discardDraft}
-              disabled={!hasUnsavedChanges || busy || mediaBusy}
-            >
-              Discard unsaved edits
-            </button>
-            <button
-              type="button"
-              onClick={() => void save()}
-              disabled={busy || mediaBusy || !hasUnsavedChanges || Boolean(saveValidationMessage)}
-            >
-              {busy ? 'Saving changes…' : 'Save changes'}
-            </button>
-          </div>
+    <div className="profile-editor-workspace">
+      <header className="profile-editor-header">
+        <div>
+          <span className="eyebrow">YOUR PROFILE</span>
+          <h1>Edit profile</h1>
+          <p className="muted">A few details. A little personality. All you.</p>
         </div>
-        {message && (
-          <div className="notice ok" role="status" style={{ marginTop: 18, marginBottom: 0 }}>
-            <span>✓ {message}</span>
-          </div>
-        )}
-        {error && (
-          <div className="notice err" role="alert" style={{ marginTop: 18, marginBottom: 0 }}>
-            <span>{error}</span>
-          </div>
-        )}
-        {saveValidationMessage && (
-          <div className="notice err" role="status" style={{ marginTop: 12, marginBottom: 0 }}>
-            <span>{saveValidationMessage}</span>
-          </div>
-        )}
-        {mediaBusy && (
-          <div className="notice" role="status" style={{ marginTop: 12, marginBottom: 0 }}>
-            <span>Processing your photo change… please keep this page open.</span>
-          </div>
-        )}
-        <p className="muted" style={{ marginTop: 12, marginBottom: 0 }}>
-          Profile details, interests, prompts and privacy save when you choose Save changes. Photo
-          uploads and removals are saved immediately.
-        </p>
-      </div>
-
-      <div className="profile-dashboard-grid">
-        {/* Left Column: Live Interactive Card Preview */}
-        <div className="profile-col-main">
-          <div className="live-preview-box">
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: 12,
-              }}
+        <a className="secondary compact" href="/settings">
+          Settings
+        </a>
+      </header>
+      <div className="profile-editor-layout">
+        <nav className="editor-section-nav" aria-label="Profile editor sections">
+          {sections.map((section) => (
+            <button
+              type="button"
+              key={section.id}
+              aria-current={editorSection === section.id ? 'page' : undefined}
+              onClick={() => setEditorSection(section.id)}
             >
-              <span className="eyebrow">PROFILE PREVIEW</span>
-              <span className="muted" style={{ fontSize: '0.78rem' }}>
-                Draft changes appear here until saved
+              <UiIcon name={section.icon} />
+              <span>
+                <strong>{section.label}</strong>
+                <small>{section.detail}</small>
               </span>
+            </button>
+          ))}
+        </nav>
+        <div className="profile-editor-content">
+          <section
+            className="editor-panel"
+            id="profile-details"
+            tabIndex={-1}
+            hidden={editorSection !== 'details'}
+          >
+            <div className="editor-section-heading">
+              <div>
+                <span className="eyebrow">THE BASICS</span>
+                <h2>About you</h2>
+                <p className="muted">What would you like people to know?</p>
+              </div>
             </div>
-
-            <article className="profile-card" style={{ margin: 0 }}>
-              <div className="profile-card-cover" style={{ height: 240 }}>
-                {primaryMedia && mediaUrls[primaryMedia.id] ? (
-                  <img
-                    src={mediaUrls[primaryMedia.id]}
-                    alt={displayName}
-                    onError={() =>
-                      setMediaUrls((current) => ({ ...current, [primaryMedia.id]: '' }))
-                    }
-                  />
-                ) : (
-                  <span className="profile-card-initial">
-                    {(displayName || '?').charAt(0).toUpperCase()}
-                  </span>
-                )}
-                <div className="profile-card-scrim" />
-                <div className="profile-card-cover-badges">
-                  <span className="social-style-tag">
-                    {styles.map((s) => SOCIAL_STYLE_LABELS[s]).join(' · ') || 'Low pressure'}
-                  </span>
-                  {verificationLabel ? (
-                    <span
-                      className="social-style-tag"
-                      style={{ background: 'rgba(16, 185, 129, 0.85)' }}
-                    >
-                      {verificationLabel}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-
-              <div className="profile-card-body">
-                <div className="profile-name-row">
-                  <div className="profile-card-name">{displayName || 'Your Name'}</div>
-                </div>
-
-                <p className="profile-card-bio">
-                  {bio.trim() ||
-                    'Add a bio in the editor to share your favorite campus spots, studies, or what you enjoy talking about!'}
-                </p>
-
-                <div className="shared-interests-row">
-                  {interests
-                    .filter((i) => selected[i.id])
-                    .slice(0, 6)
-                    .map((i) => (
-                      <span key={i.id} className="shared-chip highlight">
-                        {i.name}
-                      </span>
-                    ))}
-                  {Object.keys(selected).length === 0 && (
-                    <span className="muted" style={{ fontSize: '0.82rem' }}>
-                      Select passions on the right to show them here
-                    </span>
-                  )}
-                </div>
-
-                {activePrompt && answers[activePrompt.id] && (
-                  <div className="prompt-quote-box">
-                    <div className="prompt-question">✦ {activePrompt.prompt}</div>
-                    <p className="prompt-answer">"{answers[activePrompt.id]}"</p>
-                  </div>
-                )}
-
-                <div className="profile-card-footer">
-                  <span className="muted" style={{ fontSize: '0.82rem' }}>
-                    Preview only · save changes to publish your updated profile
-                  </span>
-                </div>
-              </div>
-            </article>
-          </div>
-        </div>
-
-        {/* Right Column: Identity, Passions, Prompts, Photos, Privacy, Devices */}
-        <div className="profile-col-side">
-          {/* Identity & Bio */}
-          <section className="card" id="profile-details" tabIndex={-1}>
-            <span className="eyebrow">IDENTITY & BIO</span>
-            <h2>Personal Details</h2>
             <Field
               label="Display name"
               id="editDisplayName"
@@ -1601,41 +1485,168 @@ function ProfileEditor({
               maxLength={50}
             />
             <div className="field">
-              <label htmlFor="editBio">Bio & Campus Vibe</label>
+              <label htmlFor="editBio">Bio</label>
               <textarea
                 id="editBio"
                 value={bio}
-                onChange={(e) => {
-                  setBio(e.target.value);
+                onChange={(event) => {
+                  setBio(event.target.value);
                   clearFeedback();
                 }}
                 maxLength={280}
-                rows={3}
-                placeholder="Share your interests, creative work and what you enjoy..."
+                rows={4}
+                placeholder="Your interests, creative work, or something you love…"
               />
               <p className="counter">{bio.length}/280</p>
             </div>
             <ChoiceSet
-              title="Social Pace & Connection Style"
+              title="How you like to connect"
               values={styles}
               options={Object.keys(SOCIAL_STYLE_LABELS) as SocialStyle[]}
               onToggle={(style) => {
                 setStyles(
-                  styles.includes(style) ? styles.filter((s) => s !== style) : [...styles, style],
+                  styles.includes(style)
+                    ? styles.filter((value) => value !== style)
+                    : [...styles, style],
                 );
                 clearFeedback();
               }}
             />
+            <p className="editor-footnote muted">
+              Looking for your handle, campus or course?{' '}
+              <a href="/settings?section=profile">Edit additional details in Settings.</a>
+            </p>
           </section>
-
-          {/* Interests Selector */}
-          <section className="card">
-            <div className="card-header">
+          <section className="editor-panel" hidden={editorSection !== 'photos'}>
+            <div className="editor-section-heading">
               <div>
-                <span className="eyebrow">MATCHING PASSIONS</span>
-                <h2>Your interests</h2>
-                <p className="muted">{Object.keys(selected).length} selected</p>
+                <span className="eyebrow">PUT A FACE TO THE NAME</span>
+                <h2>Profile photos</h2>
+                <p className="muted">
+                  Crop, rotate and add a filter before saving. Up to six photos.
+                </p>
               </div>
+            </div>
+            <input
+              ref={photoInput}
+              className="sidle-file-input"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              aria-label="Choose a profile photo"
+              disabled={busy || mediaBusy}
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0];
+                event.currentTarget.value = '';
+                if (file) setPhotoDraft({ file, replacing: replacePhoto.current });
+                replacePhoto.current = undefined;
+              }}
+            />
+            <div className="profile-photo-grid">
+              {profile.media.map((media, index) => (
+                <article className="profile-photo-card" key={media.id}>
+                  <div className="profile-photo-image">
+                    {mediaUrls[media.id] ? (
+                      <img
+                        src={mediaUrls[media.id]}
+                        alt={`Profile photo ${index + 1}`}
+                        onError={() => setMediaUrls((current) => ({ ...current, [media.id]: '' }))}
+                      />
+                    ) : (
+                      <UiIcon name="image" size={40} />
+                    )}
+                    {index === 0 && (
+                      <span className="profile-photo-primary">
+                        <UiIcon name="check" size={13} />
+                        Profile picture
+                      </span>
+                    )}
+                  </div>
+                  <div className="profile-photo-actions">
+                    <button
+                      type="button"
+                      className="secondary compact"
+                      disabled={busy || mediaBusy}
+                      onClick={() => void editPhoto(media)}
+                      aria-label={`Edit profile photo ${index + 1}`}
+                    >
+                      <UiIcon name="edit" size={16} />
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-control"
+                      disabled={busy || mediaBusy}
+                      aria-label={`Replace profile photo ${index + 1}`}
+                      title="Replace photo"
+                      onClick={() => {
+                        replacePhoto.current = media;
+                        photoInput.current?.click();
+                      }}
+                    >
+                      <UiIcon name="image" size={18} />
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-control"
+                      disabled={busy || mediaBusy}
+                      aria-label={`Remove profile photo ${index + 1}`}
+                      title="Remove photo"
+                      onClick={() => void removeImage(media.id)}
+                    >
+                      <UiIcon name="trash" size={17} />
+                    </button>
+                  </div>
+                  {index > 0 && (
+                    <button
+                      type="button"
+                      className="link make-profile-picture"
+                      disabled={busy || mediaBusy}
+                      onClick={() => void makePrimary(media)}
+                    >
+                      Use as profile picture
+                    </button>
+                  )}
+                </article>
+              ))}
+              {profile.media.length < 6 && (
+                <button
+                  type="button"
+                  className="profile-photo-add"
+                  disabled={busy || mediaBusy}
+                  onClick={() => {
+                    replacePhoto.current = undefined;
+                    photoInput.current?.click();
+                  }}
+                >
+                  <UiIcon name="plus" size={27} />
+                  <strong>Add a photo</strong>
+                  <small>JPG, PNG or WebP · up to 5 MB</small>
+                </button>
+              )}
+            </div>
+            {profile.media.some((media) => !mediaUrls[media.id]) && (
+              <button
+                type="button"
+                className="link"
+                disabled={refreshingMedia || mediaBusy || busy}
+                onClick={() => void refreshMedia()}
+              >
+                {refreshingMedia ? 'Refreshing photos…' : 'Retry loading photos'}
+              </button>
+            )}
+            <p className="muted editor-footnote">
+              Photo changes save immediately. Your other edits stay in this editor until you save
+              them.
+            </p>
+          </section>
+          <section className="editor-panel" hidden={editorSection !== 'interests'}>
+            <div className="editor-section-heading">
+              <div>
+                <span className="eyebrow">FIND YOUR PEOPLE</span>
+                <h2>Your interests</h2>
+                <p className="muted">Choose three to twelve things you enjoy.</p>
+              </div>
+              <span className="editor-count">{selectedDraft.length}/12</span>
             </div>
             <CategorizedInterests
               interests={interests}
@@ -1656,123 +1667,105 @@ function ProfileEditor({
               }}
             />
           </section>
-
-          {/* Prompt Answers */}
-          <section className="card">
-            <div className="card-header">
-              <div className="card-title-group">
-                <span className="eyebrow">CONVERSATION STARTERS</span>
-                <h2>Prompt answers</h2>
-                <p className="muted">
-                  Answer 1–3 prompts. Each answer needs at least 2 characters and can be up to 240
-                  characters. Clear an answer before adding a fourth.
-                </p>
-              </div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {prompts.slice(0, 6).map((p) => (
-                <div key={p.id} className="prompt-quote-box">
-                  <div className="prompt-question">✦ {p.prompt}</div>
-                  <textarea
-                    id={`p-${p.id}`}
-                    value={answers[p.id] ?? ''}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      const existingAnswer = (answers[p.id] ?? '').trim();
-                      if (!existingAnswer && value.trim() && answeredPromptCount >= 3) {
-                        setError(
-                          'You can answer up to 3 prompts. Clear an existing answer before adding another.',
-                        );
-                        setMessage(null);
-                        return;
-                      }
-                      setAnswers((current) => ({ ...current, [p.id]: value }));
-                      clearFeedback();
-                    }}
-                    disabled={
-                      busy ||
-                      mediaBusy ||
-                      (answeredPromptCount >= 3 && !(answers[p.id] ?? '').trim())
-                    }
-                    maxLength={240}
-                    rows={2}
-                    placeholder="Write your answer..."
-                    style={{ background: 'transparent', border: '1px solid var(--line)' }}
-                  />
-                  <p className="counter">{(answers[p.id] ?? '').length}/240</p>
-                </div>
-              ))}
-            </div>
+          <section className="editor-panel" hidden={editorSection !== 'icebreakers'}>
+            <IcebreakerEditor
+              prompts={prompts}
+              answers={answers}
+              disabled={busy || mediaBusy}
+              onChange={(next) => {
+                setAnswers(next);
+                clearFeedback();
+              }}
+            />
           </section>
-
-          {/* Media Photos */}
-          <section className="card">
-            <div className="card-header">
-              <div>
-                <span className="eyebrow">MEDIA</span>
-                <h2>Profile Photos</h2>
-                <p className="muted">
-                  Up to 6 photos. JPG, PNG or WebP; 5 MB max before cropping. Photo changes save
-                  immediately.
-                </p>
-              </div>
-              {profile.media.some((media) => !mediaUrls[media.id]) ? (
-                <button
-                  type="button"
-                  className="secondary compact"
-                  onClick={() => void refreshMedia()}
-                  disabled={refreshingMedia || mediaBusy || busy}
-                >
-                  {refreshingMedia ? 'Refreshing photo links…' : 'Retry loading photos'}
-                </button>
-              ) : null}
+          <div className="editor-save-bar">
+            <div>
+              <strong>
+                {hasUnsavedChanges ? 'You have unsaved changes' : 'Your profile is up to date'}
+              </strong>
+              <small>Changes stay here when you switch sections.</small>
             </div>
-            <div className="photo-upload-grid">
-              {profile.media.map((m) => (
-                <div className="photo-tile" key={m.id}>
-                  {mediaUrls[m.id] ? (
-                    <img
-                      src={mediaUrls[m.id]}
-                      alt={`Profile photo ${m.sortOrder + 1}`}
-                      onError={() => setMediaUrls((current) => ({ ...current, [m.id]: '' }))}
-                    />
-                  ) : (
-                    <span className="profile-card-initial">📷</span>
-                  )}
-                  <button
-                    type="button"
-                    className="photo-tile-delete"
-                    onClick={() => void removeImage(m.id)}
-                    disabled={busy || mediaBusy}
-                    aria-label={`Remove profile photo ${m.sortOrder + 1}`}
-                    title="Remove photo"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-              {profile.media.length < 6 && (
-                <label className="photo-tile photo-tile-add">
-                  <span style={{ fontSize: '1.5rem' }}>+</span>
-                  <span>Add photo</span>
-                  <input
-                    type="file"
-                    accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
-                    aria-label="Choose a profile photo"
-                    disabled={busy || mediaBusy || profile.media.length >= 6}
-                    style={{ display: 'none' }}
-                    onChange={(e) => {
-                      const file = e.currentTarget.files?.[0];
-                      e.currentTarget.value = '';
-                      if (file) void addImage(file);
-                    }}
-                  />
-                </label>
+            <div>
+              <button
+                type="button"
+                className="secondary compact"
+                disabled={!hasUnsavedChanges || busy || mediaBusy}
+                onClick={discardDraft}
+              >
+                Discard
+              </button>
+              <button
+                type="button"
+                disabled={busy || mediaBusy || !hasUnsavedChanges || Boolean(saveValidationMessage)}
+                onClick={() => void save()}
+              >
+                {busy ? 'Saving changes…' : 'Save changes'}
+              </button>
+            </div>
+          </div>
+          {message && (
+            <p className="notice ok" role="status">
+              {message}
+            </p>
+          )}
+          {error && (
+            <p className="notice err" role="alert">
+              {error}
+            </p>
+          )}
+          {saveValidationMessage && (
+            <p className="notice err" role="status">
+              {saveValidationMessage}
+            </p>
+          )}
+          {mediaBusy && (
+            <p className="notice" role="status">
+              Processing your photo…
+            </p>
+          )}
+        </div>
+        <aside className="editor-live-preview" aria-label="Profile preview">
+          <span className="eyebrow">LIVE PREVIEW</span>
+          <article className="editor-preview-card">
+            <div className="editor-preview-image">
+              {primaryMedia && mediaUrls[primaryMedia.id] ? (
+                <img src={mediaUrls[primaryMedia.id]} alt="Your profile preview" />
+              ) : (
+                <span>{(displayName || '?').charAt(0).toUpperCase()}</span>
               )}
             </div>
-          </section>
-        </div>
+            <div className="editor-preview-copy">
+              <h2>{displayName.trim() || 'Your name'}</h2>
+              <p>{bio.trim() || 'Your bio will appear here.'}</p>
+              <div className="shared-interests-row">
+                {interests
+                  .filter((interest) => selected[interest.id])
+                  .slice(0, 4)
+                  .map((interest) => (
+                    <span className="shared-chip" key={interest.id}>
+                      {interest.name}
+                    </span>
+                  ))}
+              </div>
+              {activePrompt && (
+                <blockquote>
+                  <strong>{activePrompt.prompt}</strong>
+                  <p>{answers[activePrompt.id]}</p>
+                </blockquote>
+              )}
+            </div>
+          </article>
+          <p className="muted editor-footnote">A preview of how you show up.</p>
+        </aside>
       </div>
+      {photoDraft && (
+        <PhotoEditor
+          file={photoDraft.file}
+          replacing={Boolean(photoDraft.replacing)}
+          onSave={savePhoto}
+          onClose={() => setPhotoDraft(null)}
+        />
+      )}
     </div>
   );
 }

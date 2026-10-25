@@ -10,6 +10,7 @@ import './superb-pages.css';
 import './superb-components.css';
 import './plans-polish.css';
 import './platform.css';
+import './profile-chat.css';
 import { ProductExperience } from './product-experience';
 import { ShellAccessibility } from './shell-accessibility';
 
