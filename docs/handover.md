@@ -1,3 +1,9 @@
+# Current handover — 25 October 2026
+
+The expanded platform release is documented in [PLATFORM_RELEASE_HANDOVER.md](../Documents/PLATFORM_RELEASE_HANDOVER.md), [validation](platform-validation.md) and [NUST operations](../ops/nust/README.md). This supersedes the older direction and capability counts below.
+
+## Historical 24 October handover
+
 # Sidle handover — 24 October 2026
 
 Current status: [status.md](status.md). Live operations/evidence: [supabase-live-validation.md](supabase-live-validation.md). Older phase documents are historical.

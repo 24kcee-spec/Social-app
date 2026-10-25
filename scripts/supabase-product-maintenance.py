@@ -56,10 +56,11 @@ revoke all on app_private.product_migrations from public,anon,authenticated;
         if args.verify:
             if pending:
                 raise RuntimeError('Apply the reviewed product migration before live verification')
-            result = client.sql((ROOT / 'scripts/verify-supabase-product.sql').read_text(), False)
-            if not result or not str(result[0].get('result', '')).startswith('PASS:'):
-                raise RuntimeError('Product probes did not return a verified result')
-            print(result[0]['result'])
+            for probe in ['verify-supabase-product.sql','verify-supabase-platform.sql','verify-supabase-commerce.sql','verify-supabase-media.sql']:
+                result=client.sql((ROOT/'scripts'/probe).read_text(),False)
+                if not result or not str(result[0].get('result','')).startswith('PASS:'):
+                    raise RuntimeError('Product probes did not return a verified result: '+probe)
+                print(result[0]['result'])
         print(json.dumps({'project': client.project, 'product_migrations': len(files)-len(pending), 'pending': [f.name for f in pending]}, indent=2))
         if pending:
             return 1

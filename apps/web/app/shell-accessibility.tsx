@@ -1,64 +1,74 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 
-const NAV_EVENT = "sidle:navigation";
-const DEFAULT_TITLE = "Sidle — Find your people. At your pace.";
+const NAV_EVENT = 'sidle:navigation';
+const DEFAULT_TITLE = 'Sidle — People. Moments. Possibilities.';
 
 function navigationLabel() {
   const params = new URLSearchParams(window.location.search);
-  const view = params.get("view");
-  if (view === "settings") return "Settings";
-  if (view === "notifications") return "Notification settings";
-  if (view === "profile-preview") return "Profile preview";
+  const view = params.get('view');
+  if (view === 'settings') return 'Settings';
+  if (view === 'notifications') return 'Notification settings';
+  if (view === 'profile-preview') return 'Profile preview';
 
-  const section = params.get("section");
-  if (section === "profile-details") return "Profile editor";
-  if (section === "privacy-settings") return "Privacy and safety settings";
-  if (section === "account-sessions") return "Account and security settings";
-  if (section === "account-data") return "Account data settings";
+  const section = params.get('section');
+  if (section === 'profile-details') return 'Profile editor';
+  if (section === 'privacy-settings') return 'Privacy and safety settings';
+  if (section === 'account-sessions') return 'Account and security settings';
+  if (section === 'account-data') return 'Account data settings';
 
-  const tab = params.get("tab") ?? "discover";
-  return tab === "connections"
-    ? "Connections"
-    : tab === "messages"
-      ? "Messages"
-      : tab === "community"
-        ? "Community"
-        : tab === "profile"
-          ? "Profile"
-          : "Discover";
+  const tab = params.get('tab') ?? 'feed';
+  return tab === 'feed'
+    ? 'Feed'
+    : tab === 'connections'
+      ? 'Connections'
+      : tab === 'messages'
+        ? 'Messages'
+        : tab === 'community'
+          ? 'Community'
+          : tab === 'profile'
+            ? 'Profile'
+            : 'Discover';
 }
 
 function syncDocumentTitle() {
   const label = navigationLabel();
-  document.title = label === "Discover" ? DEFAULT_TITLE : `${label} · Sidle`;
+  document.title = label === 'Feed' ? DEFAULT_TITLE : `${label} · Sidle`;
 }
 
 function syncPrimaryNavigation() {
-  const buttons = document.querySelectorAll<HTMLButtonElement>(".app-header nav.nav-pill-bar .nav-pill-btn");
+  const buttons = document.querySelectorAll<HTMLButtonElement>(
+    '.app-header nav.nav-pill-bar .nav-pill-btn',
+  );
   buttons.forEach((button) => {
-    button.setAttribute("type", "button");
-    button.removeAttribute("role");
-    button.removeAttribute("aria-selected");
+    button.setAttribute('type', 'button');
+    button.removeAttribute('role');
+    button.removeAttribute('aria-selected');
 
-    const active = button.classList.contains("active");
-    if (active) button.setAttribute("aria-current", "page");
-    else button.removeAttribute("aria-current");
+    const active = button.classList.contains('active');
+    if (active) button.setAttribute('aria-current', 'page');
+    else button.removeAttribute('aria-current');
 
-    const icon = button.querySelector<HTMLElement>(":scope > span:first-child");
-    icon?.setAttribute("aria-hidden", "true");
+    const icon = button.querySelector<HTMLElement>(':scope > span:first-child');
+    icon?.setAttribute('aria-hidden', 'true');
 
-    const label = button.querySelector<HTMLElement>(":scope > span:nth-child(2)")?.textContent?.trim() ?? "";
-    const badge = button.querySelector<HTMLElement>(".nav-badge");
+    const label =
+      button.querySelector<HTMLElement>(':scope > span:nth-child(2)')?.textContent?.trim() ?? '';
+    const badge = button.querySelector<HTMLElement>('.nav-badge');
     const count = badge?.textContent?.trim();
-    badge?.setAttribute("aria-hidden", "true");
+    badge?.setAttribute('aria-hidden', 'true');
 
     if (label && count) {
-      const suffix = label === "Messages" ? "unread messages" : label === "Connections" ? "pending requests" : "notifications";
-      button.setAttribute("aria-label", `${label}, ${count} ${suffix}`);
+      const suffix =
+        label === 'Messages'
+          ? 'unread messages'
+          : label === 'Connections'
+            ? 'pending requests'
+            : 'notifications';
+      button.setAttribute('aria-label', `${label}, ${count} ${suffix}`);
     } else if (label) {
-      button.setAttribute("aria-label", label);
+      button.setAttribute('aria-label', label);
     }
   });
 }
@@ -67,16 +77,16 @@ function focusNavigationTarget() {
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       const params = new URLSearchParams(window.location.search);
-      const section = params.get("section");
+      const section = params.get('section');
       const sectionTarget = section ? document.getElementById(section) : null;
-      const target = sectionTarget ?? document.getElementById("main");
+      const target = sectionTarget ?? document.getElementById('main');
       if (target instanceof HTMLElement) target.focus({ preventScroll: Boolean(sectionTarget) });
     });
   });
 }
 
 export function ShellAccessibility() {
-  const [announcement, setAnnouncement] = useState("");
+  const [announcement, setAnnouncement] = useState('');
 
   useEffect(() => {
     let semanticFrame = 0;
@@ -92,7 +102,7 @@ export function ShellAccessibility() {
       subtree: true,
       childList: true,
       attributes: true,
-      attributeFilter: ["class"],
+      attributeFilter: ['class'],
     });
 
     const announceNavigation = () => {
@@ -101,16 +111,19 @@ export function ShellAccessibility() {
       focusNavigationTarget();
       requestAnimationFrame(() => setAnnouncement(`${navigationLabel()} opened`));
     };
-    const announceOffline = () => setAnnouncement("Browser is offline. Existing content may remain visible, but new actions need an internet connection.");
-    const announceOnline = () => setAnnouncement("Browser connection restored.");
+    const announceOffline = () =>
+      setAnnouncement(
+        'Browser is offline. Existing content may remain visible, but new actions need an internet connection.',
+      );
+    const announceOnline = () => setAnnouncement('Browser connection restored.');
 
     const originalPushState = window.history.pushState;
     const originalReplaceState = window.history.replaceState;
-    const patchedPushState: History["pushState"] = function (...args) {
+    const patchedPushState: History['pushState'] = function (...args) {
       originalPushState.apply(window.history, args);
       window.dispatchEvent(new Event(NAV_EVENT));
     };
-    const patchedReplaceState: History["replaceState"] = function (...args) {
+    const patchedReplaceState: History['replaceState'] = function (...args) {
       originalReplaceState.apply(window.history, args);
       window.dispatchEvent(new Event(NAV_EVENT));
     };
@@ -118,19 +131,21 @@ export function ShellAccessibility() {
     window.history.pushState = patchedPushState;
     window.history.replaceState = patchedReplaceState;
     window.addEventListener(NAV_EVENT, announceNavigation);
-    window.addEventListener("popstate", announceNavigation);
-    window.addEventListener("offline", announceOffline);
-    window.addEventListener("online", announceOnline);
+    window.addEventListener('popstate', announceNavigation);
+    window.addEventListener('offline', announceOffline);
+    window.addEventListener('online', announceOnline);
 
     return () => {
       cancelAnimationFrame(semanticFrame);
       observer.disconnect();
       window.removeEventListener(NAV_EVENT, announceNavigation);
-      window.removeEventListener("popstate", announceNavigation);
-      window.removeEventListener("offline", announceOffline);
-      window.removeEventListener("online", announceOnline);
-      if (window.history.pushState === patchedPushState) window.history.pushState = originalPushState;
-      if (window.history.replaceState === patchedReplaceState) window.history.replaceState = originalReplaceState;
+      window.removeEventListener('popstate', announceNavigation);
+      window.removeEventListener('offline', announceOffline);
+      window.removeEventListener('online', announceOnline);
+      if (window.history.pushState === patchedPushState)
+        window.history.pushState = originalPushState;
+      if (window.history.replaceState === patchedReplaceState)
+        window.history.replaceState = originalReplaceState;
     };
   }, []);
 

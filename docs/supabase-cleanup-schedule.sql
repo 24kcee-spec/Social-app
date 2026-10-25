@@ -21,5 +21,7 @@ select cron.schedule('sidle-account-cleanup', '* * * * *', $job$
   where exists (
     select 1 from public.account_cleanup_jobs j join public.users u on u.id=j.user_id
     where u.status='deleted' and j.completed_at is null and j.next_attempt_at <= now()
-  );
+  ) or extract(minute from now() at time zone 'UTC')=0
+    or exists(select 1 from app_private.location_shares where expires_at<now())
+    or exists(select 1 from app_private.call_signals s join app_private.call_rooms c on c.id=s.call_id where c.expires_at<now() or c.state in('ended','declined'));
 $job$);

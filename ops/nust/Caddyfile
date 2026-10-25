@@ -1,0 +1,7 @@
+{$WEB_DOMAIN} {
+  encode zstd gzip
+  reverse_proxy web:3000
+}
+{$LIVE_DOMAIN:live.localhost} {
+  reverse_proxy livekit:7880
+}

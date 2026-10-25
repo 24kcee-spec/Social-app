@@ -1,8 +1,8 @@
-import { AuthClientError, type DeviceSession, type Me } from "@sp/auth-client";
-import type { Interest, Profile, PromptDefinition, ShareTargetType, SocialStyle } from "@sp/types";
-import { onboardingSchema, type OnboardingInput } from "@sp/validation";
-import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { AuthClientError, type DeviceSession, type Me } from '@sp/auth-client';
+import type { Interest, Profile, PromptDefinition, ShareTargetType, SocialStyle } from '@sp/types';
+import { onboardingSchema, type OnboardingInput } from '@sp/validation';
+import { StatusBar } from 'expo-status-bar';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -17,36 +17,43 @@ import {
   Text,
   TextInput,
   View,
-} from "react-native";
-import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { auth, config, errorMessage, isConfigured } from "./src/auth";
-import { Community } from "./src/Community";
-import { Connections } from "./src/Connections";
-import { Discover } from "./src/Discover";
-import { getMessagingClient } from "./src/messagingClient";
-import { Messages } from "./src/Messages";
-import { NotificationSettingsScreen } from "./src/NotificationSettings";
-import { disableDevicePush, startPushLifecycle, subscribeToMessageAlerts } from "./src/push";
-import { deleteProfileImage, getProfileClient, getSignedMediaUrl, pickAndUploadProfileImage } from "./src/profile";
-import { getSafetyClient } from "./src/safetyClient";
-import { ThemeProvider, useTheme, type ThemePreference } from "./src/theme";
-import { Avatar, Badge, Banner, BottomNav, Button, Chip, Field, type NavTab } from "./src/ui";
-import { parseShareUrl, type ProfileClient } from "@sp/profile-client";
+} from 'react-native';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { auth, config, errorMessage, isConfigured } from './src/auth';
+import { getConnectionsClient } from './src/connectionClient';
+import { PlatformHub } from './src/PlatformHub';
+import { Community } from './src/Community';
+import { Connections } from './src/Connections';
+import { Discover } from './src/Discover';
+import { getMessagingClient } from './src/messagingClient';
+import { Messages } from './src/Messages';
+import { NotificationSettingsScreen } from './src/NotificationSettings';
+import { disableDevicePush, startPushLifecycle, subscribeToMessageAlerts } from './src/push';
+import {
+  deleteProfileImage,
+  getProfileClient,
+  getSignedMediaUrl,
+  pickAndUploadProfileImage,
+} from './src/profile';
+import { getSafetyClient } from './src/safetyClient';
+import { ThemeProvider, useTheme, type ThemePreference } from './src/theme';
+import { Avatar, Badge, Banner, BottomNav, Button, Chip, Field, type NavTab } from './src/ui';
+import { parseShareUrl, type ProfileClient } from '@sp/profile-client';
 
 const STYLES: { id: SocialStyle; label: string }[] = [
-  { id: "small_group", label: "Small groups" },
-  { id: "one_to_one", label: "One-to-one" },
-  { id: "text_first", label: "Text-first" },
-  { id: "voice_first", label: "Voice-first" },
-  { id: "low_pressure", label: "Low pressure" },
+  { id: 'small_group', label: 'Small groups' },
+  { id: 'one_to_one', label: 'One-to-one' },
+  { id: 'text_first', label: 'Text-first' },
+  { id: 'voice_first', label: 'Voice-first' },
+  { id: 'low_pressure', label: 'Low pressure' },
 ];
 
-type Mode = "signin" | "signup" | "forgot";
+type Mode = 'signin' | 'signup' | 'forgot';
 type Phase =
-  | { kind: "loading" }
-  | { kind: "signedOut" }
-  | { kind: "signedIn"; me: Me }
-  | { kind: "error"; message: string };
+  | { kind: 'loading' }
+  | { kind: 'signedOut' }
+  | { kind: 'signedIn'; me: Me }
+  | { kind: 'error'; message: string };
 
 export default function App() {
   return (
@@ -60,8 +67,11 @@ export default function App() {
 
 function AppContent() {
   const { colors, isDark } = useTheme();
-  const [phase, setPhase] = useState<Phase>({ kind: "loading" });
-  const [pendingTarget, setPendingTarget] = useState<{ targetType: ShareTargetType; id: string } | null>(null);
+  const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
+  const [pendingTarget, setPendingTarget] = useState<{
+    targetType: ShareTargetType;
+    id: string;
+  } | null>(null);
 
   // Deep linking: cold-start and warm-start URL handlers
   useEffect(() => {
@@ -74,7 +84,7 @@ function AppContent() {
       })
       .catch(() => undefined);
 
-    const sub = Linking.addEventListener("url", (event) => {
+    const sub = Linking.addEventListener('url', (event) => {
       const target = parseShareUrl(event.url);
       if (target) setPendingTarget(target);
     });
@@ -84,59 +94,64 @@ function AppContent() {
 
   const load = useCallback(async () => {
     try {
-      if (!(await auth.isSignedIn())) return setPhase({ kind: "signedOut" });
-      setPhase({ kind: "signedIn", me: await auth.fetchMe() });
+      if (!(await auth.isSignedIn())) return setPhase({ kind: 'signedOut' });
+      setPhase({ kind: 'signedIn', me: await auth.fetchMe() });
     } catch (err) {
-      if (err instanceof AuthClientError && (err.code === "unauthorized" || err.code === "not_signed_in")) {
+      if (
+        err instanceof AuthClientError &&
+        (err.code === 'unauthorized' || err.code === 'not_signed_in')
+      ) {
         await auth.signOut().catch(() => undefined);
-        return setPhase({ kind: "signedOut" });
+        return setPhase({ kind: 'signedOut' });
       }
-      setPhase({ kind: "error", message: errorMessage(err) });
+      setPhase({ kind: 'error', message: errorMessage(err) });
     }
   }, []);
 
   useEffect(() => {
     if (!isConfigured) {
       return setPhase({
-        kind: "error",
-        message: "Supabase is not configured. Fill the repo-root .env and restart Expo.",
+        kind: 'error',
+        message: 'Supabase is not configured. Fill the repo-root .env and restart Expo.',
       });
     }
     void load();
     return auth.onAuthChange((event) => {
-      if (["SIGNED_IN", "SIGNED_OUT"].includes(event)) void load();
+      if (['SIGNED_IN', 'SIGNED_OUT'].includes(event)) void load();
     });
   }, [load]);
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: colors.bg }]} edges={["top"]}>
-      <StatusBar style={isDark ? "light" : "dark"} />
-      {phase.kind === "loading" && (
+    <SafeAreaView style={[styles.screen, { backgroundColor: colors.bg }]} edges={['top']}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      {phase.kind === 'loading' && (
         <View style={styles.centerWrap}>
           <ActivityIndicator size="large" color={colors.accent} />
           <Text style={[styles.loadingText, { color: colors.textMuted }]}>Loading your space…</Text>
         </View>
       )}
 
-      {phase.kind === "error" && (
+      {phase.kind === 'error' && (
         <ScrollView contentContainerStyle={styles.scroll}>
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.line }]}>
+          <View
+            style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.line }]}
+          >
             <Banner tone="error">{phase.message}</Banner>
             <Button label="Try again" onPress={() => void load()} style={{ marginTop: 14 }} />
           </View>
         </ScrollView>
       )}
 
-      {phase.kind === "signedOut" && (
+      {phase.kind === 'signedOut' && (
         <ScrollView contentContainerStyle={styles.scroll}>
           <AuthForm />
         </ScrollView>
       )}
 
-      {phase.kind === "signedIn" && (
+      {phase.kind === 'signedIn' && (
         <ProfileHome
           me={phase.me}
-          onSignOut={() => setPhase({ kind: "signedOut" })}
+          onSignOut={() => setPhase({ kind: 'signedOut' })}
           pendingTarget={pendingTarget}
           onClearPendingTarget={() => setPendingTarget(null)}
         />
@@ -151,10 +166,10 @@ function AppContent() {
 
 function AuthForm() {
   const { colors, radius, space, type, shadow } = useTheme();
-  const [mode, setMode] = useState<Mode>("signin");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
+  const [mode, setMode] = useState<Mode>('signin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -164,14 +179,19 @@ function AuthForm() {
     setError(null);
     setNotice(null);
     try {
-      if (mode === "signin") {
+      if (mode === 'signin') {
         await auth.signIn({ email, password });
-      } else if (mode === "signup") {
-        const r = await auth.signUp({ email, password, displayName: displayName.trim() || undefined });
-        if (r === "confirm_email") setNotice("Check your email and tap the confirmation link, then sign in.");
+      } else if (mode === 'signup') {
+        const r = await auth.signUp({
+          email,
+          password,
+          displayName: displayName.trim() || undefined,
+        });
+        if (r === 'confirm_email')
+          setNotice('Check your email and tap the confirmation link, then sign in.');
       } else {
         await auth.requestPasswordReset(email, `${config.webUrl}/reset`);
-        setNotice("If that email has an account, a reset link is on its way.");
+        setNotice('If that email has an account, a reset link is on its way.');
       }
     } catch (err) {
       setError(errorMessage(err));
@@ -196,36 +216,51 @@ function AuthForm() {
       <View style={styles.authHeader}>
         <Text style={[styles.eyebrow, { color: colors.accent }]}>SIDLE</Text>
         <Text style={[styles.h1, { color: colors.text, fontSize: type.display.size - 6 }]}>
-          {mode === "signin" ? "Welcome back" : mode === "signup" ? "Join the community" : "Reset password"}
+          {mode === 'signin'
+            ? 'Welcome back'
+            : mode === 'signup'
+              ? 'Join the community'
+              : 'Reset password'}
         </Text>
         <Text style={[styles.muted, { color: colors.textMuted, fontSize: type.small.size }]}>
-          {mode === "signin"
-            ? "Sign in to find people and conversations at your own pace."
-            : mode === "signup"
-            ? "A calm space for genuine relationships, free of vanity metrics."
-            : "Enter your email address and we'll send a secure password reset link."}
+          {mode === 'signin'
+            ? 'Sign in to find people and conversations at your own pace.'
+            : mode === 'signup'
+              ? 'A calm space for genuine relationships, free of vanity metrics.'
+              : "Enter your email address and we'll send a secure password reset link."}
         </Text>
       </View>
 
       {/* Segmented Auth Switcher */}
-      <View style={[styles.authSwitch, { backgroundColor: colors.surfaceSunken, borderRadius: radius.sm, padding: 3 }]}>
+      <View
+        style={[
+          styles.authSwitch,
+          { backgroundColor: colors.surfaceSunken, borderRadius: radius.sm, padding: 3 },
+        ]}
+      >
         <Pressable
           accessibilityRole="tab"
-          accessibilityState={{ selected: mode === "signin" }}
+          accessibilityState={{ selected: mode === 'signin' }}
           onPress={() => {
-            setMode("signin");
+            setMode('signin');
             setError(null);
             setNotice(null);
           }}
           style={[
             styles.switchBtn,
-            mode === "signin" && [styles.switchBtnActive, { backgroundColor: colors.surface, borderRadius: radius.sm - 2 }],
+            mode === 'signin' && [
+              styles.switchBtnActive,
+              { backgroundColor: colors.surface, borderRadius: radius.sm - 2 },
+            ],
           ]}
         >
           <Text
             style={[
               styles.switchText,
-              { color: mode === "signin" ? colors.accent : colors.textMuted, fontWeight: mode === "signin" ? "700" : "500" },
+              {
+                color: mode === 'signin' ? colors.accent : colors.textMuted,
+                fontWeight: mode === 'signin' ? '700' : '500',
+              },
             ]}
           >
             Sign in
@@ -234,21 +269,27 @@ function AuthForm() {
 
         <Pressable
           accessibilityRole="tab"
-          accessibilityState={{ selected: mode === "signup" }}
+          accessibilityState={{ selected: mode === 'signup' }}
           onPress={() => {
-            setMode("signup");
+            setMode('signup');
             setError(null);
             setNotice(null);
           }}
           style={[
             styles.switchBtn,
-            mode === "signup" && [styles.switchBtnActive, { backgroundColor: colors.surface, borderRadius: radius.sm - 2 }],
+            mode === 'signup' && [
+              styles.switchBtnActive,
+              { backgroundColor: colors.surface, borderRadius: radius.sm - 2 },
+            ],
           ]}
         >
           <Text
             style={[
               styles.switchText,
-              { color: mode === "signup" ? colors.accent : colors.textMuted, fontWeight: mode === "signup" ? "700" : "500" },
+              {
+                color: mode === 'signup' ? colors.accent : colors.textMuted,
+                fontWeight: mode === 'signup' ? '700' : '500',
+              },
             ]}
           >
             Create account
@@ -256,7 +297,7 @@ function AuthForm() {
         </Pressable>
       </View>
 
-      {mode === "signup" ? (
+      {mode === 'signup' ? (
         <Field
           label="Display name"
           value={displayName}
@@ -274,7 +315,7 @@ function AuthForm() {
         autoCapitalize="none"
       />
 
-      {mode !== "forgot" ? (
+      {mode !== 'forgot' ? (
         <Field
           label="Password"
           value={password}
@@ -288,29 +329,37 @@ function AuthForm() {
       {notice ? <Banner tone="success">{notice}</Banner> : null}
 
       <Button
-        label={busy ? "Please wait…" : mode === "forgot" ? "Send reset link" : mode === "signin" ? "Sign in" : "Create account"}
+        label={
+          busy
+            ? 'Please wait…'
+            : mode === 'forgot'
+              ? 'Send reset link'
+              : mode === 'signin'
+                ? 'Sign in'
+                : 'Create account'
+        }
         onPress={() => void submit()}
-        disabled={busy || !email.trim() || (mode !== "forgot" && !password.trim())}
+        disabled={busy || !email.trim() || (mode !== 'forgot' && !password.trim())}
         style={{ marginTop: space[4] }}
       />
 
       <View style={styles.authFooterRow}>
-        {mode === "signin" ? (
+        {mode === 'signin' ? (
           <Pressable
             accessibilityRole="button"
             onPress={() => {
-              setMode("forgot");
+              setMode('forgot');
               setError(null);
             }}
             hitSlop={8}
           >
             <Text style={[styles.linkText, { color: colors.accent }]}>Forgot password?</Text>
           </Pressable>
-        ) : mode === "forgot" ? (
+        ) : mode === 'forgot' ? (
           <Pressable
             accessibilityRole="button"
             onPress={() => {
-              setMode("signin");
+              setMode('signin');
               setError(null);
             }}
             hitSlop={8}
@@ -346,8 +395,11 @@ function ProfileHome({
   const [prompts, setPrompts] = useState<PromptDefinition[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<NavTab>("discover");
-  const [shellView, setShellView] = useState<"app" | "settings" | "viewProfile" | "notifications">("app");
+  const [tab, setTab] = useState<NavTab>('feed');
+  const [shellView, setShellView] = useState<'app' | 'settings' | 'viewProfile' | 'notifications'>(
+    'app',
+  );
+  const [editingProfile, setEditingProfile] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [pendingIn, setPendingIn] = useState(0);
   const [unread, setUnread] = useState(0);
@@ -355,22 +407,48 @@ function ProfileHome({
 
   const editorDirty = useRef(false);
   const editorBusy = useRef(false);
-  const setEditorDirty = useCallback((dirty: boolean, busy = false) => { editorDirty.current = dirty; editorBusy.current = busy; }, []);
+  const setEditorDirty = useCallback((dirty: boolean, busy = false) => {
+    editorDirty.current = dirty;
+    editorBusy.current = busy;
+  }, []);
   const navigate = useCallback((action: () => void) => {
-    if (editorBusy.current) { Alert.alert("Please wait", "Let the current save or photo operation finish before leaving."); return; }
-    if (!editorDirty.current) { action(); return; }
-    Alert.alert("Discard unsaved changes?", "Profile details and privacy edits will be discarded. Photo uploads/removals and theme changes are saved immediately.", [
-      { text: "Keep editing", style: "cancel" },
-      { text: "Discard and leave", style: "destructive", onPress: () => { editorDirty.current = false; action(); } },
-    ]);
+    if (editorBusy.current) {
+      Alert.alert('Please wait', 'Let the current save or photo operation finish before leaving.');
+      return;
+    }
+    if (!editorDirty.current) {
+      action();
+      return;
+    }
+    Alert.alert(
+      'Discard unsaved changes?',
+      'Profile details and privacy edits will be discarded. Photo uploads/removals and theme changes are saved immediately.',
+      [
+        { text: 'Keep editing', style: 'cancel' },
+        {
+          text: 'Discard and leave',
+          style: 'destructive',
+          onPress: () => {
+            editorDirty.current = false;
+            action();
+          },
+        },
+      ],
+    );
   }, []);
   useEffect(() => {
-    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       if (editorDirty.current || editorBusy.current) {
-        navigate(() => { setShellView("app"); setTab("discover"); });
+        navigate(() => {
+          setShellView('app');
+          setTab('discover');
+        });
         return true;
       }
-      if (shellView !== "app") { setShellView("app"); return true; }
+      if (shellView !== 'app') {
+        setShellView('app');
+        return true;
+      }
       return false;
     });
     return () => subscription.remove();
@@ -378,15 +456,29 @@ function ProfileHome({
 
   const [pushConversation, setPushConversation] = useState<string | null>(null);
   useEffect(() => startPushLifecycle(me.id), [me.id]);
-  useEffect(() => subscribeToMessageAlerts((id) => navigate(() => { setShellView("app"); setTab("messages"); setPushConversation(id); })), [navigate]);
+  useEffect(
+    () =>
+      subscribeToMessageAlerts((id) =>
+        navigate(() => {
+          setShellView('app');
+          setTab('messages');
+          setPushConversation(id);
+        }),
+      ),
+    [navigate],
+  );
 
   // Guard external navigation as well as tab/menu navigation.
   useEffect(() => {
     if (!pendingTarget) return;
     navigate(() => {
-      setShellView("app");
-      if (pendingTarget.targetType === "group" || pendingTarget.targetType === "event") setTab("community");
-      else { setTab("discover"); onClearPendingTarget?.(); }
+      setShellView('app');
+      if (pendingTarget.targetType === 'group' || pendingTarget.targetType === 'event')
+        setTab('community');
+      else {
+        setTab('discover');
+        onClearPendingTarget?.();
+      }
     });
   }, [pendingTarget, onClearPendingTarget, navigate]);
 
@@ -426,13 +518,16 @@ function ProfileHome({
   }, []);
 
   const handleSignOut = () => {
-    Alert.alert("Sign out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert('Sign out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
       {
-        text: "Sign out",
-        style: "destructive",
+        text: 'Sign out',
+        style: 'destructive',
         onPress: () => {
-          disableDevicePush(me.id).then(() => auth.signOut()).then(onSignOut).catch((err) => setError(errorMessage(err)));
+          disableDevicePush(me.id)
+            .then(() => auth.signOut())
+            .then(onSignOut)
+            .catch((err) => setError(errorMessage(err)));
         },
       },
     ]);
@@ -451,7 +546,7 @@ function ProfileHome({
     return (
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.line }]}>
-          <Banner tone="error">{error ?? "Profile unavailable."}</Banner>
+          <Banner tone="error">{error ?? 'Profile unavailable.'}</Banner>
           <Button label="Retry" onPress={() => void load()} style={{ marginTop: 14 }} />
         </View>
       </ScrollView>
@@ -476,35 +571,35 @@ function ProfileHome({
           <Text style={[styles.headerEyebrow, { color: colors.accent }]}>SIDLE</Text>
           <Text style={[styles.headerTitle, { color: colors.text, fontSize: type.title.size }]}>
             {!profile.onboardingCompleted
-              ? "Complete Profile"
-              : shellView === "settings"
-              ? "Settings"
-              : shellView === "notifications"
-              ? "Notifications"
-              : shellView === "viewProfile"
-              ? "Your profile"
-              : tab === "discover"
-              ? "Discover"
-              : tab === "connections"
-              ? "Connections"
-              : tab === "messages"
-              ? "Messages"
-              : tab === "community"
-              ? "Community"
-              : "Your Space"}
+              ? 'Complete Profile'
+              : shellView === 'settings'
+                ? 'Settings'
+                : shellView === 'notifications'
+                  ? 'Notifications'
+                  : shellView === 'viewProfile'
+                    ? 'Your profile'
+                    : tab === 'discover'
+                      ? 'Discover'
+                      : tab === 'connections'
+                        ? 'Connections'
+                        : tab === 'messages'
+                          ? 'Messages'
+                          : tab === 'community'
+                            ? 'Community'
+                            : 'Your Space'}
           </Text>
         </View>
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`Open account menu for ${profile.displayName || "member"}`}
+          accessibilityLabel={`Open account menu for ${profile.displayName || 'member'}`}
           accessibilityHint="Opens profile, settings and sign-out options"
           onPress={() => setAccountMenuOpen(true)}
           style={({ pressed }) => ({
             minHeight: 44,
             maxWidth: 150,
-            flexDirection: "row",
-            alignItems: "center",
+            flexDirection: 'row',
+            alignItems: 'center',
             gap: 8,
             paddingHorizontal: 8,
             borderWidth: 1,
@@ -514,17 +609,25 @@ function ProfileHome({
             opacity: pressed ? 0.75 : 1,
           })}
         >
-          <View style={{
-            width: 32, height: 32, borderRadius: 16,
-            alignItems: "center", justifyContent: "center",
-            backgroundColor: colors.accentSoft,
-          }}>
-            <Text style={{ color: colors.accent, fontWeight: "800" }}>
-              {profile.displayName.trim().charAt(0).toUpperCase() || "S"}
+          <View
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 16,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: colors.accentSoft,
+            }}
+          >
+            <Text style={{ color: colors.accent, fontWeight: '800' }}>
+              {profile.displayName.trim().charAt(0).toUpperCase() || 'S'}
             </Text>
           </View>
-          <Text numberOfLines={1} style={{ maxWidth: 78, color: colors.text, fontSize: 12, fontWeight: "700" }}>
-            {profile.displayName || "Account"} ⌄
+          <Text
+            numberOfLines={1}
+            style={{ maxWidth: 78, color: colors.text, fontSize: 12, fontWeight: '700' }}
+          >
+            {profile.displayName || 'Account'} ⌄
           </Text>
         </Pressable>
       </View>
@@ -545,12 +648,16 @@ function ProfileHome({
           </ScrollView>
         ) : (
           <ScrollView contentContainerStyle={styles.scroll}>
-            {shellView === "settings" ? (
+            {shellView === 'settings' ? (
               <MobileSettingsOverview
                 me={me}
                 profile={profile}
                 onVerifyStudent={async (email, id, inst) => {
-                  const res = await client.verifyStudent({ studentEmail: email, studentId: id, institution: inst });
+                  const res = await client.verifyStudent({
+                    studentEmail: email,
+                    studentId: id,
+                    institution: inst,
+                  });
                   if (res.verified) {
                     const refreshed = await client.getProfile();
                     setProfile(refreshed);
@@ -558,31 +665,47 @@ function ProfileHome({
                     throw new Error(res.message);
                   }
                 }}
-                onBack={() => setShellView("app")}
-                onEditProfile={() => { setShellView("app"); setTab("profile"); }}
-                onOpenNotifications={() => setShellView("notifications")}
-                onViewProfile={() => setShellView("viewProfile")}
+                onBack={() => setShellView('app')}
+                onEditProfile={() => {
+                  setShellView('app');
+                  setEditingProfile(true);
+                  setTab('profile');
+                }}
+                onOpenNotifications={() => setShellView('notifications')}
+                onViewProfile={() => setShellView('viewProfile')}
                 onSignOut={onSignOut}
               />
-            ) : shellView === "notifications" ? (
-              <NotificationSettingsScreen userId={me.id} onBack={() => setShellView("settings")} />
-            ) : shellView === "viewProfile" ? (
+            ) : shellView === 'notifications' ? (
+              <NotificationSettingsScreen userId={me.id} onBack={() => setShellView('settings')} />
+            ) : shellView === 'viewProfile' ? (
               <MobileMyProfileView
                 profile={profile}
-                onBack={() => setShellView("app")}
-                onEdit={() => { setShellView("app"); setTab("profile"); }}
+                onBack={() => setShellView('app')}
+                onEdit={() => {
+                  setShellView('app');
+                  setEditingProfile(true);
+                  setTab('profile');
+                }}
               />
-            ) : tab === "discover" ? (
+            ) : tab === 'feed' ? (
+              <PlatformHub />
+            ) : tab === 'profile' && !editingProfile ? (
+              <MobileMyProfileView
+                profile={profile}
+                onBack={() => setTab('feed')}
+                onEdit={() => setEditingProfile(true)}
+              />
+            ) : tab === 'discover' ? (
               <Discover />
-            ) : tab === "connections" ? (
+            ) : tab === 'connections' ? (
               <Connections
                 onCount={setPendingIn}
                 onMessage={(userId) => {
                   setChatWith(userId);
-                  setTab("messages");
+                  setTab('messages');
                 }}
               />
-            ) : tab === "messages" ? (
+            ) : tab === 'messages' ? (
               <Messages
                 onUnread={setUnread}
                 openWithUserId={chatWith}
@@ -590,7 +713,7 @@ function ProfileHome({
                 onPushOpened={() => setPushConversation(null)}
                 onOpened={() => setChatWith(null)}
               />
-            ) : tab === "community" ? (
+            ) : tab === 'community' ? (
               <Community initialTarget={pendingTarget} onClearTarget={onClearPendingTarget} />
             ) : (
               <Editor
@@ -599,7 +722,10 @@ function ProfileHome({
                 prompts={prompts}
                 client={client}
                 me={me}
-                onSaved={setProfile}
+                onSaved={(saved) => {
+                  setProfile(saved);
+                  setEditingProfile(false);
+                }}
                 onDirtyChange={setEditorDirty}
               />
             )}
@@ -608,10 +734,17 @@ function ProfileHome({
       </View>
 
       {/* Bottom Navigation (Only visible when onboarding is complete) */}
-      {profile.onboardingCompleted && shellView === "app" ? (
+      {profile.onboardingCompleted && shellView === 'app' ? (
         <BottomNav
           currentTab={tab}
-          onSelectTab={(nextTab) => { if (nextTab !== tab) navigate(() => { setShellView("app"); setTab(nextTab); }); }}
+          onSelectTab={(nextTab) => {
+            if (nextTab !== tab)
+              navigate(() => {
+                setShellView('app');
+                setEditingProfile(false);
+                setTab(nextTab);
+              });
+          }}
           pendingConnectionsCount={pendingIn}
           unreadMessagesCount={unread}
         />
@@ -624,29 +757,74 @@ function ProfileHome({
         statusBarTranslucent
         onRequestClose={() => setAccountMenuOpen(false)}
       >
-        <View style={{ flex: 1, justifyContent: "flex-start", alignItems: "flex-end", padding: 16, paddingTop: 70, backgroundColor: "rgba(8,12,22,0.48)" }}>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'flex-start',
+            alignItems: 'flex-end',
+            padding: 16,
+            paddingTop: 70,
+            backgroundColor: 'rgba(8,12,22,0.48)',
+          }}
+        >
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Close account menu"
             onPress={() => setAccountMenuOpen(false)}
             style={StyleSheet.absoluteFill}
           />
-          <View style={{
-            width: "100%",
-            maxWidth: 360,
-            padding: 16,
-            gap: 10,
-            borderWidth: 1,
-            borderColor: colors.line,
-            borderRadius: radius.lg,
-            backgroundColor: colors.surface,
-          }}>
-            <Text style={{ color: colors.text, fontSize: 18, fontWeight: "800" }}>Your account</Text>
-            <Text style={{ color: colors.textMuted, fontSize: 13, marginBottom: 4 }}>{me.email || "Email not available"}</Text>
-            <Button label="View my profile" secondary onPress={() => { setAccountMenuOpen(false); navigate(() => setShellView("viewProfile")); }} />
-            <Button label="Edit profile" secondary onPress={() => { setAccountMenuOpen(false); setShellView("app"); setTab("profile"); }} />
-            <Button label="Settings" onPress={() => { setAccountMenuOpen(false); navigate(() => setShellView("settings")); }} />
-            <Button label="Sign out" danger secondary onPress={() => { setAccountMenuOpen(false); navigate(handleSignOut); }} />
+          <View
+            style={{
+              width: '100%',
+              maxWidth: 360,
+              padding: 16,
+              gap: 10,
+              borderWidth: 1,
+              borderColor: colors.line,
+              borderRadius: radius.lg,
+              backgroundColor: colors.surface,
+            }}
+          >
+            <Text style={{ color: colors.text, fontSize: 18, fontWeight: '800' }}>
+              Your account
+            </Text>
+            <Text style={{ color: colors.textMuted, fontSize: 13, marginBottom: 4 }}>
+              {me.email || 'Email not available'}
+            </Text>
+            <Button
+              label="View my profile"
+              secondary
+              onPress={() => {
+                setAccountMenuOpen(false);
+                navigate(() => setShellView('viewProfile'));
+              }}
+            />
+            <Button
+              label="Edit profile"
+              secondary
+              onPress={() => {
+                setAccountMenuOpen(false);
+                setShellView('app');
+                setEditingProfile(true);
+                setTab('profile');
+              }}
+            />
+            <Button
+              label="Settings"
+              onPress={() => {
+                setAccountMenuOpen(false);
+                navigate(() => setShellView('settings'));
+              }}
+            />
+            <Button
+              label="Sign out"
+              danger
+              secondary
+              onPress={() => {
+                setAccountMenuOpen(false);
+                navigate(handleSignOut);
+              }}
+            />
           </View>
         </View>
       </Modal>
@@ -670,7 +848,11 @@ function MobileSettingsOverview({
 }: {
   me: Me;
   profile?: Profile | null;
-  onVerifyStudent?: (studentEmail: string, studentId?: string, institution?: string) => Promise<void>;
+  onVerifyStudent?: (
+    studentEmail: string,
+    studentId?: string,
+    institution?: string,
+  ) => Promise<void>;
   onBack: () => void;
   onEditProfile: () => void;
   onOpenNotifications: () => void;
@@ -678,15 +860,23 @@ function MobileSettingsOverview({
   onSignOut: () => void;
 }) {
   const { colors, radius, space, type, preference, setPreference, shadow } = useTheme();
+  const [lowPressure, setLowPressure] = useState(false);
+  const [preferenceBusy, setPreferenceBusy] = useState(false);
+  useEffect(() => {
+    void getConnectionsClient()
+      .getSettings()
+      .then((value) => setLowPressure(value.lowPressureMode))
+      .catch(() => undefined);
+  }, []);
   const [sessions, setSessions] = useState<DeviceSession[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [securityError, setSecurityError] = useState<string | null>(null);
 
-  const isStudentVerified = profile?.verificationLevel === "student_verified";
+  const isStudentVerified = profile?.verificationLevel === 'student_verified';
   const [studentEmail, setStudentEmail] = useState(
-    me.email?.includes("@students.") || me.email?.includes(".ac.zw") ? me.email : ""
+    me.email?.includes('@students.') || me.email?.includes('.ac.zw') ? me.email : '',
   );
   const [verifying, setVerifying] = useState(false);
   const [verifyMsg, setVerifyMsg] = useState<string | null>(null);
@@ -710,13 +900,13 @@ function MobileSettingsOverview({
 
   const confirmRevokeSession = (session: DeviceSession) => {
     Alert.alert(
-      "Sign out this device?",
-      "That device will need to sign in again to use this account.",
+      'Sign out this device?',
+      'That device will need to sign in again to use this account.',
       [
-        { text: "Cancel", style: "cancel" },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: "Sign out",
-          style: "destructive",
+          text: 'Sign out',
+          style: 'destructive',
           onPress: async () => {
             setRevokingSessionId(session.id);
             setSecurityError(null);
@@ -736,13 +926,13 @@ function MobileSettingsOverview({
 
   const confirmDeleteAccount = () => {
     Alert.alert(
-      "Delete account and personal data?",
-      "This ends app access and removes profile/contact data. Photos and sign-in records are queued for cleanup. Past messages, reports and provider backups remain. Delete any groups you own first. This cannot be undone.",
+      'Delete account and personal data?',
+      'This ends app access and removes profile/contact data. Photos and sign-in records are queued for cleanup. Past messages, reports and provider backups remain. Delete any groups you own first. This cannot be undone.',
       [
-        { text: "Cancel", style: "cancel" },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: "Delete account",
-          style: "destructive",
+          text: 'Delete account',
+          style: 'destructive',
           onPress: async () => {
             setDeletingAccount(true);
             setSecurityError(null);
@@ -763,21 +953,70 @@ function MobileSettingsOverview({
 
   return (
     <View style={{ gap: space[3] }}>
-      <View style={{ marginBottom: space[2], flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+      <View
+        style={{
+          marginBottom: space[2],
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: 12,
+        }}
+      >
         <View style={{ flex: 1 }}>
           <Text style={[styles.eyebrow, { color: colors.accent }]}>YOUR SPACE</Text>
-          <Text style={[styles.h1, { color: colors.text, fontSize: type.title.size }]}>Settings</Text>
-          <Text style={[styles.muted, { color: colors.textMuted }]}>Manage your profile, privacy, account security, notifications and appearance.</Text>
+          <Text style={[styles.h1, { color: colors.text, fontSize: type.title.size }]}>
+            Settings
+          </Text>
+          <Text style={[styles.muted, { color: colors.textMuted }]}>
+            Manage your profile, privacy, account security, notifications and appearance.
+          </Text>
         </View>
         <Button label="Back" secondary compact onPress={onBack} />
       </View>
 
-      <View style={[styles.card, { padding: space[4], borderRadius: radius.md, borderColor: colors.line, backgroundColor: colors.surface }, shadow[1]]}>
+      <View
+        style={[
+          styles.card,
+          {
+            padding: space[4],
+            borderRadius: radius.md,
+            borderColor: colors.line,
+            backgroundColor: colors.surface,
+          },
+          shadow[1],
+        ]}
+      >
         <Text style={[styles.eyebrow, { color: colors.accent }]}>SIGNED IN</Text>
-        <Text style={[styles.h2, { color: colors.text }]}>{me.email || "Email not available"}</Text>
+        <Text style={[styles.h2, { color: colors.text }]}>{me.email || 'Email not available'}</Text>
         <Text style={[styles.muted, { color: colors.textMuted }]}>Account status: {me.status}</Text>
       </View>
 
+      <View
+        style={[
+          styles.card,
+          { padding: space[4], backgroundColor: colors.surface, borderColor: colors.line },
+        ]}
+      >
+        <Text style={[styles.h2, { color: colors.text }]}>Low-pressure introductions</Text>
+        <Text style={{ color: colors.textMuted }}>
+          Optional: receive structured introductions instead of custom introductory text.
+        </Text>
+        <Switch
+          value={lowPressure}
+          disabled={preferenceBusy}
+          accessibilityLabel="Low-pressure introductions"
+          onValueChange={async (value) => {
+            setPreferenceBusy(true);
+            try {
+              setLowPressure((await getConnectionsClient().setLowPressure(value)).lowPressureMode);
+            } catch (err) {
+              Alert.alert('Could not save', errorMessage(err));
+            } finally {
+              setPreferenceBusy(false);
+            }
+          }}
+        />
+      </View>
       {/* Campus Verification Card */}
       <View
         style={[
@@ -792,7 +1031,14 @@ function MobileSettingsOverview({
           shadow[1],
         ]}
       >
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+          }}
+        >
           <Text style={[styles.eyebrow, { color: colors.accent }]}>CAMPUS VERIFICATION</Text>
           {isStudentVerified ? (
             <Badge label="✓ Academic email" tone="success" compact />
@@ -802,23 +1048,37 @@ function MobileSettingsOverview({
         </View>
 
         <Text style={[styles.h2, { color: colors.text }]}>
-          {isStudentVerified ? "Academic email confirmed" : "Confirm academic email"}
+          {isStudentVerified ? 'Academic email confirmed' : 'Confirm academic email'}
         </Text>
 
         <Text style={[styles.muted, { color: colors.textMuted }]}>
           {isStudentVerified
-            ? "This confirms access to your sign-in email at a supported institution, not enrollment or personal identity."
-            : "Sign in with a supported university email and confirm its email link first. Enter that same sign-in email here."}
+            ? 'This confirms access to your sign-in email at a supported institution, not enrollment or personal identity.'
+            : 'Sign in with a supported university email and confirm its email link first. Enter that same sign-in email here.'}
         </Text>
 
         {!isStudentVerified && onVerifyStudent ? (
           <View style={{ marginTop: space[2], gap: space[2] }}>
-            <Button label="Send email access link" secondary disabled={verifying || !me.email} onPress={async () => {
-              setVerifying(true); setVerifyError(null); setVerifyMsg(null);
-              try { await auth.requestEmailAccessLink(me.email!, `${config.webUrl}/?view=settings`); setVerifyMsg("If available, a sign-in link was sent. Open it on the web app, then confirm your academic email in Settings. The saved badge is shared with this app. Email delivery needs a configured provider."); }
-              catch (err) { setVerifyError(errorMessage(err)); }
-              finally { setVerifying(false); }
-            }} />
+            <Button
+              label="Send email access link"
+              secondary
+              disabled={verifying || !me.email}
+              onPress={async () => {
+                setVerifying(true);
+                setVerifyError(null);
+                setVerifyMsg(null);
+                try {
+                  await auth.requestEmailAccessLink(me.email!, `${config.webUrl}/?view=settings`);
+                  setVerifyMsg(
+                    'If available, a sign-in link was sent. Open it on the web app, then confirm your academic email in Settings. The saved badge is shared with this app. Email delivery needs a configured provider.',
+                  );
+                } catch (err) {
+                  setVerifyError(errorMessage(err));
+                } finally {
+                  setVerifying(false);
+                }
+              }}
+            />
             <Field
               label="University Email"
               value={studentEmail}
@@ -828,13 +1088,11 @@ function MobileSettingsOverview({
               onChangeText={setStudentEmail}
             />
 
-
-
             {verifyMsg ? <Banner tone="success">{verifyMsg}</Banner> : null}
             {verifyError ? <Banner tone="error">{verifyError}</Banner> : null}
 
             <Button
-              label={verifying ? "Verifying…" : "Confirm academic email"}
+              label={verifying ? 'Verifying…' : 'Confirm academic email'}
               disabled={verifying || !studentEmail.trim()}
               onPress={async () => {
                 if (!studentEmail.trim()) return;
@@ -843,7 +1101,7 @@ function MobileSettingsOverview({
                 setVerifyMsg(null);
                 try {
                   await onVerifyStudent(studentEmail.trim());
-                  setVerifyMsg("Academic email ownership confirmed.");
+                  setVerifyMsg('Academic email ownership confirmed.');
                 } catch (err) {
                   setVerifyError(errorMessage(err));
                 } finally {
@@ -871,32 +1129,73 @@ function MobileSettingsOverview({
         onPress={onOpenNotifications}
       />
 
-      <View style={[styles.card, { padding: space[4], borderRadius: radius.md, borderColor: colors.line, backgroundColor: colors.surface, gap: space[3] }, shadow[1]]}>
+      <View
+        style={[
+          styles.card,
+          {
+            padding: space[4],
+            borderRadius: radius.md,
+            borderColor: colors.line,
+            backgroundColor: colors.surface,
+            gap: space[3],
+          },
+          shadow[1],
+        ]}
+      >
         <View style={{ gap: 4 }}>
           <Text style={[styles.eyebrow, { color: colors.accent }]}>SECURITY</Text>
           <Text style={[styles.h2, { color: colors.text }]}>Account & security</Text>
-          <Text style={[styles.muted, { color: colors.textMuted }]}>Review where your account is signed in and end sessions you no longer recognize.</Text>
+          <Text style={[styles.muted, { color: colors.textMuted }]}>
+            Review where your account is signed in and end sessions you no longer recognize.
+          </Text>
         </View>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-          <Text style={{ color: colors.text, fontWeight: "700", flex: 1 }}>Active sessions</Text>
-          <Button label={sessionsLoading ? "Loading…" : "Refresh"} compact secondary onPress={() => void loadSessions()} disabled={sessionsLoading || revokingSessionId !== null} />
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 12,
+          }}
+        >
+          <Text style={{ color: colors.text, fontWeight: '700', flex: 1 }}>Active sessions</Text>
+          <Button
+            label={sessionsLoading ? 'Loading…' : 'Refresh'}
+            compact
+            secondary
+            onPress={() => void loadSessions()}
+            disabled={sessionsLoading || revokingSessionId !== null}
+          />
         </View>
         {securityError ? <Banner tone="error">{securityError}</Banner> : null}
         {sessionsLoading ? (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 }}>
             <ActivityIndicator color={colors.accent} />
-            <Text style={[styles.muted, { color: colors.textMuted }]}>Loading active sessions…</Text>
+            <Text style={[styles.muted, { color: colors.textMuted }]}>
+              Loading active sessions…
+            </Text>
           </View>
         ) : sessions.length ? (
           <View style={{ gap: space[2] }}>
             {sessions.map((session) => (
-              <View key={session.id} style={{ borderWidth: 1, borderColor: colors.line, borderRadius: radius.sm, padding: space[3], gap: 8 }}>
+              <View
+                key={session.id}
+                style={{
+                  borderWidth: 1,
+                  borderColor: colors.line,
+                  borderRadius: radius.sm,
+                  padding: space[3],
+                  gap: 8,
+                }}
+              >
                 <View style={{ gap: 3 }}>
-                  <Text style={{ color: colors.text, fontWeight: "700" }}>
-                    {session.current ? "This device" : "Signed-in device"}
+                  <Text style={{ color: colors.text, fontWeight: '700' }}>
+                    {session.current ? 'This device' : 'Signed-in device'}
                   </Text>
-                  <Text style={[styles.muted, { color: colors.textMuted, fontSize: 12 }]} numberOfLines={2}>
-                    {session.userAgent || "Device details unavailable"}
+                  <Text
+                    style={[styles.muted, { color: colors.textMuted, fontSize: 12 }]}
+                    numberOfLines={2}
+                  >
+                    {session.userAgent || 'Device details unavailable'}
                   </Text>
                   <Text style={[styles.muted, { color: colors.textMuted, fontSize: 12 }]}>
                     Last active {new Date(session.lastSeenAt).toLocaleString()}
@@ -904,7 +1203,9 @@ function MobileSettingsOverview({
                 </View>
                 {!session.current ? (
                   <Button
-                    label={revokingSessionId === session.id ? "Signing out…" : "Sign out this device"}
+                    label={
+                      revokingSessionId === session.id ? 'Signing out…' : 'Sign out this device'
+                    }
                     secondary
                     danger
                     compact
@@ -912,19 +1213,27 @@ function MobileSettingsOverview({
                     onPress={() => confirmRevokeSession(session)}
                   />
                 ) : (
-                  <Text style={{ color: colors.accent, fontSize: 12, fontWeight: "700" }}>Current session</Text>
+                  <Text style={{ color: colors.accent, fontSize: 12, fontWeight: '700' }}>
+                    Current session
+                  </Text>
                 )}
               </View>
             ))}
           </View>
         ) : (
-          <Text style={[styles.muted, { color: colors.textMuted }]}>No active sessions were returned.</Text>
+          <Text style={[styles.muted, { color: colors.textMuted }]}>
+            No active sessions were returned.
+          </Text>
         )}
-        <View style={{ borderTopWidth: 1, borderTopColor: colors.line, paddingTop: space[3], gap: 8 }}>
+        <View
+          style={{ borderTopWidth: 1, borderTopColor: colors.line, paddingTop: space[3], gap: 8 }}
+        >
           <Text style={[styles.h2, { color: colors.text }]}>Delete account</Text>
-          <Text style={[styles.muted, { color: colors.textMuted }]}>Permanently delete your Sidle account and personal data. This cannot be undone.</Text>
+          <Text style={[styles.muted, { color: colors.textMuted }]}>
+            Permanently delete your Sidle account and personal data. This cannot be undone.
+          </Text>
           <Button
-            label={deletingAccount ? "Deleting account…" : "Delete my account"}
+            label={deletingAccount ? 'Deleting account…' : 'Delete my account'}
             danger
             secondary
             onPress={confirmDeleteAccount}
@@ -933,15 +1242,28 @@ function MobileSettingsOverview({
         </View>
       </View>
 
-      <View style={[styles.card, { padding: space[4], borderRadius: radius.md, borderColor: colors.line, backgroundColor: colors.surface }, shadow[1]]}>
+      <View
+        style={[
+          styles.card,
+          {
+            padding: space[4],
+            borderRadius: radius.md,
+            borderColor: colors.line,
+            backgroundColor: colors.surface,
+          },
+          shadow[1],
+        ]}
+      >
         <Text style={[styles.eyebrow, { color: colors.accent }]}>PERSONALISE</Text>
         <Text style={[styles.h2, { color: colors.text }]}>Appearance</Text>
-        <Text style={[styles.muted, { color: colors.textMuted }]}>System follows your device setting. Your selection is saved on this device.</Text>
+        <Text style={[styles.muted, { color: colors.textMuted }]}>
+          System follows your device setting. Your selection is saved on this device.
+        </Text>
         <View style={[styles.themeRow, { marginTop: space[3] }]}>
-          {(["system", "light", "dark"] as ThemePreference[]).map((mode) => (
+          {(['system', 'light', 'dark'] as ThemePreference[]).map((mode) => (
             <Chip
               key={mode}
-              label={mode === "system" ? "◐ System" : mode === "light" ? "☀ Light" : "☾ Dark"}
+              label={mode === 'system' ? '◐ System' : mode === 'light' ? '☀ Light' : '☾ Dark'}
               selected={preference === mode}
               onPress={() => setPreference(mode)}
             />
@@ -949,15 +1271,37 @@ function MobileSettingsOverview({
         </View>
       </View>
 
-      <View style={[styles.card, { padding: space[4], borderRadius: radius.md, borderColor: colors.line, backgroundColor: colors.surface }, shadow[1]]}>
+      <View
+        style={[
+          styles.card,
+          {
+            padding: space[4],
+            borderRadius: radius.md,
+            borderColor: colors.line,
+            backgroundColor: colors.surface,
+          },
+          shadow[1],
+        ]}
+      >
         <Text style={[styles.eyebrow, { color: colors.accent }]}>HELP & SAFETY</Text>
         <Text style={[styles.h2, { color: colors.text }]}>Keep your space comfortable</Text>
-        <Text style={[styles.muted, { color: colors.textMuted }]}>Use Report and Block where available on profiles, connections, messages, groups and events. You can manage your current sessions and account-removal request here.</Text>
+        <Text style={[styles.muted, { color: colors.textMuted }]}>
+          Use Report and Block where available on profiles, connections, messages, groups and
+          events. You can manage your current sessions and account-removal request here.
+        </Text>
       </View>
     </View>
   );
 }
-function MobileSettingRow({ title, description, onPress }: { title: string; description: string; onPress: () => void }) {
+function MobileSettingRow({
+  title,
+  description,
+  onPress,
+}: {
+  title: string;
+  description: string;
+  onPress: () => void;
+}) {
   const { colors, radius, space, shadow } = useTheme();
   return (
     <Pressable
@@ -966,8 +1310,8 @@ function MobileSettingRow({ title, description, onPress }: { title: string; desc
       style={({ pressed }) => [
         styles.card,
         {
-          flexDirection: "row",
-          alignItems: "center",
+          flexDirection: 'row',
+          alignItems: 'center',
           gap: space[3],
           padding: space[4],
           borderRadius: radius.md,
@@ -979,7 +1323,7 @@ function MobileSettingRow({ title, description, onPress }: { title: string; desc
       ]}
     >
       <View style={{ flex: 1, gap: 4 }}>
-        <Text style={{ color: colors.text, fontWeight: "800", fontSize: 15 }}>{title}</Text>
+        <Text style={{ color: colors.text, fontWeight: '800', fontSize: 15 }}>{title}</Text>
         <Text style={{ color: colors.textMuted, fontSize: 13, lineHeight: 19 }}>{description}</Text>
       </View>
       <Text style={{ color: colors.accent, fontSize: 18 }}>→</Text>
@@ -987,69 +1331,158 @@ function MobileSettingRow({ title, description, onPress }: { title: string; desc
   );
 }
 
-function MobileMyProfileView({ profile, onBack, onEdit }: { profile: Profile; onBack: () => void; onEdit: () => void }) {
+function MobileMyProfileView({
+  profile,
+  onBack,
+  onEdit,
+}: {
+  profile: Profile;
+  onBack: () => void;
+  onEdit: () => void;
+}) {
   const { colors, radius, space, type, shadow } = useTheme();
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   useEffect(() => {
     let active = true;
-    if (!profile.media[0]) { setMediaUrl(null); return () => { active = false; }; }
+    if (!profile.media[0]) {
+      setMediaUrl(null);
+      return () => {
+        active = false;
+      };
+    }
     void getSignedMediaUrl(profile.media[0].thumbnailPath)
-      .then((url) => { if (active) setMediaUrl(url); })
-      .catch(() => { if (active) setMediaUrl(null); });
-    return () => { active = false; };
+      .then((url) => {
+        if (active) setMediaUrl(url);
+      })
+      .catch(() => {
+        if (active) setMediaUrl(null);
+      });
+    return () => {
+      active = false;
+    };
   }, [profile.media]);
 
   const socialLabels: Record<SocialStyle, string> = {
-    small_group: "Small groups",
-    one_to_one: "One-to-one",
-    text_first: "Text-first",
-    voice_first: "Voice-first",
-    low_pressure: "Low pressure",
+    small_group: 'Small groups',
+    one_to_one: 'One-to-one',
+    text_first: 'Text-first',
+    voice_first: 'Voice-first',
+    low_pressure: 'Low pressure',
   };
   return (
     <View style={{ gap: space[3] }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 12,
+        }}
+      >
         <View style={{ flex: 1 }}>
           <Text style={[styles.eyebrow, { color: colors.accent }]}>PROFILE PREVIEW</Text>
-          <Text style={[styles.h1, { color: colors.text, fontSize: type.title.size }]}>Your profile</Text>
+          <Text style={[styles.h1, { color: colors.text, fontSize: type.title.size }]}>
+            Your profile
+          </Text>
         </View>
         <Button label="Back" secondary compact onPress={onBack} />
       </View>
-      <View style={[styles.card, { padding: space[4], borderRadius: radius.md, borderColor: colors.line, backgroundColor: colors.surface, gap: space[3] }, shadow[1]]}>
+      <View
+        style={[
+          styles.card,
+          {
+            padding: space[4],
+            borderRadius: radius.md,
+            borderColor: colors.line,
+            backgroundColor: colors.surface,
+            gap: space[3],
+          },
+          shadow[1],
+        ]}
+      >
         {mediaUrl ? (
-          <Image source={{ uri: mediaUrl }} accessibilityLabel={`${profile.displayName} profile photo`} style={{ width: "100%", aspectRatio: 1, maxHeight: 320, borderRadius: radius.md }} />
+          <Image
+            source={{ uri: mediaUrl }}
+            accessibilityLabel={`${profile.displayName} profile photo`}
+            style={{ width: '100%', aspectRatio: 1, maxHeight: 320, borderRadius: radius.md }}
+          />
         ) : (
-          <View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: colors.accentSoft, alignItems: "center", justifyContent: "center", alignSelf: "center" }}>
-            <Text style={{ color: colors.accent, fontSize: 32, fontWeight: "800" }}>{profile.displayName.trim().charAt(0).toUpperCase() || "S"}</Text>
+          <View
+            style={{
+              width: 88,
+              height: 88,
+              borderRadius: 44,
+              backgroundColor: colors.accentSoft,
+              alignItems: 'center',
+              justifyContent: 'center',
+              alignSelf: 'center',
+            }}
+          >
+            <Text style={{ color: colors.accent, fontSize: 32, fontWeight: '800' }}>
+              {profile.displayName.trim().charAt(0).toUpperCase() || 'S'}
+            </Text>
           </View>
         )}
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <Text style={[styles.h1, { color: colors.text, fontSize: type.title.size }]}>{profile.displayName}</Text>
-          {profile.verificationLevel === "student_verified" ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <Text style={[styles.h1, { color: colors.text, fontSize: type.title.size }]}>
+            {profile.displayName}
+          </Text>
+          {profile.verificationLevel === 'student_verified' ? (
             <Badge label="✓ Academic email" tone="success" compact />
-          ) : profile.verificationLevel === "trusted" ? (
+          ) : profile.verificationLevel === 'trusted' ? (
             <Badge label="✓ Verified" tone="accent" compact />
           ) : null}
         </View>
-        <Text style={[styles.muted, { color: colors.textMuted }]}>{profile.bio || "No bio added yet."}</Text>
-        <Text style={[styles.h2, { color: colors.text, marginTop: space[2] }]}>How I like to connect</Text>
+        <Text style={[styles.muted, { color: colors.textMuted }]}>
+          {profile.bio || 'No bio added yet.'}
+        </Text>
+        <Text style={[styles.h2, { color: colors.text, marginTop: space[2] }]}>
+          How I like to connect
+        </Text>
         <View style={styles.chipsRow}>
-          {profile.socialStyles.map((style) => <Chip key={style} label={socialLabels[style]} selected />)}
-          {!profile.socialStyles.length ? <Text style={[styles.muted, { color: colors.textMuted }]}>No connection preferences added yet.</Text> : null}
+          {profile.socialStyles.map((style) => (
+            <Chip key={style} label={socialLabels[style]} selected />
+          ))}
+          {!profile.socialStyles.length ? (
+            <Text style={[styles.muted, { color: colors.textMuted }]}>
+              No connection preferences added yet.
+            </Text>
+          ) : null}
         </View>
         <Text style={[styles.h2, { color: colors.text, marginTop: space[2] }]}>Interests</Text>
         <View style={styles.chipsRow}>
-          {profile.interests.map((interest) => <Chip key={interest.id} label={interest.name} selected={false} />)}
-          {!profile.interests.length ? <Text style={[styles.muted, { color: colors.textMuted }]}>No interests added yet.</Text> : null}
+          {profile.interests.map((interest) => (
+            <Chip key={interest.id} label={interest.name} selected={false} />
+          ))}
+          {!profile.interests.length ? (
+            <Text style={[styles.muted, { color: colors.textMuted }]}>No interests added yet.</Text>
+          ) : null}
         </View>
-        <Text style={[styles.h2, { color: colors.text, marginTop: space[2] }]}>Conversation starters</Text>
-        {profile.prompts.filter((p) => p.answer.trim()).map((p) => (
-          <View key={p.promptId} style={{ padding: space[3], borderRadius: radius.sm, borderWidth: 1, borderColor: colors.line, gap: 4 }}>
-            <Text style={{ color: colors.accent, fontWeight: "800" }}>{p.prompt}</Text>
-            <Text style={{ color: colors.text }}>{p.answer}</Text>
-          </View>
-        ))}
-        {!profile.prompts.some((p) => p.answer.trim()) ? <Text style={[styles.muted, { color: colors.textMuted }]}>Add a prompt answer to help others start a conversation.</Text> : null}
+        <Text style={[styles.h2, { color: colors.text, marginTop: space[2] }]}>
+          Conversation starters
+        </Text>
+        {profile.prompts
+          .filter((p) => p.answer.trim())
+          .map((p) => (
+            <View
+              key={p.promptId}
+              style={{
+                padding: space[3],
+                borderRadius: radius.sm,
+                borderWidth: 1,
+                borderColor: colors.line,
+                gap: 4,
+              }}
+            >
+              <Text style={{ color: colors.accent, fontWeight: '800' }}>{p.prompt}</Text>
+              <Text style={{ color: colors.text }}>{p.answer}</Text>
+            </View>
+          ))}
+        {!profile.prompts.some((p) => p.answer.trim()) ? (
+          <Text style={[styles.muted, { color: colors.textMuted }]}>
+            Add a prompt answer to help others start a conversation.
+          </Text>
+        ) : null}
         <Button label="Edit profile" onPress={onEdit} style={{ marginTop: space[2] }} />
       </View>
     </View>
@@ -1075,10 +1508,12 @@ function Onboarding({
 }) {
   const { colors, radius, space, type, shadow } = useTheme();
 
-  const [displayName, setDisplayName] = useState(profile.displayName === "New member" ? "" : profile.displayName);
+  const [displayName, setDisplayName] = useState(
+    profile.displayName === 'New member' ? '' : profile.displayName,
+  );
   const [bio, setBio] = useState(profile.bio);
   const [stylesList, setStylesList] = useState<SocialStyle[]>(
-    profile.socialStyles.length ? profile.socialStyles : ["low_pressure"]
+    profile.socialStyles.length ? profile.socialStyles : ['one_to_one'],
   );
   const [privacy, setPrivacy] = useState(profile.privacy);
   const [selected, setSelected] = useState<string[]>([]);
@@ -1097,7 +1532,10 @@ function Onboarding({
         socialStyles: stylesList,
         privacy,
         interests: selected.map((interestId) => ({ interestId, strength: 2 as const })),
-        answers: chosenPrompts.map((promptId) => ({ promptId, answer: (answers[promptId] ?? "").trim() })),
+        answers: chosenPrompts.map((promptId) => ({
+          promptId,
+          answer: (answers[promptId] ?? '').trim(),
+        })),
       };
       onDone(await client.completeOnboarding(input));
     } catch (err) {
@@ -1122,7 +1560,9 @@ function Onboarding({
         ]}
       >
         <Text style={[styles.eyebrow, { color: colors.accent }]}>STEP 1 · BASICS</Text>
-        <Text style={[styles.h2, { color: colors.text, fontSize: type.title.size }]}>About you</Text>
+        <Text style={[styles.h2, { color: colors.text, fontSize: type.title.size }]}>
+          About you
+        </Text>
         <Text style={[styles.muted, { color: colors.textMuted }]}>
           Basic information to introduce yourself. You can change this anytime.
         </Text>
@@ -1155,7 +1595,9 @@ function Onboarding({
                 label={isSelected ? `✓ ${x.label}` : x.label}
                 selected={isSelected}
                 onPress={() =>
-                  setStylesList((prev) => (prev.includes(x.id) ? prev.filter((item) => item !== x.id) : [...prev, x.id]))
+                  setStylesList((prev) =>
+                    prev.includes(x.id) ? prev.filter((item) => item !== x.id) : [...prev, x.id],
+                  )
                 }
               />
             );
@@ -1176,8 +1618,12 @@ function Onboarding({
         ]}
       >
         <Text style={[styles.eyebrow, { color: colors.accent }]}>STEP 2 · INTERESTS</Text>
-        <Text style={[styles.h2, { color: colors.text, fontSize: type.title.size }]}>What do you enjoy?</Text>
-        <Text style={[styles.muted, { color: colors.textMuted }]}>Choose at least 3 interests to help find genuine matches.</Text>
+        <Text style={[styles.h2, { color: colors.text, fontSize: type.title.size }]}>
+          What do you enjoy?
+        </Text>
+        <Text style={[styles.muted, { color: colors.textMuted }]}>
+          Choose at least 3 interests to help find genuine matches.
+        </Text>
 
         <View style={styles.chipsRow}>
           {interests.map((i) => {
@@ -1188,13 +1634,20 @@ function Onboarding({
                 label={isSelected ? `✓ ${i.name}` : i.name}
                 selected={isSelected}
                 onPress={() =>
-                  setSelected((prev) => (prev.includes(i.id) ? prev.filter((id) => id !== i.id) : [...prev, i.id]))
+                  setSelected((prev) =>
+                    prev.includes(i.id) ? prev.filter((id) => id !== i.id) : [...prev, i.id],
+                  )
                 }
               />
             );
           })}
         </View>
-        <Text style={[styles.counter, { color: selected.length >= 3 ? colors.success : colors.danger, marginTop: space[2] }]}>
+        <Text
+          style={[
+            styles.counter,
+            { color: selected.length >= 3 ? colors.success : colors.danger, marginTop: space[2] },
+          ]}
+        >
           {selected.length} of 3 required selected
         </Text>
       </View>
@@ -1212,8 +1665,12 @@ function Onboarding({
         ]}
       >
         <Text style={[styles.eyebrow, { color: colors.accent }]}>STEP 3 · PROMPTS</Text>
-        <Text style={[styles.h2, { color: colors.text, fontSize: type.title.size }]}>Conversation starters</Text>
-        <Text style={[styles.muted, { color: colors.textMuted }]}>Pick 1–3 prompts to show on your profile.</Text>
+        <Text style={[styles.h2, { color: colors.text, fontSize: type.title.size }]}>
+          Conversation starters
+        </Text>
+        <Text style={[styles.muted, { color: colors.textMuted }]}>
+          Pick 1–3 prompts to show on your profile.
+        </Text>
 
         <View style={{ gap: space[3], marginTop: space[2] }}>
           {prompts.map((p) => {
@@ -1236,15 +1693,23 @@ function Onboarding({
                   accessibilityState={{ checked: chosen }}
                   onPress={() =>
                     setChosenPrompts((cur) =>
-                      chosen ? cur.filter((id) => id !== p.id) : cur.length < 3 ? [...cur, p.id] : cur
+                      chosen
+                        ? cur.filter((id) => id !== p.id)
+                        : cur.length < 3
+                          ? [...cur, p.id]
+                          : cur,
                     )
                   }
                   style={styles.promptCheckRow}
                 >
-                  <Text style={[styles.radioMark, { color: chosen ? colors.accent : colors.textMuted }]}>
-                    {chosen ? "☑" : "☐"}
+                  <Text
+                    style={[styles.radioMark, { color: chosen ? colors.accent : colors.textMuted }]}
+                  >
+                    {chosen ? '☑' : '☐'}
                   </Text>
-                  <Text style={[styles.promptText, { color: chosen ? colors.accent : colors.text }]}>
+                  <Text
+                    style={[styles.promptText, { color: chosen ? colors.accent : colors.text }]}
+                  >
                     {p.prompt}
                   </Text>
                 </Pressable>
@@ -1262,7 +1727,7 @@ function Onboarding({
                         marginTop: space[2],
                       },
                     ]}
-                    value={answers[p.id] ?? ""}
+                    value={answers[p.id] ?? ''}
                     onChangeText={(v) => setAnswers((a) => ({ ...a, [p.id]: v }))}
                     multiline
                     maxLength={240}
@@ -1274,7 +1739,15 @@ function Onboarding({
             );
           })}
         </View>
-        <Text style={[styles.counter, { color: chosenPrompts.length >= 1 ? colors.success : colors.danger, marginTop: space[2] }]}>
+        <Text
+          style={[
+            styles.counter,
+            {
+              color: chosenPrompts.length >= 1 ? colors.success : colors.danger,
+              marginTop: space[2],
+            },
+          ]}
+        >
           {chosenPrompts.length} of 1–3 selected
         </Text>
       </View>
@@ -1292,15 +1765,19 @@ function Onboarding({
         ]}
       >
         <Text style={[styles.eyebrow, { color: colors.accent }]}>STEP 4 · PRIVACY</Text>
-        <Text style={[styles.h2, { color: colors.text, fontSize: type.title.size }]}>Privacy & controls</Text>
+        <Text style={[styles.h2, { color: colors.text, fontSize: type.title.size }]}>
+          Privacy & controls
+        </Text>
         <PrivacyEditor privacy={privacy} setPrivacy={setPrivacy} />
 
         {error ? <Banner tone="error">{error}</Banner> : null}
 
         <Button
-          label={busy ? "Saving profile…" : "Complete setup"}
+          label={busy ? 'Saving profile…' : 'Complete setup'}
           onPress={() => void save()}
-          disabled={busy || displayName.trim().length < 2 || selected.length < 3 || chosenPrompts.length < 1}
+          disabled={
+            busy || displayName.trim().length < 2 || selected.length < 3 || chosenPrompts.length < 1
+          }
           style={{ marginTop: space[4] }}
         />
       </View>
@@ -1337,7 +1814,7 @@ function Editor({
   const [privacy, setPrivacy] = useState(profile.privacy);
   const [selected, setSelected] = useState(profile.interests.map((i) => i.id));
   const [answers, setAnswers] = useState<Record<string, string>>(
-    Object.fromEntries(profile.prompts.map((p) => [p.promptId, p.answer]))
+    Object.fromEntries(profile.prompts.map((p) => [p.promptId, p.answer])),
   );
   const [busy, setBusy] = useState(false);
   const [mediaBusy, setMediaBusy] = useState(false);
@@ -1346,31 +1823,71 @@ function Editor({
   const [mediaUrls, setMediaUrls] = useState<Record<string, string>>({});
 
   const draftInput = {
-    displayName: displayName.trim(), bio: bio.trim(), socialStyles: stylesList, privacy,
-    interests: selected.map((interestId) => ({ interestId, strength: profile.interests.find((i) => i.id === interestId)?.strength ?? 2 })),
-    answers: Object.entries(answers).filter(([, value]) => value.trim()).map(([promptId, answer]) => ({ promptId, answer: answer.trim() })),
+    displayName: displayName.trim(),
+    bio: bio.trim(),
+    socialStyles: stylesList,
+    privacy,
+    interests: selected.map((interestId) => ({
+      interestId,
+      strength: profile.interests.find((i) => i.id === interestId)?.strength ?? 2,
+    })),
+    answers: Object.entries(answers)
+      .filter(([, value]) => value.trim())
+      .map(([promptId, answer]) => ({ promptId, answer: answer.trim() })),
   };
-  const fingerprint = (value: typeof draftInput) => JSON.stringify({ ...value, socialStyles: [...value.socialStyles].sort(), interests: [...value.interests].sort((a, b) => a.interestId.localeCompare(b.interestId)), answers: [...value.answers].sort((a, b) => a.promptId.localeCompare(b.promptId)) });
-  const baseline = { displayName: profile.displayName, bio: profile.bio, socialStyles: profile.socialStyles, privacy: profile.privacy, interests: profile.interests.map((i) => ({ interestId: i.id, strength: i.strength ?? 2 })), answers: profile.prompts.map((p) => ({ promptId: p.promptId, answer: p.answer })) };
+  const fingerprint = (value: typeof draftInput) =>
+    JSON.stringify({
+      ...value,
+      socialStyles: [...value.socialStyles].sort(),
+      interests: [...value.interests].sort((a, b) => a.interestId.localeCompare(b.interestId)),
+      answers: [...value.answers].sort((a, b) => a.promptId.localeCompare(b.promptId)),
+    });
+  const baseline = {
+    displayName: profile.displayName,
+    bio: profile.bio,
+    socialStyles: profile.socialStyles,
+    privacy: profile.privacy,
+    interests: profile.interests.map((i) => ({ interestId: i.id, strength: i.strength ?? 2 })),
+    answers: profile.prompts.map((p) => ({ promptId: p.promptId, answer: p.answer })),
+  };
   const liveDraft = useRef(draftInput);
   liveDraft.current = draftInput;
   const dirty = fingerprint(draftInput) !== fingerprint(baseline);
   const validation = onboardingSchema.safeParse(draftInput);
-  useEffect(() => { onDirtyChange(dirty, busy || mediaBusy); }, [dirty, busy, mediaBusy, onDirtyChange]);
+  useEffect(() => {
+    onDirtyChange(dirty, busy || mediaBusy);
+  }, [dirty, busy, mediaBusy, onDirtyChange]);
   useEffect(() => () => onDirtyChange(false), [onDirtyChange]);
   const resetDraft = (source: Profile) => {
-    setDisplayName(source.displayName); setBio(source.bio); setStylesList(source.socialStyles);
-    setPrivacy(source.privacy); setSelected(source.interests.map((i) => i.id));
+    setDisplayName(source.displayName);
+    setBio(source.bio);
+    setStylesList(source.socialStyles);
+    setPrivacy(source.privacy);
+    setSelected(source.interests.map((i) => i.id));
     setAnswers(Object.fromEntries(source.prompts.map((p) => [p.promptId, p.answer])));
   };
-  const discard = () => Alert.alert("Discard profile changes?", "Immediate photo and theme changes will remain saved.", [
-    { text: "Keep editing", style: "cancel" },
-    { text: "Discard", style: "destructive", onPress: () => { resetDraft(profile); setError(null); setMessage("Draft discarded. Photo changes remain saved."); onDirtyChange(false); } },
-  ]);
+  const discard = () =>
+    Alert.alert(
+      'Discard profile changes?',
+      'Immediate photo and theme changes will remain saved.',
+      [
+        { text: 'Keep editing', style: 'cancel' },
+        {
+          text: 'Discard',
+          style: 'destructive',
+          onPress: () => {
+            resetDraft(profile);
+            setError(null);
+            setMessage('Draft discarded. Photo changes remain saved.');
+            onDirtyChange(false);
+          },
+        },
+      ],
+    );
 
   const refreshMedia = useCallback(async () => {
     const pairs = await Promise.all(
-      profile.media.map(async (m) => [m.id, await getSignedMediaUrl(m.thumbnailPath)] as const)
+      profile.media.map(async (m) => [m.id, await getSignedMediaUrl(m.thumbnailPath)] as const),
     );
     setMediaUrls(Object.fromEntries(pairs));
   }, [profile.media]);
@@ -1381,23 +1898,43 @@ function Editor({
 
   const save = async () => {
     if (busy || mediaBusy || !dirty) return;
-    if (!validation.success) { setError(validation.error.issues[0]?.message || "Check your profile details."); return; }
+    if (!validation.success) {
+      setError(validation.error.issues[0]?.message || 'Check your profile details.');
+      return;
+    }
     const savingFingerprint = fingerprint(draftInput);
-    setBusy(true); setError(null); setMessage(null);
+    setBusy(true);
+    setError(null);
+    setMessage(null);
     try {
-      await client.updateProfile({ displayName: draftInput.displayName, bio: draftInput.bio, socialStyles: stylesList, privacy });
+      await client.updateProfile({
+        displayName: draftInput.displayName,
+        bio: draftInput.bio,
+        socialStyles: stylesList,
+        privacy,
+      });
       await client.updateInterests({ interests: validation.data.interests });
       await client.updatePrompts({ answers: validation.data.answers });
       const saved = await client.getProfile();
       onSaved(saved);
       if (fingerprint(liveDraft.current) === savingFingerprint) {
-        resetDraft(saved); onDirtyChange(false); setMessage("Profile saved successfully.");
-      } else setMessage("Your submitted changes were saved. Newer edits remain unsaved.");
+        resetDraft(saved);
+        onDirtyChange(false);
+        setMessage('Profile saved successfully.');
+      } else setMessage('Your submitted changes were saved. Newer edits remain unsaved.');
     } catch (err) {
       setError(errorMessage(err));
-      try { onSaved(await client.getProfile()); setMessage("Some fields may already be saved. Your draft is retained; review and retry."); }
-      catch { setMessage("Some fields may already be saved. Your draft is retained; reconnect and review before retrying."); }
-    } finally { setBusy(false); }
+      try {
+        onSaved(await client.getProfile());
+        setMessage('Some fields may already be saved. Your draft is retained; review and retry.');
+      } catch {
+        setMessage(
+          'Some fields may already be saved. Your draft is retained; reconnect and review before retrying.',
+        );
+      }
+    } finally {
+      setBusy(false);
+    }
   };
 
   const addPhoto = async () => {
@@ -1408,32 +1945,40 @@ function Editor({
       const media = await pickAndUploadProfileImage(profile.media);
       if (media) {
         onSaved({ ...profile, media: [...profile.media, media] });
-        setMessage("Photo added.");
+        setMessage('Photo added.');
       }
     } catch (err) {
       setError(errorMessage(err));
-    } finally { setMediaBusy(false); }
+    } finally {
+      setMediaBusy(false);
+    }
   };
 
   const removePhoto = (mediaId: string) => {
     if (busy || mediaBusy) return;
     const media = profile.media.find((m) => m.id === mediaId);
     if (!media) return;
-    Alert.alert("Remove photo?", "Are you sure you want to remove this photo?", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert('Remove photo?', 'Are you sure you want to remove this photo?', [
+      { text: 'Cancel', style: 'cancel' },
       {
-        text: "Remove",
-        style: "destructive",
+        text: 'Remove',
+        style: 'destructive',
         onPress: async () => {
           setMediaBusy(true);
           try {
             await deleteProfileImage(media);
             onSaved({ ...profile, media: profile.media.filter((m) => m.id !== mediaId) });
-            setMessage("Photo removed.");
+            setMessage('Photo removed.');
           } catch (err) {
             setError(errorMessage(err));
-            try { onSaved(await client.getProfile()); } catch { /* Keep original cleanup error. */ }
-          } finally { setMediaBusy(false); }
+            try {
+              onSaved(await client.getProfile());
+            } catch {
+              /* Keep original cleanup error. */
+            }
+          } finally {
+            setMediaBusy(false);
+          }
         },
       },
     ]);
@@ -1442,11 +1987,24 @@ function Editor({
   return (
     <View style={{ gap: space[4], paddingBottom: 32 }}>
       <View style={{ gap: space[2] }}>
-        <Text style={{ color: colors.textMuted }}>Profile details remain a draft until Save. Photo and theme changes save immediately.</Text>
+        <Text style={{ color: colors.textMuted }}>
+          Profile details remain a draft until Save. Photo and theme changes save immediately.
+        </Text>
         {dirty ? <Banner tone="info">You have unsaved changes.</Banner> : null}
-        <Button label={busy ? "Saving…" : "Save profile changes"} onPress={() => void save()} disabled={busy || mediaBusy || !dirty || !validation.success} />
-        <Button label="Discard changes" secondary onPress={discard} disabled={busy || mediaBusy || !dirty} />
-        {dirty && !validation.success ? <Banner tone="error">{validation.error.issues[0]?.message}</Banner> : null}
+        <Button
+          label={busy ? 'Saving…' : 'Save profile changes'}
+          onPress={() => void save()}
+          disabled={busy || mediaBusy || !dirty || !validation.success}
+        />
+        <Button
+          label="Discard changes"
+          secondary
+          onPress={discard}
+          disabled={busy || mediaBusy || !dirty}
+        />
+        {dirty && !validation.success ? (
+          <Banner tone="error">{validation.error.issues[0]?.message}</Banner>
+        ) : null}
       </View>
       {/* Profile Overview Card */}
       <View
@@ -1474,7 +2032,7 @@ function Editor({
             <Text style={[styles.muted, { color: colors.textMuted, fontSize: type.small.size }]}>
               {me.email ?? me.phone}
             </Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
               {profile.socialStyles.map((s) => (
                 <Chip key={s} label={STYLES.find((x) => x.id === s)?.label ?? s} accent />
               ))}
@@ -1496,11 +2054,15 @@ function Editor({
           shadow[1],
         ]}
       >
-        <Text style={[styles.h2, { color: colors.text, fontSize: type.title.size }]}>Profile Information</Text>
+        <Text style={[styles.h2, { color: colors.text, fontSize: type.title.size }]}>
+          Profile Information
+        </Text>
         <Field label="Display name" value={displayName} onChangeText={setDisplayName} />
         <Field label="Bio" value={bio} onChangeText={setBio} multiline maxLength={280} />
 
-        <Text style={[styles.fieldLabel, { color: colors.text, marginTop: space[3] }]}>Social Styles</Text>
+        <Text style={[styles.fieldLabel, { color: colors.text, marginTop: space[3] }]}>
+          Social Styles
+        </Text>
         <View style={styles.chipsRow}>
           {STYLES.map((x) => {
             const isSelected = stylesList.includes(x.id);
@@ -1510,14 +2072,14 @@ function Editor({
                 label={isSelected ? `✓ ${x.label}` : x.label}
                 selected={isSelected}
                 onPress={() =>
-                  setStylesList((prev) => (prev.includes(x.id) ? prev.filter((s) => s !== x.id) : [...prev, x.id]))
+                  setStylesList((prev) =>
+                    prev.includes(x.id) ? prev.filter((s) => s !== x.id) : [...prev, x.id],
+                  )
                 }
               />
             );
           })}
         </View>
-
-
       </View>
 
       {/* Interests Manager */}
@@ -1533,8 +2095,12 @@ function Editor({
           shadow[1],
         ]}
       >
-        <Text style={[styles.h2, { color: colors.text, fontSize: type.title.size }]}>Interests</Text>
-        <Text style={[styles.muted, { color: colors.textMuted }]}>{selected.length} interests selected</Text>
+        <Text style={[styles.h2, { color: colors.text, fontSize: type.title.size }]}>
+          Interests
+        </Text>
+        <Text style={[styles.muted, { color: colors.textMuted }]}>
+          {selected.length} interests selected
+        </Text>
         <View style={styles.chipsRow}>
           {interests.map((i) => {
             const isSelected = selected.includes(i.id);
@@ -1544,7 +2110,9 @@ function Editor({
                 label={isSelected ? `✓ ${i.name}` : i.name}
                 selected={isSelected}
                 onPress={() =>
-                  setSelected((prev) => (prev.includes(i.id) ? prev.filter((id) => id !== i.id) : [...prev, i.id]))
+                  setSelected((prev) =>
+                    prev.includes(i.id) ? prev.filter((id) => id !== i.id) : [...prev, i.id],
+                  )
                 }
               />
             );
@@ -1566,7 +2134,9 @@ function Editor({
         ]}
       >
         <Text style={[styles.h2, { color: colors.text, fontSize: type.title.size }]}>Photos</Text>
-        <Text style={[styles.muted, { color: colors.textMuted }]}>Keep up to 6 profile images (max 5 MB each).</Text>
+        <Text style={[styles.muted, { color: colors.textMuted }]}>
+          Keep up to 6 profile images (max 5 MB each).
+        </Text>
 
         <View style={[styles.photosGrid, { marginTop: space[3] }]}>
           {profile.media.map((m) => (
@@ -1582,17 +2152,33 @@ function Editor({
               ]}
             >
               {mediaUrls[m.id] ? (
-                <Image source={{ uri: mediaUrls[m.id] }} style={[styles.photoImg, { borderRadius: radius.md - 2 }]} />
+                <Image
+                  source={{ uri: mediaUrls[m.id] }}
+                  style={[styles.photoImg, { borderRadius: radius.md - 2 }]}
+                />
               ) : (
                 <ActivityIndicator color={colors.accent} style={styles.photoImg} />
               )}
-              <Button label="Remove" danger secondary compact onPress={() => removePhoto(m.id)} style={{ marginTop: 6 }} />
+              <Button
+                label="Remove"
+                danger
+                secondary
+                compact
+                onPress={() => removePhoto(m.id)}
+                style={{ marginTop: 6 }}
+              />
             </View>
           ))}
         </View>
 
         {profile.media.length < 6 ? (
-          <Button label="+ Add photo" disabled={busy || mediaBusy} secondary onPress={() => void addPhoto()} style={{ marginTop: space[3] }} />
+          <Button
+            label="+ Add photo"
+            disabled={busy || mediaBusy}
+            secondary
+            onPress={() => void addPhoto()}
+            style={{ marginTop: space[3] }}
+          />
         ) : null}
       </View>
 
@@ -1626,7 +2212,7 @@ function Editor({
                     marginTop: 4,
                   },
                 ]}
-                value={answers[p.id] ?? ""}
+                value={answers[p.id] ?? ''}
                 onChangeText={(v) => setAnswers((a) => ({ ...a, [p.id]: v }))}
                 maxLength={240}
                 multiline
@@ -1663,8 +2249,8 @@ function PrivacyEditor({
   privacy,
   setPrivacy,
 }: {
-  privacy: Profile["privacy"];
-  setPrivacy: (v: Profile["privacy"]) => void;
+  privacy: Profile['privacy'];
+  setPrivacy: (v: Profile['privacy']) => void;
 }) {
   const { colors, space } = useTheme();
 
@@ -1684,36 +2270,44 @@ function PrivacyEditor({
         />
       </View>
 
-      <Text style={[styles.fieldLabel, { color: colors.text, marginTop: space[2] }]}>Who can message me?</Text>
+      <Text style={[styles.fieldLabel, { color: colors.text, marginTop: space[2] }]}>
+        Who can message me?
+      </Text>
       <View style={styles.chipsRow}>
-        {(["everyone", "connections", "nobody"] as const).map((v) => (
+        {(['everyone', 'connections', 'nobody'] as const).map((v) => (
           <Chip
             key={v}
-            label={v === "everyone" ? "Everyone" : v === "connections" ? "Connections only" : "Nobody"}
+            label={
+              v === 'everyone' ? 'Everyone' : v === 'connections' ? 'Connections only' : 'Nobody'
+            }
             selected={privacy.messagePermission === v}
             onPress={() => setPrivacy({ ...privacy, messagePermission: v })}
           />
         ))}
       </View>
 
-      <Text style={[styles.fieldLabel, { color: colors.text, marginTop: space[2] }]}>Story visibility</Text>
+      <Text style={[styles.fieldLabel, { color: colors.text, marginTop: space[2] }]}>
+        Story visibility
+      </Text>
       <View style={styles.chipsRow}>
-        {(["public", "connections", "private"] as const).map((v) => (
+        {(['public', 'connections', 'private'] as const).map((v) => (
           <Chip
             key={v}
-            label={v === "public" ? "Public" : v === "connections" ? "Connections only" : "Private"}
+            label={v === 'public' ? 'Public' : v === 'connections' ? 'Connections only' : 'Private'}
             selected={privacy.storyVisibility === v}
             onPress={() => setPrivacy({ ...privacy, storyVisibility: v })}
           />
         ))}
       </View>
 
-      <Text style={[styles.fieldLabel, { color: colors.text, marginTop: space[2] }]}>Activity visibility</Text>
+      <Text style={[styles.fieldLabel, { color: colors.text, marginTop: space[2] }]}>
+        Activity visibility
+      </Text>
       <View style={styles.chipsRow}>
-        {(["public", "connections", "private"] as const).map((v) => (
+        {(['public', 'connections', 'private'] as const).map((v) => (
           <Chip
             key={v}
-            label={v === "public" ? "Public" : v === "connections" ? "Connections only" : "Private"}
+            label={v === 'public' ? 'Public' : v === 'connections' ? 'Connections only' : 'Private'}
             selected={privacy.activityVisibility === v}
             onPress={() => setPrivacy({ ...privacy, activityVisibility: v })}
           />
@@ -1739,8 +2333,8 @@ const styles = StyleSheet.create({
   },
   centerWrap: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     padding: 24,
   },
   loadingText: {
@@ -1755,18 +2349,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   topHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     borderBottomWidth: 1,
   },
   headerEyebrow: {
     fontSize: 10,
-    fontWeight: "800",
+    fontWeight: '800',
     letterSpacing: 1.2,
   },
   headerTitle: {
-    fontWeight: "700",
+    fontWeight: '700',
     marginTop: 1,
   },
   authHeader: {
@@ -1774,16 +2368,16 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     fontSize: 11,
-    fontWeight: "800",
+    fontWeight: '800',
     letterSpacing: 1,
     marginBottom: 4,
   },
   h1: {
-    fontWeight: "700",
+    fontWeight: '700',
     marginBottom: 6,
   },
   h2: {
-    fontWeight: "700",
+    fontWeight: '700',
     marginBottom: 4,
   },
   muted: {
@@ -1791,18 +2385,18 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   authSwitch: {
-    flexDirection: "row",
+    flexDirection: 'row',
     marginBottom: 16,
   },
   switchBtn: {
     flex: 1,
     paddingVertical: 10,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   switchBtnActive: {
     elevation: 1,
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 2,
     shadowOffset: { width: 0, height: 1 },
@@ -1811,46 +2405,46 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   authFooterRow: {
-    alignItems: "center",
+    alignItems: 'center',
     marginTop: 16,
   },
   linkText: {
-    fontWeight: "700",
+    fontWeight: '700',
     fontSize: 14,
   },
   profileHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   name: {
-    fontWeight: "700",
+    fontWeight: '700',
   },
   themeRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
   },
   fieldLabel: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: '600',
     marginBottom: 6,
   },
   chipsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
     marginTop: 6,
   },
   counter: {
     fontSize: 13,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   promptCard: {
     borderWidth: 1,
   },
   promptCheckRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 10,
   },
   radioMark: {
@@ -1858,36 +2452,36 @@ const styles = StyleSheet.create({
   },
   promptText: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: '600',
     flex: 1,
   },
   textarea: {
     minHeight: 76,
-    textAlignVertical: "top",
+    textAlignVertical: 'top',
     fontSize: 14,
     borderWidth: 1,
   },
   switchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   switchTitle: {
     fontSize: 15,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   photosGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
   },
   photoItem: {
-    width: "48%",
+    width: '48%',
     borderWidth: 1,
     padding: 8,
   },
   photoImg: {
-    width: "100%",
+    width: '100%',
     aspectRatio: 1,
   },
 });

@@ -1,45 +1,48 @@
-import { fileURLToPath } from "node:url";
+import { fileURLToPath } from 'node:url';
 
 // One .env at the repo root feeds the API, web and mobile. Only PUBLIC values are exposed to the browser:
 // the Supabase URL, the PUBLISHABLE key and the API address. Never the database URL or the secret key.
 try {
-  process.loadEnvFile(fileURLToPath(new URL("../../.env", import.meta.url)));
+  process.loadEnvFile(fileURLToPath(new URL('../../.env', import.meta.url)));
 } catch (err) {
-  if (err?.code !== "ENOENT") throw err;
+  if (err?.code !== 'ENOENT') throw err;
 }
 
 const shellRedirects = [
-  ["/discover", "/?tab=discover"],
-  ["/connections", "/?tab=connections"],
-  ["/messages", "/?tab=messages"],
-  ["/community", "/?tab=community"],
-  ["/profile", "/?view=profile-preview"],
-  ["/profile/edit", "/?tab=profile&section=profile-details"],
-  ["/settings", "/?view=settings"],
-  ["/settings/privacy", "/?tab=profile&section=privacy-settings"],
-  ["/settings/account", "/?tab=profile&section=account-sessions"],
-  ["/settings/data", "/?tab=profile&section=account-data"],
-  ["/settings/notifications", "/?view=notifications"],
+  ['/discover', '/?tab=discover'],
+  ['/connections', '/?tab=connections'],
+  ['/messages', '/?tab=messages'],
+  ['/community', '/?tab=community'],
+  ['/profile', '/?view=profile-preview'],
+  ['/profile/edit', '/?tab=profile&section=profile-details'],
+  ['/settings', '/?view=settings'],
+  ['/settings/privacy', '/?tab=profile&section=privacy-settings'],
+  ['/settings/account', '/?tab=profile&section=account-sessions'],
+  ['/settings/data', '/?tab=profile&section=account-data'],
+  ['/settings/notifications', '/?view=notifications'],
 ].map(([source, destination]) => ({ source, destination, permanent: false }));
 
 const securityHeaders = [
-  { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "X-Frame-Options", value: "DENY" },
-  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-  { key: "Cross-Origin-Resource-Policy", value: "same-site" },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  {
+    key: 'Permissions-Policy',
+    value: 'camera=(self), microphone=(self), geolocation=(self), display-capture=(self)',
+  },
+  { key: 'Cross-Origin-Resource-Policy', value: 'same-site' },
 ];
 
 /** @type {import('next').NextConfig} */
 export default {
-  output: "standalone",
+  output: 'standalone',
   reactStrictMode: true,
   poweredByHeader: false,
-  transpilePackages: ["@sp/auth-client", "@sp/profile-client", "@sp/validation", "@sp/types"],
+  transpilePackages: ['@sp/auth-client', '@sp/profile-client', '@sp/validation', '@sp/types'],
   env: {
-    NEXT_PUBLIC_SUPABASE_URL: process.env.SUPABASE_URL ?? "",
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.SUPABASE_PUBLISHABLE_KEY ?? "",
-    NEXT_PUBLIC_API_URL: "/api/sidle",
+    NEXT_PUBLIC_SUPABASE_URL: process.env.SUPABASE_URL ?? '',
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.SUPABASE_PUBLISHABLE_KEY ?? '',
+    NEXT_PUBLIC_API_URL: '/api/sidle',
   },
   async redirects() {
     return shellRedirects;
@@ -47,18 +50,21 @@ export default {
   async rewrites() {
     // Preview hosts change per commit. Keep browser requests on the web origin
     // while the existing API continues to validate the user's bearer session.
-    const api = (process.env.PUBLIC_API_URL || "http://localhost:4000").replace(/\/+$/, "");
-    return [{ source: "/api/sidle/:path*", destination: `${api}/:path*` }];
+    const api = (process.env.PUBLIC_API_URL || 'http://localhost:4000').replace(/\/+$/, '');
+    return [{ source: '/api/sidle/:path*', destination: `${api}/:path*` }];
   },
   async headers() {
     return [
-      { source: "/:path*", headers: securityHeaders },
-      { source: "/api/sidle/:path*", headers: [{ key: "Cache-Control", value: "private, no-store" }] },
+      { source: '/:path*', headers: securityHeaders },
       {
-        source: "/sw.js",
+        source: '/api/sidle/:path*',
+        headers: [{ key: 'Cache-Control', value: 'private, no-store' }],
+      },
+      {
+        source: '/sw.js',
         headers: [
-          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
-          { key: "Service-Worker-Allowed", value: "/" },
+          { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
+          { key: 'Service-Worker-Allowed', value: '/' },
         ],
       },
     ];

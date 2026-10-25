@@ -1,8 +1,8 @@
 # Sidle
 
-Current implementation, validation and remaining release work: [docs/status.md](docs/status.md).
+Current implementation, validation and remaining release work: [release handover](Documents/PLATFORM_RELEASE_HANDOVER.md), [status](docs/status.md) and [NUST hosting](ops/nust/README.md).
 
-> A low-pressure social platform for finding people, conversations, groups and real plans — at your pace.
+> People. Moments. Possibilities.
 
 Sidle is the codebase for a social connection product spanning web, mobile, and API layers. The current focus is on the core social experience: profiles, community, discover, connections, messaging, and safer sharing/reporting flows, with a shared design system and domain contracts across apps.
 

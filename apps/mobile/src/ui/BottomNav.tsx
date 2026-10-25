@@ -1,9 +1,9 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useTheme } from "../theme";
-import { Badge } from "./Badge";
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../theme';
+import { Badge } from './Badge';
 
-export type NavTab = "discover" | "connections" | "messages" | "community" | "profile";
+export type NavTab = 'feed' | 'discover' | 'connections' | 'messages' | 'community' | 'profile';
 
 export interface BottomNavProps {
   currentTab: NavTab;
@@ -29,11 +29,12 @@ export function BottomNav({
   const insets = useSafeAreaInsets();
 
   const tabs: TabItem[] = [
-    { id: "discover", label: "Discover", icon: "✦" },
-    { id: "connections", label: "Connections", icon: "⚯", badgeCount: pendingConnectionsCount },
-    { id: "messages", label: "Messages", icon: "✉", badgeCount: unreadMessagesCount },
-    { id: "community", label: "Community", icon: "◈" },
-    { id: "profile", label: "Profile", icon: "●" },
+    { id: 'feed', label: 'Explore', icon: '⌂' },
+    { id: 'discover', label: 'Discover', icon: '✦' },
+    { id: 'connections', label: 'Connections', icon: '⚯', badgeCount: pendingConnectionsCount },
+    { id: 'messages', label: 'Messages', icon: '✉', badgeCount: unreadMessagesCount },
+    { id: 'community', label: 'Plans', icon: '◈' },
+    { id: 'profile', label: 'Profile', icon: '●' },
   ];
 
   return (
@@ -54,7 +55,7 @@ export function BottomNav({
             key={tab.id}
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive }}
-            accessibilityLabel={`${tab.label}${tab.badgeCount && tab.badgeCount > 0 ? `, ${tab.badgeCount} notifications` : ""}`}
+            accessibilityLabel={`${tab.label}${tab.badgeCount && tab.badgeCount > 0 ? `, ${tab.badgeCount} notifications` : ''}`}
             onPress={() => onSelectTab(tab.id)}
             style={({ pressed }) => [
               styles.tab,
@@ -67,8 +68,8 @@ export function BottomNav({
                 style={[
                   styles.activeIndicator,
                   {
-                    backgroundColor: isActive ? colors.accentSoft : "transparent",
-                    borderColor: isActive ? colors.accentLine : "transparent",
+                    backgroundColor: isActive ? colors.accentSoft : 'transparent',
+                    borderColor: isActive ? colors.accentLine : 'transparent',
                   },
                 ]}
               >
@@ -95,7 +96,7 @@ export function BottomNav({
                 {
                   color: isActive ? colors.accent : colors.textMuted,
                   fontSize: type.caption.size - 1,
-                  fontWeight: isActive ? "700" : "500",
+                  fontWeight: isActive ? '700' : '500',
                 },
               ]}
               numberOfLines={1}
@@ -111,22 +112,22 @@ export function BottomNav({
 
 const styles = StyleSheet.create({
   bar: {
-    flexDirection: "row",
+    flexDirection: 'row',
     borderTopWidth: 1,
     paddingTop: 6,
-    position: "relative",
+    position: 'relative',
     zIndex: 10,
   },
   tab: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 2,
   },
   iconWrap: {
-    position: "relative",
-    alignItems: "center",
-    justifyContent: "center",
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
     minWidth: 44,
   },
   activeIndicator: {
@@ -137,11 +138,11 @@ const styles = StyleSheet.create({
   },
   icon: {
     fontSize: 16,
-    fontWeight: "700",
-    textAlign: "center",
+    fontWeight: '700',
+    textAlign: 'center',
   },
   badgeWrap: {
-    position: "absolute",
+    position: 'absolute',
     top: -4,
     right: -6,
   },

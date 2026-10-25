@@ -26,5 +26,11 @@
   "devDependencies": {
     "prettier": "^3.4.0",
     "typescript": "^5.6.3"
+  },
+  "pnpm": {
+    "overrides": {
+      "react-dom": "19.2.3",
+      "@types/react-dom": "19.2.3"
+    }
   }
 }

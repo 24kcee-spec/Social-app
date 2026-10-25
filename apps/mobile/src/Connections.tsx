@@ -1,16 +1,16 @@
-import type { ConnectionRequestView, ConnectionView, PersonSummary } from "@sp/types";
-import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Switch, Text, View } from "react-native";
-import { errorMessage } from "./auth";
-import { getConnectionsClient } from "./connectionClient";
-import { getSignedMediaUrl } from "./profile";
-import { useTheme } from "./theme";
-import { Avatar, Badge, Banner, Button, EmptyState, ReportSheet } from "./ui";
+import type { ConnectionRequestView, ConnectionView, PersonSummary } from '@sp/types';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { errorMessage } from './auth';
+import { getConnectionsClient } from './connectionClient';
+import { getSignedMediaUrl } from './profile';
+import { useTheme } from './theme';
+import { Avatar, Badge, Banner, Button, EmptyState, ReportSheet } from './ui';
 
 const STATUS_TEXT = {
-  pending: "Waiting. They can reply anytime in the next two weeks.",
-  accepted: "Connected",
-  no_reply: "No reply yet. That is okay, people reply on their own time.",
+  pending: 'Waiting. They can reply anytime in the next two weeks.',
+  accepted: 'Connected',
+  no_reply: 'No reply yet. That is okay, people reply on their own time.',
 } as const;
 
 export function Connections({
@@ -26,7 +26,6 @@ export function Connections({
   const [incoming, setIncoming] = useState<ConnectionRequestView[]>([]);
   const [outgoing, setOutgoing] = useState<ConnectionRequestView[]>([]);
   const [connections, setConnections] = useState<ConnectionView[]>([]);
-  const [lowPressure, setLowPressure] = useState(false);
   const [photos, setPhotos] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,21 +36,21 @@ export function Connections({
     setLoading(true);
     setError(null);
     try {
-      const [inc, out, con, settings] = await Promise.all([
-        client.listRequests("incoming"),
-        client.listRequests("outgoing"),
+      const [inc, out, con] = await Promise.all([
+        client.listRequests('incoming'),
+        client.listRequests('outgoing'),
         client.listConnections(),
-        client.getSettings(),
       ]);
       setIncoming(inc);
       setOutgoing(out);
       setConnections(con);
-      setLowPressure(settings.lowPressureMode);
       onCount?.(inc.length);
 
-      const people = [...inc.map((r) => r.other), ...out.map((r) => r.other), ...con.map((x) => x.other)].filter(
-        (p) => p.thumbnailPath
-      );
+      const people = [
+        ...inc.map((r) => r.other),
+        ...out.map((r) => r.other),
+        ...con.map((x) => x.other),
+      ].filter((p) => p.thumbnailPath);
       const pairs = await Promise.all(
         people.map(async (p) => {
           try {
@@ -59,9 +58,11 @@ export function Connections({
           } catch {
             return null;
           }
-        })
+        }),
       );
-      setPhotos(Object.fromEntries(pairs.filter((p): p is readonly [string, string] => p !== null)));
+      setPhotos(
+        Object.fromEntries(pairs.filter((p): p is readonly [string, string] => p !== null)),
+      );
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -84,61 +85,23 @@ export function Connections({
     }
   };
 
-  const toggle = async (next: boolean) => {
-    setError(null);
-    try {
-      setLowPressure((await client.setLowPressure(next)).lowPressureMode);
-      setNotice(next ? "Low-pressure mode is on." : "Low-pressure mode is off.");
-    } catch (err) {
-      setError(errorMessage(err));
-    }
-  };
-
   const remove = (x: ConnectionView) =>
     Alert.alert(
       `Remove ${x.other.displayName}?`,
-      "They will be removed from your connections list.",
+      'They will be removed from your connections list.',
       [
-        { text: "Cancel", style: "cancel" },
-        { text: "Remove", style: "destructive", onPress: () => void act(() => client.removeConnection(x.other.userId), "Connection removed.") },
-      ]
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () =>
+            void act(() => client.removeConnection(x.other.userId), 'Connection removed.'),
+        },
+      ],
     );
 
   return (
     <View style={styles.container}>
-      {/* Low-pressure mode preference banner */}
-      <View
-        style={[
-          styles.card,
-          {
-            backgroundColor: colors.surface,
-            borderColor: colors.line,
-            borderRadius: radius.md,
-            padding: space[4],
-          },
-          shadow[1],
-        ]}
-      >
-        <View style={styles.lowPressureRow}>
-          <View style={{ flex: 1, paddingRight: space[3] }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <Text style={[styles.cardTitle, { color: colors.text, fontSize: type.title.size }]}>
-                Low-pressure mode
-              </Text>
-              <Badge label={lowPressure ? "Active" : "Off"} tone={lowPressure ? "accent" : "neutral"} compact />
-            </View>
-            <Text style={[styles.muted, { color: colors.textMuted, fontSize: type.small.size, marginTop: space[1] }]}>
-              People can only send you a suggested opener. Requests quietly expire after two weeks, and declining is never revealed.
-            </Text>
-          </View>
-          <Switch
-            value={lowPressure}
-            onValueChange={(v) => void toggle(v)}
-            accessibilityLabel="Low-pressure mode"
-          />
-        </View>
-      </View>
-
       {error ? <Banner tone="error">{error}</Banner> : null}
       {notice ? <Banner tone="success">{notice}</Banner> : null}
 
@@ -154,7 +117,9 @@ export function Connections({
           {/* Incoming connection requests */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text, fontSize: type.title.size }]}>
+              <Text
+                style={[styles.sectionTitle, { color: colors.text, fontSize: type.title.size }]}
+              >
                 Said hi to you
               </Text>
               {incoming.length > 0 ? <Badge count={incoming.length} tone="accent" /> : null}
@@ -185,18 +150,36 @@ export function Connections({
                   <View style={styles.personHeader}>
                     <Avatar name={r.other.displayName} url={photos[r.other.userId]} size="md" />
                     <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                        <Text style={[styles.name, { color: colors.text, fontSize: type.bodyStrong.size }]}>
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 6,
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.name,
+                            { color: colors.text, fontSize: type.bodyStrong.size },
+                          ]}
+                        >
                           {r.other.displayName}
                         </Text>
-                        {r.other.verificationLevel === "student_verified" ? (
+                        {r.other.verificationLevel === 'student_verified' ? (
                           <Badge label="✓ Campus Verified" tone="success" compact />
-                        ) : r.other.verificationLevel === "trusted" ? (
+                        ) : r.other.verificationLevel === 'trusted' ? (
                           <Badge label="✓ Verified" tone="accent" compact />
                         ) : null}
                       </View>
                       {r.other.bio ? (
-                        <Text style={[styles.muted, { color: colors.textMuted, fontSize: type.small.size }]} numberOfLines={2}>
+                        <Text
+                          style={[
+                            styles.muted,
+                            { color: colors.textMuted, fontSize: type.small.size },
+                          ]}
+                          numberOfLines={2}
+                        >
                           {r.other.bio}
                         </Text>
                       ) : null}
@@ -204,7 +187,9 @@ export function Connections({
                     <Pressable
                       accessibilityRole="button"
                       accessibilityLabel={`Report ${r.other.displayName}`}
-                      onPress={() => setReportingUser({ id: r.other.userId, name: r.other.displayName })}
+                      onPress={() =>
+                        setReportingUser({ id: r.other.userId, name: r.other.displayName })
+                      }
                       hitSlop={8}
                     >
                       <Text style={[styles.flagText, { color: colors.textMuted }]}>⚑</Text>
@@ -223,7 +208,9 @@ export function Connections({
                       },
                     ]}
                   >
-                    <Text style={[styles.introText, { color: colors.text, fontSize: type.body.size }]}>
+                    <Text
+                      style={[styles.introText, { color: colors.text, fontSize: type.body.size }]}
+                    >
                       "{r.intro.text}"
                     </Text>
                   </View>
@@ -235,7 +222,7 @@ export function Connections({
                       onPress={() =>
                         void act(
                           () => client.accept(r.id),
-                          `You are now connected with ${r.other.displayName}!`
+                          `You are now connected with ${r.other.displayName}!`,
                         )
                       }
                     />
@@ -246,7 +233,7 @@ export function Connections({
                       onPress={() =>
                         void act(
                           () => client.decline(r.id),
-                          "Done. They will not be notified of your decision."
+                          'Done. They will not be notified of your decision.',
                         )
                       }
                     />
@@ -259,7 +246,9 @@ export function Connections({
           {/* Active connections */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text, fontSize: type.title.size }]}>
+              <Text
+                style={[styles.sectionTitle, { color: colors.text, fontSize: type.title.size }]}
+              >
                 Your connections
               </Text>
               {connections.length > 0 ? <Badge count={connections.length} tone="neutral" /> : null}
@@ -290,18 +279,36 @@ export function Connections({
                   <View style={styles.personHeader}>
                     <Avatar name={x.other.displayName} url={photos[x.other.userId]} size="md" />
                     <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                        <Text style={[styles.name, { color: colors.text, fontSize: type.bodyStrong.size }]}>
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 6,
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.name,
+                            { color: colors.text, fontSize: type.bodyStrong.size },
+                          ]}
+                        >
                           {x.other.displayName}
                         </Text>
-                        {x.other.verificationLevel === "student_verified" ? (
+                        {x.other.verificationLevel === 'student_verified' ? (
                           <Badge label="✓ Campus Verified" tone="success" compact />
-                        ) : x.other.verificationLevel === "trusted" ? (
+                        ) : x.other.verificationLevel === 'trusted' ? (
                           <Badge label="✓ Verified" tone="accent" compact />
                         ) : null}
                       </View>
                       {x.other.bio ? (
-                        <Text style={[styles.muted, { color: colors.textMuted, fontSize: type.small.size }]} numberOfLines={1}>
+                        <Text
+                          style={[
+                            styles.muted,
+                            { color: colors.textMuted, fontSize: type.small.size },
+                          ]}
+                          numberOfLines={1}
+                        >
                           {x.other.bio}
                         </Text>
                       ) : null}
@@ -310,19 +317,9 @@ export function Connections({
 
                   <View style={[styles.actionsRow, { marginTop: space[3] }]}>
                     {onMessage ? (
-                      <Button
-                        label="Message"
-                        compact
-                        onPress={() => onMessage(x.other.userId)}
-                      />
+                      <Button label="Message" compact onPress={() => onMessage(x.other.userId)} />
                     ) : null}
-                    <Button
-                      label="Remove"
-                      danger
-                      secondary
-                      compact
-                      onPress={() => remove(x)}
-                    />
+                    <Button label="Remove" danger secondary compact onPress={() => remove(x)} />
                   </View>
                 </View>
               ))
@@ -333,7 +330,9 @@ export function Connections({
           {outgoing.length > 0 ? (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: colors.text, fontSize: type.title.size }]}>
+                <Text
+                  style={[styles.sectionTitle, { color: colors.text, fontSize: type.title.size }]}
+                >
                   Your hellos
                 </Text>
                 <Badge count={outgoing.length} tone="neutral" />
@@ -357,16 +356,32 @@ export function Connections({
                   <View style={styles.personHeader}>
                     <Avatar name={r.other.displayName} url={photos[r.other.userId]} size="md" />
                     <View style={{ flex: 1 }}>
-                      <Text style={[styles.name, { color: colors.text, fontSize: type.bodyStrong.size }]}>
+                      <Text
+                        style={[
+                          styles.name,
+                          { color: colors.text, fontSize: type.bodyStrong.size },
+                        ]}
+                      >
                         {r.other.displayName}
                       </Text>
-                      <Text style={[styles.muted, { color: colors.textMuted, fontSize: type.caption.size }]}>
+                      <Text
+                        style={[
+                          styles.muted,
+                          { color: colors.textMuted, fontSize: type.caption.size },
+                        ]}
+                      >
                         {STATUS_TEXT[r.status]}
                       </Text>
                     </View>
                     <Badge
-                      label={r.status === "pending" ? "Pending" : r.status === "accepted" ? "Accepted" : "No reply"}
-                      tone={r.status === "accepted" ? "success" : "neutral"}
+                      label={
+                        r.status === 'pending'
+                          ? 'Pending'
+                          : r.status === 'accepted'
+                            ? 'Accepted'
+                            : 'No reply'
+                      }
+                      tone={r.status === 'accepted' ? 'success' : 'neutral'}
                       compact
                     />
                   </View>
@@ -383,18 +398,20 @@ export function Connections({
                       },
                     ]}
                   >
-                    <Text style={[styles.introText, { color: colors.text2, fontSize: type.small.size }]}>
+                    <Text
+                      style={[styles.introText, { color: colors.text2, fontSize: type.small.size }]}
+                    >
                       "{r.intro.text}"
                     </Text>
                   </View>
 
-                  {r.status === "pending" ? (
+                  {r.status === 'pending' ? (
                     <View style={[styles.actionsRow, { marginTop: space[3] }]}>
                       <Button
                         label="Withdraw hello"
                         secondary
                         compact
-                        onPress={() => void act(() => client.withdraw(r.id), "Hello withdrawn.")}
+                        onPress={() => void act(() => client.withdraw(r.id), 'Hello withdrawn.')}
                       />
                     </View>
                   ) : null}
@@ -431,39 +448,39 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   cardTitle: {
-    fontWeight: "700",
+    fontWeight: '700',
   },
   lowPressureRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   muted: {
     lineHeight: 18,
   },
   loaderWrap: {
     paddingVertical: 48,
-    alignItems: "center",
+    alignItems: 'center',
   },
   section: {
     marginTop: 20,
   },
   sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 4,
   },
   sectionTitle: {
-    fontWeight: "700",
+    fontWeight: '700',
   },
   personHeader: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
   },
   name: {
-    fontWeight: "700",
+    fontWeight: '700',
   },
   flagText: {
     fontSize: 16,
@@ -473,13 +490,13 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
   },
   introText: {
-    fontWeight: "500",
-    fontStyle: "italic",
+    fontWeight: '500',
+    fontStyle: 'italic',
     lineHeight: 20,
   },
   actionsRow: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: 10,
-    alignItems: "center",
+    alignItems: 'center',
   },
 });

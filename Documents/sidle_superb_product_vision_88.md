@@ -1,6 +1,7 @@
 # Sidle — Superb Product Vision: 88 Recommendations
 
-> Product direction captured on 24 October 2026.
+> Historical product direction captured on 24 October 2026.
+> The later user request explicitly supersedes media/feed/monetization deferrals and makes low-pressure mode optional in Settings. See [current handover](PLATFORM_RELEASE_HANDOVER.md) and the updated implementation ledger.
 >
 > North star: **Sidle should help people find genuine connections and turn them into meaningful conversations, communities and plans — without becoming an attention-maximizing clone of Instagram or TikTok.**
 >

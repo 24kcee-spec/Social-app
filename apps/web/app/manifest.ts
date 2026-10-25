@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     id: '/',
     name: 'Sidle',
     short_name: 'Sidle',
-    description: 'Find your people. At your pace.',
+    description: 'People. Moments. Possibilities.',
     start_url: '/discover',
     scope: '/',
     display: 'standalone',

@@ -1,26 +1,26 @@
-"use client";
+'use client';
 
-import type { BlockedUser, DiscoveryCard, SocialStyle } from "@sp/types";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { errorMessage } from "../lib/auth";
-import { getDiscoveryClient } from "../lib/discovery";
-import { webFeatureFlags } from "../lib/feature-flags";
-import { trackProductEvent } from "../lib/product-telemetry";
-import { getSignedMediaUrl } from "../lib/profile";
-import { SayHi } from "./say-hi";
-import { ReportModal } from "./report-modal";
-import { ShareModal } from "./share-modal";
-import { getProductClient } from "../lib/product";
-import type { PeopleContext } from "@sp/profile-client";
-import { SocialContextEditor, INTENT_LABELS, AVAILABILITY_LABELS } from "./social-context";
-import { SavedIntroductions } from "./saved-introductions";
+import type { BlockedUser, DiscoveryCard, SocialStyle } from '@sp/types';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { errorMessage } from '../lib/auth';
+import { getDiscoveryClient } from '../lib/discovery';
+import { webFeatureFlags } from '../lib/feature-flags';
+import { trackProductEvent } from '../lib/product-telemetry';
+import { getSignedMediaUrl } from '../lib/profile';
+import { SayHi } from './say-hi';
+import { ReportModal } from './report-modal';
+import { ShareModal } from './share-modal';
+import { getProductClient } from '../lib/product';
+import type { PeopleContext } from '@sp/profile-client';
+import { INTENT_LABELS, AVAILABILITY_LABELS } from './social-context';
+import { SavedIntroductions } from './saved-introductions';
 
 const STYLE_LABELS: Record<SocialStyle, string> = {
-  small_group: "Small groups",
-  one_to_one: "One-to-one",
-  text_first: "Text-first",
-  voice_first: "Voice-first",
-  low_pressure: "Low pressure",
+  small_group: 'Small groups',
+  one_to_one: 'One-to-one',
+  text_first: 'Text-first',
+  voice_first: 'Voice-first',
+  low_pressure: 'Low pressure',
 };
 
 const PAGE = 12;
@@ -39,10 +39,17 @@ export function Discover() {
   const [open, setOpen] = useState<string | null>(null);
   const [blocks, setBlocks] = useState<BlockedUser[] | null>(null);
   const [greeting, setGreeting] = useState<string | null>(null);
-  const [sharingProfile, setSharingProfile] = useState<{ id: string; displayName: string; bio?: string } | null>(null);
-  const [reportingProfile, setReportingProfile] = useState<{ id: string; displayName: string } | null>(null);
-  const [filterStyle, setFilterStyle] = useState<string>("all");
-  const [search, setSearch] = useState("");
+  const [sharingProfile, setSharingProfile] = useState<{
+    id: string;
+    displayName: string;
+    bio?: string;
+  } | null>(null);
+  const [reportingProfile, setReportingProfile] = useState<{
+    id: string;
+    displayName: string;
+  } | null>(null);
+  const [filterStyle, setFilterStyle] = useState<string>('all');
+  const [search, setSearch] = useState('');
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [savedReady, setSavedReady] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -58,14 +65,23 @@ export function Discover() {
     const refresh = () => {
       setContextNow(Date.now());
       if (!people.length) return;
-      void getProductClient().getPeopleContext(people.map(person => person.userId))
-        .then(rows => { if (alive) setContexts(Object.fromEntries(rows.map(row => [row.userId, row]))); })
-        .catch(() => { if (alive) setContexts({}); });
+      void getProductClient()
+        .getPeopleContext(people.map((person) => person.userId))
+        .then((rows) => {
+          if (alive) setContexts(Object.fromEntries(rows.map((row) => [row.userId, row])));
+        })
+        .catch(() => {
+          if (alive) setContexts({});
+        });
     };
     refresh();
     const timer = setInterval(refresh, 60_000);
     window.addEventListener('focus', refresh);
-    return () => { alive = false; clearInterval(timer); window.removeEventListener('focus', refresh); };
+    return () => {
+      alive = false;
+      clearInterval(timer);
+      window.removeEventListener('focus', refresh);
+    };
   }, [people]);
 
   const loadPhotos = useCallback(async (cards: DiscoveryCard[]) => {
@@ -78,7 +94,7 @@ export function Discover() {
           } catch {
             return null;
           }
-        })
+        }),
     );
     setPhotos((current) => ({
       ...current,
@@ -92,11 +108,11 @@ export function Discover() {
       fresh.forEach((c) => seen.current.add(c.userId));
       if (fresh.length) {
         void client
-          .recordEvents(fresh.map((c) => ({ candidateId: c.userId, type: "impression" as const })))
+          .recordEvents(fresh.map((c) => ({ candidateId: c.userId, type: 'impression' as const })))
           .catch(() => undefined);
       }
     },
-    [client]
+    [client],
   );
 
   const load = useCallback(async () => {
@@ -110,7 +126,8 @@ export function Discover() {
       void loadPhotos(feed.people);
       if (webFeatureFlags.savedIntroductions) {
         const ids = await getProductClient().listSaved();
-        setSavedIds(new Set(ids)); setSavedReady(true);
+        setSavedIds(new Set(ids));
+        setSavedReady(true);
       }
     } catch (err) {
       setError(errorMessage(err));
@@ -123,11 +140,17 @@ export function Discover() {
     void load();
   }, [load]);
 
-  useEffect(() => () => {
-    if (pendingIgnoreTimer.current) clearTimeout(pendingIgnoreTimer.current);
-    const card = pendingIgnoreCard.current;
-    if (card) void client.recordEvents([{ candidateId: card.userId, type: "ignore" }]).catch(() => undefined);
-  }, [client]);
+  useEffect(
+    () => () => {
+      if (pendingIgnoreTimer.current) clearTimeout(pendingIgnoreTimer.current);
+      const card = pendingIgnoreCard.current;
+      if (card)
+        void client
+          .recordEvents([{ candidateId: card.userId, type: 'ignore' }])
+          .catch(() => undefined);
+    },
+    [client],
+  );
 
   async function more() {
     setLoadingMore(true);
@@ -151,7 +174,7 @@ export function Discover() {
     const next = open === card.userId ? null : card.userId;
     setOpen(next);
     if (next) {
-      void client.recordEvents([{ candidateId: card.userId, type: "open" }]).catch(() => undefined);
+      void client.recordEvents([{ candidateId: card.userId, type: 'open' }]).catch(() => undefined);
     }
   }
 
@@ -160,7 +183,10 @@ export function Discover() {
     const card = pendingIgnoreCard.current;
     pendingIgnoreTimer.current = null;
     pendingIgnoreCard.current = null;
-    if (card) void client.recordEvents([{ candidateId: card.userId, type: "ignore" }]).catch(() => undefined);
+    if (card)
+      void client
+        .recordEvents([{ candidateId: card.userId, type: 'ignore' }])
+        .catch(() => undefined);
   }
 
   function skip(card: DiscoveryCard) {
@@ -173,10 +199,13 @@ export function Discover() {
       const pending = pendingIgnoreCard.current;
       pendingIgnoreCard.current = null;
       pendingIgnoreTimer.current = null;
-      if (pending) void client.recordEvents([{ candidateId: pending.userId, type: "ignore" }]).catch(() => undefined);
+      if (pending)
+        void client
+          .recordEvents([{ candidateId: pending.userId, type: 'ignore' }])
+          .catch(() => undefined);
       setPendingHide(null);
     }, 7000);
-    trackProductEvent("recommendation_hidden");
+    trackProductEvent('recommendation_hidden');
     setNotice(`${card.displayName} is hidden for now.`);
   }
 
@@ -194,28 +223,45 @@ export function Discover() {
     });
     setPendingHide(null);
     setNotice(`${card.displayName} is back in this set of introductions.`);
-    trackProductEvent("recommendation_undo");
+    trackProductEvent('recommendation_undo');
   }
 
   async function toggleSaved(card: DiscoveryCard) {
     if (!webFeatureFlags.savedIntroductions || savingId || !savedReady) return;
     const wasSaved = savedIds.has(card.userId);
-    setSavingId(card.userId); setError(null);
+    setSavingId(card.userId);
+    setError(null);
     try {
       const saved = await getProductClient().setSaved(card.userId, !wasSaved);
-      setSavedIds(current => { const next = new Set(current); if (saved) next.add(card.userId); else next.delete(card.userId); return next; });
+      setSavedIds((current) => {
+        const next = new Set(current);
+        if (saved) next.add(card.userId);
+        else next.delete(card.userId);
+        return next;
+      });
       setNotice(saved ? 'Introduction saved to your account.' : 'Saved introduction removed.');
-      trackProductEvent(wasSaved ? "recommendation_unsaved" : "recommendation_saved");
-    } catch (err) { setError(errorMessage(err)); } finally { setSavingId(null); }
+      trackProductEvent(wasSaved ? 'recommendation_unsaved' : 'recommendation_saved');
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSavingId(null);
+    }
   }
 
   async function block(card: DiscoveryCard) {
-    if (!window.confirm(`Block ${card.displayName}? You will not see each other anywhere in the app.`)) return;
+    if (
+      !window.confirm(`Block ${card.displayName}? You will not see each other anywhere in the app.`)
+    )
+      return;
     try {
       commitPendingIgnore();
       await client.block(card.userId);
       setPeople((p) => p.filter((x) => x.userId !== card.userId));
-      setSavedIds(current => { const next = new Set(current); next.delete(card.userId); return next; });
+      setSavedIds((current) => {
+        const next = new Set(current);
+        next.delete(card.userId);
+        return next;
+      });
       setNotice(`${card.displayName} has been blocked.`);
       if (blocks) setBlocks(await client.listBlocks());
     } catch (err) {
@@ -235,7 +281,9 @@ export function Discover() {
     try {
       await client.unblock(id);
       setBlocks((b) => (b ?? []).filter((x) => x.userId !== id));
-      setNotice("Unblocked. They can appear in your suggestions again; old connections are not restored automatically.");
+      setNotice(
+        'Unblocked. They can appear in your suggestions again; old connections are not restored automatically.',
+      );
       void load();
     } catch (err) {
       setError(errorMessage(err));
@@ -244,10 +292,13 @@ export function Discover() {
 
   const normalizedSearch = search.trim().toLocaleLowerCase();
   const filteredPeople = people.filter((person) => {
-    const matchesFilter = filterStyle === "all"
-      || (filterStyle === "shared" && person.sharedInterests.length > 0)
-      || (filterStyle === "saved" && savedIds.has(person.userId))
-      || person.socialStyles.includes(filterStyle as SocialStyle);
+    const matchesFilter =
+      filterStyle === 'all' ||
+      (filterStyle === 'shared' && person.sharedInterests.length > 0) ||
+      (filterStyle === 'saved' && savedIds.has(person.userId)) ||
+      (filterStyle.startsWith('intent:') &&
+        contexts[person.userId]?.intents.some((intent) => intent === filterStyle.slice(7))) ||
+      person.socialStyles.includes(filterStyle as SocialStyle);
     if (!matchesFilter) return false;
     if (!normalizedSearch) return true;
     const searchable = [
@@ -256,17 +307,21 @@ export function Discover() {
       ...person.interests.map((interest) => interest.name),
       ...person.prompts.map((prompt) => `${prompt.prompt} ${prompt.answer}`),
       ...person.reasons.map((reason) => reason.text),
-    ].join(" ").toLocaleLowerCase();
+    ]
+      .join(' ')
+      .toLocaleLowerCase();
     return searchable.includes(normalizedSearch);
   });
 
   const filterOptions = [
-    ["all", "All"],
-    ["shared", "Shared passions"],
-    ...(webFeatureFlags.savedIntroductions ? [["saved", `Saved${savedIds.size ? ` · ${savedIds.size}` : ""}`]] : []),
-    ["low_pressure", "🌿 Low pressure"],
-    ["one_to_one", "One-to-one"],
-    ["small_group", "Small groups"],
+    ['all', 'All'],
+    ['shared', 'Shared passions'],
+    ...(webFeatureFlags.savedIntroductions
+      ? [['saved', `Saved${savedIds.size ? ` · ${savedIds.size}` : ''}`]]
+      : []),
+    ...Object.entries(INTENT_LABELS).map(([key, label]) => ['intent:' + key, label]),
+    ['one_to_one', 'One-to-one'],
+    ['small_group', 'Small groups'],
   ] as const;
 
   return (
@@ -274,19 +329,23 @@ export function Discover() {
       <div className="discover-header-bar">
         <div>
           <span className="eyebrow">✦ FOR YOU</span>
-          <h1 style={{ margin: "2px 0 0" }}>Discover people</h1>
-          <p className="muted" style={{ margin: "8px 0 0", maxWidth: 620 }}>
-            Relevant introductions built around shared interests and social pace — not follower counts or popularity.
+          <h1 style={{ margin: '2px 0 0' }}>Discover people</h1>
+          <p className="muted" style={{ margin: '8px 0 0', maxWidth: 620 }}>
+            Relevant introductions built around shared interests and social pace — not follower
+            counts or popularity.
           </p>
         </div>
       </div>
 
-      <SocialContextEditor />
       {webFeatureFlags.recommendationTuning && (
         <div className="sidle-discover-toolbar">
           <div className="sidle-searchbox">
-            <span className="sidle-searchbox-icon" aria-hidden="true">⌕</span>
-            <label className="sidle-sr-only" htmlFor="discover-search">Search current introductions</label>
+            <span className="sidle-searchbox-icon" aria-hidden="true">
+              ⌕
+            </span>
+            <label className="sidle-sr-only" htmlFor="discover-search">
+              Search current introductions
+            </label>
             <input
               id="discover-search"
               type="search"
@@ -296,7 +355,9 @@ export function Discover() {
               autoComplete="off"
             />
           </div>
-          <a className="secondary compact" href="/profile/edit">Tune my profile</a>
+          <a className="secondary compact" href="/profile/edit">
+            Tune my profile
+          </a>
         </div>
       )}
 
@@ -304,11 +365,11 @@ export function Discover() {
         {filterOptions.map(([key, label]) => (
           <button
             key={key}
-            className={`chip-btn ${filterStyle === key ? "on" : ""}`}
+            className={`chip-btn ${filterStyle === key ? 'on' : ''}`}
             aria-pressed={filterStyle === key}
             onClick={() => {
               setFilterStyle(key);
-              trackProductEvent("recommendation_filter_changed", { filter: key });
+              trackProductEvent('recommendation_filter_changed', { filter: key });
             }}
           >
             {label}
@@ -317,39 +378,69 @@ export function Discover() {
       </div>
 
       {webFeatureFlags.savedIntroductions && (
-        <p className="muted" style={{ marginTop: -4, fontSize: ".78rem" }}>
-          Saved introductions are private to your account and sync across devices; saving does not notify the other person.
+        <p className="muted" style={{ marginTop: -4, fontSize: '.78rem' }}>
+          Saved introductions are private to your account and sync across devices; saving does not
+          notify the other person.
         </p>
       )}
 
       {error && (
         <div className="notice err" role="alert">
           <span>{error}</span>
-          <button className="link" onClick={() => void load()}>Try again</button>
+          <button className="link" onClick={() => void load()}>
+            Try again
+          </button>
         </div>
       )}
 
       {notice && (
         <div className="notice ok" role="status">
           <span>✓ {notice}</span>
-          {pendingHide && <button className="link" onClick={undoSkip} style={{ marginLeft: "auto" }}>Undo</button>}
-          {!pendingHide && <button className="link" onClick={() => setNotice(null)} style={{ marginLeft: "auto" }}>Dismiss</button>}
+          {pendingHide && (
+            <button className="link" onClick={undoSkip} style={{ marginLeft: 'auto' }}>
+              Undo
+            </button>
+          )}
+          {!pendingHide && (
+            <button className="link" onClick={() => setNotice(null)} style={{ marginLeft: 'auto' }}>
+              Dismiss
+            </button>
+          )}
         </div>
       )}
 
-      {filterStyle === 'saved' && <SavedIntroductions search={search} onRemoved={id => setSavedIds(current => { const next = new Set(current); next.delete(id); return next; })} />}
+      {filterStyle === 'saved' && (
+        <SavedIntroductions
+          search={search}
+          onRemoved={(id) =>
+            setSavedIds((current) => {
+              const next = new Set(current);
+              next.delete(id);
+              return next;
+            })
+          }
+        />
+      )}
       {filterStyle !== 'saved' && !loading && filteredPeople.length > 0 && (
         <div className="stories-row" aria-label="Fresh introductions">
           {filteredPeople.slice(0, 12).map((person) => (
             <button
               key={person.userId}
               className="story"
-              onClick={() => document.getElementById(`card-${person.userId}`)?.scrollIntoView({ behavior: "smooth", block: "center" })}
+              onClick={() =>
+                document
+                  .getElementById(`card-${person.userId}`)
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              }
             >
               <span className="story-ring">
-                {photos[person.userId] ? <img src={photos[person.userId]} alt="" /> : <span>{person.displayName.charAt(0).toUpperCase()}</span>}
+                {photos[person.userId] ? (
+                  <img src={photos[person.userId]} alt="" />
+                ) : (
+                  <span>{person.displayName.charAt(0).toUpperCase()}</span>
+                )}
               </span>
-              <span className="story-name">{person.displayName.split(" ")[0]}</span>
+              <span className="story-name">{person.displayName.split(' ')[0]}</span>
             </button>
           ))}
         </div>
@@ -359,9 +450,31 @@ export function Discover() {
         <div className="discover-grid" aria-busy="true" aria-label="Loading introductions">
           {[1, 2, 3].map((i) => (
             <div className="card" key={i} style={{ minHeight: 360, opacity: 0.72 }}>
-              <div style={{ height: 190, background: "var(--surface-sunken)", borderRadius: "var(--radius-md)", marginBottom: 16 }} />
-              <div style={{ height: 24, width: "60%", background: "var(--surface-sunken)", borderRadius: 6, marginBottom: 8 }} />
-              <div style={{ height: 16, width: "85%", background: "var(--surface-sunken)", borderRadius: 4 }} />
+              <div
+                style={{
+                  height: 190,
+                  background: 'var(--surface-sunken)',
+                  borderRadius: 'var(--radius-md)',
+                  marginBottom: 16,
+                }}
+              />
+              <div
+                style={{
+                  height: 24,
+                  width: '60%',
+                  background: 'var(--surface-sunken)',
+                  borderRadius: 6,
+                  marginBottom: 8,
+                }}
+              />
+              <div
+                style={{
+                  height: 16,
+                  width: '85%',
+                  background: 'var(--surface-sunken)',
+                  borderRadius: 4,
+                }}
+              />
             </div>
           ))}
         </div>
@@ -369,33 +482,57 @@ export function Discover() {
         <div>
           <div className="empty-state-card" style={{ marginBottom: 36 }}>
             <div className="empty-state-icon">✦</div>
-            <h2>{normalizedSearch || filterStyle !== "all" ? "No introductions match that view" : "You’re all caught up"}</h2>
-            <p className="muted" style={{ maxWidth: 560, margin: "8px auto 18px" }}>
-              {normalizedSearch || filterStyle !== "all"
-                ? "Try a broader filter or clear the search. Your privacy settings and the other person’s privacy choices still apply."
-                : "You’ve explored everyone currently matching your interests and privacy settings. New people will appear as the community grows."}
+            <h2>
+              {normalizedSearch || filterStyle !== 'all'
+                ? 'No introductions match that view'
+                : 'You’re all caught up'}
+            </h2>
+            <p className="muted" style={{ maxWidth: 560, margin: '8px auto 18px' }}>
+              {normalizedSearch || filterStyle !== 'all'
+                ? 'Try a broader filter or clear the search. Your privacy settings and the other person’s privacy choices still apply.'
+                : 'You’ve explored everyone currently matching your interests and privacy settings. New people will appear as the community grows.'}
             </p>
-            <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-              {(normalizedSearch || filterStyle !== "all") && (
-                <button className="secondary compact" onClick={() => { setSearch(""); setFilterStyle("all"); }}>Clear filters</button>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+              {(normalizedSearch || filterStyle !== 'all') && (
+                <button
+                  className="secondary compact"
+                  onClick={() => {
+                    setSearch('');
+                    setFilterStyle('all');
+                  }}
+                >
+                  Clear filters
+                </button>
               )}
-              <button className="secondary compact" onClick={() => void load()}>Refresh matches</button>
+              <button className="secondary compact" onClick={() => void load()}>
+                Refresh matches
+              </button>
             </div>
           </div>
 
           <div className="card invite-card">
             <h2>Grow your circle</h2>
-            <p className="muted">Invite someone you already know, or add more interests and prompts so Sidle has better context for future introductions.</p>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button onClick={() => {
-                const text = "Join me on Sidle — a calm place to find people, conversations and plans at your pace.";
-                if (navigator.share) {
-                  void navigator.share({ title: "Sidle", text, url: window.location.origin }).catch(() => undefined);
-                } else {
-                  void navigator.clipboard?.writeText(`${text} ${window.location.origin}`);
-                  setNotice("Invite link copied.");
-                }
-              }}>Invite a friend</button>
+            <p className="muted">
+              Invite someone you already know, or add more interests and prompts so Sidle has better
+              context for future introductions.
+            </p>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <button
+                onClick={() => {
+                  const text =
+                    'Join me on Sidle — a calm place to find people, conversations and plans at your pace.';
+                  if (navigator.share) {
+                    void navigator
+                      .share({ title: 'Sidle', text, url: window.location.origin })
+                      .catch(() => undefined);
+                  } else {
+                    void navigator.clipboard?.writeText(`${text} ${window.location.origin}`);
+                    setNotice('Invite link copied.');
+                  }
+                }}
+              >
+                Invite a friend
+              </button>
             </div>
           </div>
         </div>
@@ -413,43 +550,70 @@ export function Discover() {
                   {photoUrl ? (
                     <img src={photoUrl} alt={`${card.displayName}'s profile`} loading="lazy" />
                   ) : (
-                    <span className="profile-card-initial" aria-hidden="true">{card.displayName.charAt(0).toUpperCase()}</span>
+                    <span className="profile-card-initial" aria-hidden="true">
+                      {card.displayName.charAt(0).toUpperCase()}
+                    </span>
                   )}
                   <div className="profile-card-scrim" />
                   <div className="profile-card-cover-badges">
                     <span className="social-style-tag">
-                      {card.socialStyles.map((style) => STYLE_LABELS[style]).join(" · ") || "Community member"}
+                      {card.socialStyles.map((style) => STYLE_LABELS[style]).join(' · ') ||
+                        'Community member'}
                     </span>
                     {card.sharedInterests.length > 0 && (
-                      <span className="social-style-tag" style={{ background: "var(--accent)" }}>
-                        {card.sharedInterests.length} shared {card.sharedInterests.length === 1 ? "interest" : "interests"}
+                      <span className="social-style-tag" style={{ background: 'var(--accent)' }}>
+                        {card.sharedInterests.length} shared{' '}
+                        {card.sharedInterests.length === 1 ? 'interest' : 'interests'}
                       </span>
                     )}
                   </div>
                 </div>
 
                 <div className="profile-card-body">
-                  <div className="profile-name-row" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <div
+                    className="profile-name-row"
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}
+                  >
                     <div className="profile-card-name">{card.displayName}</div>
-                    {card.verificationLevel === "student_verified" && (
-                      <span className="campus-badge" title="Academic email confirmed">✓ Academic email</span>
+                    {card.verificationLevel === 'student_verified' && (
+                      <span className="campus-badge" title="Academic email confirmed">
+                        ✓ Academic email
+                      </span>
                     )}
-                    {card.verificationLevel === "trusted" && (
-                      <span className="campus-badge trusted" title="Trusted community standing">★ Trusted</span>
+                    {card.verificationLevel === 'trusted' && (
+                      <span className="campus-badge trusted" title="Trusted community standing">
+                        ★ Trusted
+                      </span>
                     )}
                   </div>
 
                   {card.bio && <p className="profile-card-bio">{card.bio}</p>}
-                  {contexts[card.userId] && <div className="shared-interests-row">
-                    {contexts[card.userId]!.intents.map(intent => <span className="social-style-tag" key={intent}>{INTENT_LABELS[intent]}</span>)}
-                    {contexts[card.userId]!.availability && Date.parse(contexts[card.userId]!.expiresAt ?? '') > contextNow && <span className="social-style-tag">{AVAILABILITY_LABELS[contexts[card.userId]!.availability!]}</span>}
-                  </div>}
+                  {contexts[card.userId] && (
+                    <div className="shared-interests-row">
+                      {contexts[card.userId]!.intents.map((intent) => (
+                        <span className="social-style-tag" key={intent}>
+                          {INTENT_LABELS[intent]}
+                        </span>
+                      ))}
+                      {contexts[card.userId]!.availability &&
+                        Date.parse(contexts[card.userId]!.expiresAt ?? '') > contextNow && (
+                          <span className="social-style-tag">
+                            {AVAILABILITY_LABELS[contexts[card.userId]!.availability!]}
+                          </span>
+                        )}
+                    </div>
+                  )}
 
                   <div className="shared-interests-row">
                     {card.interests.slice(0, isOpen ? 12 : 5).map((interest) => {
-                      const isShared = card.sharedInterests.some((shared) => shared.id === interest.id);
+                      const isShared = card.sharedInterests.some(
+                        (shared) => shared.id === interest.id,
+                      );
                       return (
-                        <span key={interest.id} className={`shared-chip ${isShared ? "highlight" : ""}`}>
+                        <span
+                          key={interest.id}
+                          className={`shared-chip ${isShared ? 'highlight' : ''}`}
+                        >
                           {interest.name}
                         </span>
                       );
@@ -459,15 +623,18 @@ export function Discover() {
                   <details
                     className="sidle-why"
                     onToggle={(event) => {
-                      if (event.currentTarget.open) trackProductEvent("why_recommendation_opened");
+                      if (event.currentTarget.open) trackProductEvent('why_recommendation_opened');
                     }}
                   >
-                    <summary>Why you’re seeing {card.displayName.split(" ")[0]}</summary>
+                    <summary>Why you’re seeing {card.displayName.split(' ')[0]}</summary>
                     <ul className="sidle-why-list">
-                      {card.reasons.slice(0, 4).map((reason) => <li key={`${reason.code}-${reason.text}`}>{reason.text}</li>)}
+                      {card.reasons.slice(0, 4).map((reason) => (
+                        <li key={`${reason.code}-${reason.text}`}>{reason.text}</li>
+                      ))}
                     </ul>
-                    <p className="muted" style={{ margin: "8px 0 0", fontSize: ".76rem" }}>
-                      Sidle explains positive matching context here. It does not show a public popularity score.
+                    <p className="muted" style={{ margin: '8px 0 0', fontSize: '.76rem' }}>
+                      Sidle explains positive matching context here. It does not show a public
+                      popularity score.
                     </p>
                   </details>
 
@@ -479,7 +646,14 @@ export function Discover() {
                   )}
 
                   {isOpen && card.prompts.length > 1 && (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 10,
+                        marginBottom: 14,
+                      }}
+                    >
                       {card.prompts.slice(1).map((prompt) => (
                         <div key={prompt.promptId} className="prompt-quote-box">
                           <div className="prompt-question">✦ {prompt.prompt}</div>
@@ -490,21 +664,48 @@ export function Discover() {
                   )}
 
                   {isOpen && (
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }} aria-label="Profile safety actions">
-                      <button className="link" type="button" onClick={() => setReportingProfile({ id: card.userId, displayName: card.displayName })}>Report profile</button>
-                      <button className="link" type="button" onClick={() => void block(card)}>Block</button>
+                    <div
+                      style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}
+                      aria-label="Profile safety actions"
+                    >
+                      <button
+                        className="link"
+                        type="button"
+                        onClick={() =>
+                          setReportingProfile({ id: card.userId, displayName: card.displayName })
+                        }
+                      >
+                        Report profile
+                      </button>
+                      <button className="link" type="button" onClick={() => void block(card)}>
+                        Block
+                      </button>
                     </div>
                   )}
 
                   <div className="profile-card-footer">
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      {card.relation === "none" && card.messagePermission !== "nobody" && (
-                        <button className="compact" onClick={() => setGreeting(isGreeting ? null : card.userId)}>Say hi</button>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {card.relation === 'none' && card.messagePermission !== 'nobody' && (
+                        <button
+                          className="compact"
+                          onClick={() => setGreeting(isGreeting ? null : card.userId)}
+                        >
+                          Say hi
+                        </button>
                       )}
-                      <button className="secondary compact" onClick={() => toggle(card)}>{isOpen ? "Less" : "Profile"}</button>
+                      <button className="secondary compact" onClick={() => toggle(card)}>
+                        {isOpen ? 'Less' : 'Profile'}
+                      </button>
                     </div>
 
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 8,
+                        flexWrap: 'wrap',
+                        justifyContent: 'flex-end',
+                      }}
+                    >
                       {webFeatureFlags.savedIntroductions && (
                         <button
                           type="button"
@@ -512,19 +713,35 @@ export function Discover() {
                           aria-pressed={isSaved}
                           onClick={() => void toggleSaved(card)}
                           disabled={!savedReady || savingId !== null}
-                          title={isSaved ? "Remove from saved introductions" : "Save privately to your account"}
+                          title={
+                            isSaved
+                              ? 'Remove from saved introductions'
+                              : 'Save privately to your account'
+                          }
                         >
-                          {isSaved ? "Saved" : "Save"}
+                          {isSaved ? 'Saved' : 'Save'}
                         </button>
                       )}
                       <button
                         type="button"
                         className="secondary compact"
-                        onClick={() => setSharingProfile({ id: card.userId, displayName: card.displayName, bio: card.bio })}
+                        onClick={() =>
+                          setSharingProfile({
+                            id: card.userId,
+                            displayName: card.displayName,
+                            bio: card.bio,
+                          })
+                        }
                       >
                         Share
                       </button>
-                      <button className="secondary compact" onClick={() => skip(card)} title="Hide this introduction for now">Hide</button>
+                      <button
+                        className="secondary compact"
+                        onClick={() => skip(card)}
+                        title="Hide this introduction for now"
+                      >
+                        Hide
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -565,37 +782,60 @@ export function Discover() {
         />
       )}
 
-      {!loading && hasMore && filterStyle !== "saved" && !normalizedSearch && (
-        <div style={{ textAlign: "center", marginTop: 32 }}>
+      {!loading && hasMore && filterStyle !== 'saved' && !normalizedSearch && (
+        <div style={{ textAlign: 'center', marginTop: 32 }}>
           <button className="secondary" onClick={() => void more()} disabled={loadingMore}>
-            {loadingMore ? "Loading more people…" : "Show more people"}
+            {loadingMore ? 'Loading more people…' : 'Show more people'}
           </button>
         </div>
       )}
 
-      <div style={{ textAlign: "center", marginTop: 40 }}>
+      <div style={{ textAlign: 'center', marginTop: 40 }}>
         <button
           className="link"
-          style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}
+          style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}
           onClick={() => void (blocks ? setBlocks(null) : showBlocks())}
         >
-          {blocks ? "Hide blocked people" : "Manage blocked people"}
+          {blocks ? 'Hide blocked people' : 'Manage blocked people'}
         </button>
       </div>
 
       {blocks && (
-        <section className="card" style={{ marginTop: 20, maxWidth: 600, marginInline: "auto" }}>
+        <section className="card" style={{ marginTop: 20, maxWidth: 600, marginInline: 'auto' }}>
           <span className="eyebrow">SAFETY</span>
           <h3>Blocked members</h3>
-          <p className="muted">Blocked members cannot see your profile or message you. Unblocking does not restore an old connection automatically.</p>
+          <p className="muted">
+            Blocked members cannot see your profile or message you. Unblocking does not restore an
+            old connection automatically.
+          </p>
           {blocks.length === 0 ? (
-            <p className="muted" style={{ fontStyle: "italic" }}>You have not blocked anyone.</p>
+            <p className="muted" style={{ fontStyle: 'italic' }}>
+              You have not blocked anyone.
+            </p>
           ) : (
-            <ul className="blocked-account-list" style={{ listStyle: "none", padding: 0, margin: "14px 0 0" }}>
+            <ul
+              className="blocked-account-list"
+              style={{ listStyle: 'none', padding: 0, margin: '14px 0 0' }}
+            >
               {blocks.map((blocked) => (
-                <li key={blocked.userId} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
+                <li
+                  key={blocked.userId}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: '10px 0',
+                    borderBottom: '1px solid var(--line)',
+                  }}
+                >
                   <span style={{ fontWeight: 650 }}>{blocked.displayName}</span>
-                  <button className="secondary compact" onClick={() => void unblock(blocked.userId)}>Unblock</button>
+                  <button
+                    className="secondary compact"
+                    onClick={() => void unblock(blocked.userId)}
+                  >
+                    Unblock
+                  </button>
                 </li>
               ))}
             </ul>

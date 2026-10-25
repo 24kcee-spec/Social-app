@@ -1,0 +1,52 @@
+begin;
+set local statement_timeout='40s';set local lock_timeout='5s';
+create temporary table media_probe(a uuid,b uuid,audio uuid,video uuid,track uuid,reel uuid,story uuid,playlist uuid) on commit drop;
+insert into media_probe(a,b) values(gen_random_uuid(),gen_random_uuid());grant all on media_probe to authenticated,service_role;
+insert into public.users(id,email) select a,'media-probe-'||a||'@example.invalid' from media_probe union all select b,'media-probe-'||b||'@example.invalid' from media_probe;
+insert into public.profiles(user_id,display_name,onboarding_completed,discoverable) select a,'Media probe',true,true from media_probe union all select b,'Media probe viewer',true,true from media_probe;
+select set_config('request.jwt.claims',jsonb_build_object('sub',a,'role','authenticated','session_id','media-a')::text,true) from media_probe;
+set local role authenticated;
+do $$declare r jsonb;begin
+ r:=public.sidle_platform('media.reserve',jsonb_build_object('clientId',gen_random_uuid(),'kind','audio','mime','audio/mpeg','sizeBytes',14,'durationSeconds',1,'rights','original'));update pg_temp.media_probe set audio=(r->>'id')::uuid;
+ r:=public.sidle_platform('media.reserve',jsonb_build_object('clientId',gen_random_uuid(),'kind','video','mime','video/mp4','sizeBytes',14,'durationSeconds',1,'rights','original'));update pg_temp.media_probe set video=(r->>'id')::uuid;
+end;$$;
+reset role;
+insert into storage.objects(bucket_id,name,metadata,owner_id) select 'sidle-social-media',s.path,jsonb_build_object('size',14,'mimetype',s.mime),p.a::text from app_private.social_assets s join media_probe p on s.id in(p.audio,p.video);
+set local role authenticated;
+do $$declare r jsonb;first_id text;begin
+ perform public.sidle_platform('media.finalize',jsonb_build_object('id',(select audio from pg_temp.media_probe)));perform public.sidle_platform('media.finalize',jsonb_build_object('id',(select video from pg_temp.media_probe)));
+ r:=public.sidle_platform('posts.create',jsonb_build_object('clientId',gen_random_uuid(),'kind','music','title','Synthetic original','body','Test track','assetId',(select audio from pg_temp.media_probe),'audience','public'));update pg_temp.media_probe set track=(r->>'id')::uuid;
+ r:=public.sidle_platform('posts.create',jsonb_build_object('clientId',gen_random_uuid(),'kind','reel','body','Test reel','assetId',(select video from pg_temp.media_probe),'audience','public'));update pg_temp.media_probe set reel=(r->>'id')::uuid;
+ r:=public.sidle_platform('posts.create',jsonb_build_object('clientId',gen_random_uuid(),'kind','story','body','Test story','assetId',(select video from pg_temp.media_probe),'audience','public'));update pg_temp.media_probe set story=(r->>'id')::uuid;
+ if r->>'expiresAt' is null then raise exception 'Story expiry missing';end if;
+ r:=public.sidle_platform('music.playlist.create','{"name":"Synthetic playlist"}');update pg_temp.media_probe set playlist=(r->>'id')::uuid;
+ perform public.sidle_platform('music.playlist.track',jsonb_build_object('playlistId',(select playlist from pg_temp.media_probe),'postId',(select track from pg_temp.media_probe)));
+ if jsonb_array_length(public.sidle_platform('music.playlists','{}')->0->'tracks')<>1 then raise exception 'Playlist track persistence';end if;
+ begin perform public.sidle_platform('music.playlist.track',jsonb_build_object('playlistId',(select playlist from pg_temp.media_probe),'postId',(select reel from pg_temp.media_probe)));raise exception 'Video added as music';exception when insufficient_privilege then null;end;
+ r:=public.sidle_platform('posts.list','{"limit":1}');first_id:=r->'items'->0->>'id';if r->>'cursor' is null then raise exception 'Feed pagination cursor';end if;
+ r:=public.sidle_platform('posts.list',jsonb_build_object('limit',1,'cursor',r->>'cursor'));if r->'items'->0->>'id'=first_id then raise exception 'Feed pagination duplicated';end if;
+ perform public.sidle_platform('preferences.set','{"readReceipts":false,"quietHoursStart":0,"quietHoursEnd":0}');
+end;$$;
+reset role;
+update app_private.social_assets set status='quarantined' where id=(select audio from media_probe);
+set local role authenticated;
+do $$begin
+ if public.sidle_platform('media.finalize',jsonb_build_object('id',(select audio from pg_temp.media_probe)))->>'status'<>'quarantined' then raise exception 'Re-finalization bypassed moderation';end if;
+end;$$;
+reset role;
+select set_config('request.jwt.claims',jsonb_build_object('sub',b,'role','authenticated','session_id','media-b')::text,true) from media_probe;
+set local role authenticated;
+select public.sidle_platform('usage','{}');
+do $$begin
+ if public.sidle_receipt_visible((select a from pg_temp.media_probe)) then raise exception 'Private receipt preference leaked watermark';end if;
+ if public.sidle_platform('posts.get',jsonb_build_object('id',(select track from pg_temp.media_probe)))->'asset'<>'null'::jsonb then raise exception 'Quarantined bytes available';end if;
+ if public.sidle_platform('music.playlists','{}')<>'[]'::jsonb then raise exception 'Private playlist leak';end if;
+end;$$;
+reset role;
+do $$begin if app_private.sidle_notification_allowed((select a from media_probe),(select b from media_probe)) then raise exception 'Full-day quiet hours bypass';end if;end;$$;
+update app_private.social_posts set expires_at=now()-interval '1 second' where id=(select story from media_probe);
+set local role authenticated;
+do $$begin if public.sidle_platform('posts.get',jsonb_build_object('id',(select story from pg_temp.media_probe))) is not null then raise exception 'Expired story visible';end if;end;$$;
+reset role;
+rollback;
+select 'PASS: music/reel/story formats, private playlists, cursor pagination, quarantine re-finalization denial, quiet hours, receipt privacy and story expiry; fixtures rolled back' as result;

@@ -1,0 +1,71 @@
+# Run from repository root: docker compose --env-file /secure/sidle.env -f ops/nust/compose.yml up -d --build
+services:
+  web:
+    build:
+      context: ../..
+      dockerfile: ops/nust/Dockerfile
+      target: web
+      args:
+        SUPABASE_URL: ${SUPABASE_URL:?Set SUPABASE_URL}
+        SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:?Set publishable key}
+        PUBLIC_WEB_URL: https://${WEB_DOMAIN:?Set WEB_DOMAIN}
+        PUBLIC_API_URL: http://api:4000
+    env_file: ${SIDLE_SERVER_ENV_FILE:?Set absolute server env file path}
+    environment:
+      PUBLIC_WEB_URL: https://${WEB_DOMAIN}
+    restart: unless-stopped
+    depends_on: [api]
+  api:
+    build:
+      context: ../..
+      dockerfile: ops/nust/Dockerfile
+      target: api
+    env_file: ${SIDLE_SERVER_ENV_FILE}
+    environment:
+      CORS_ORIGINS: https://${WEB_DOMAIN}
+      HOST: 0.0.0.0
+      PORT: 4000
+    restart: unless-stopped
+  proxy:
+    image: caddy:2.10-alpine
+    environment:
+      WEB_DOMAIN: ${WEB_DOMAIN}
+      LIVE_DOMAIN: ${LIVE_DOMAIN:-live.localhost}
+    ports: ['80:80', '443:443', '443:443/udp']
+    volumes: ['./Caddyfile:/etc/caddy/Caddyfile:ro', 'caddy-data:/data', 'caddy-config:/config']
+    restart: unless-stopped
+    depends_on: [web]
+  turn:
+    image: coturn/coturn:4.6.3
+    profiles: [realtime]
+    network_mode: host
+    env_file: ${SIDLE_SERVER_ENV_FILE}
+    # Generate this root-owned file from turnserver.conf.example; never commit its secret.
+    volumes: ['${TURN_CONFIG_FILE:-/etc/sidle/turnserver.conf}:/etc/coturn/turnserver.conf:ro']
+    command: ['-c', '/etc/coturn/turnserver.conf', '--log-file=stdout']
+    restart: unless-stopped
+  livekit:
+    image: livekit/livekit-server:v1.9.8
+    profiles: [realtime]
+    env_file: ${SIDLE_SERVER_ENV_FILE}
+    command:
+      [
+        '--config',
+        '/etc/livekit.yaml',
+        '--keys',
+        '${LIVEKIT_API_KEY:-unset}: ${LIVEKIT_API_SECRET:-unset}',
+      ]
+    volumes: ['./livekit.yaml:/etc/livekit.yaml:ro']
+    ports: ['7881:7881', '50000-50100:50000-50100/udp']
+    restart: unless-stopped
+  live-guard:
+    build:
+      context: ../..
+      dockerfile: ops/nust/Dockerfile
+      target: live-guard
+    profiles: [realtime]
+    env_file: ${SIDLE_SERVER_ENV_FILE}
+    restart: unless-stopped
+volumes:
+  caddy-data:
+  caddy-config:

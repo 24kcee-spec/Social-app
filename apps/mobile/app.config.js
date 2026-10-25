@@ -78,11 +78,13 @@ module.exports = {
     plugins: [["expo-image-picker", { photosPermission: "Allow Sidle to use your photos for your profile." }], "expo-notifications"],
     ios: {
       supportsTablet: false,
+      infoPlist:{NSCameraUsageDescription:"Allow Sidle to use your camera when you start video.",NSMicrophoneUsageDescription:"Allow Sidle to record voice and place calls when you choose.",NSLocationWhenInUseUsageDescription:"Allow Sidle to share your location with selected connections while this screen is open."},
       bundleIdentifier: process.env.IOS_BUNDLE_IDENTIFIER?.trim() || "app.social.dev",
       associatedDomains: linkHost ? [`applinks:${linkHost}`] : [],
     },
     android: {
       package: androidPackage,
+      permissions:["CAMERA","RECORD_AUDIO","ACCESS_COARSE_LOCATION","ACCESS_FINE_LOCATION"],
       adaptiveIcon: { foregroundImage: "./assets/adaptive-icon.png", backgroundColor: "#F7F6F2" },
       intentFilters: linkHost ? [
         {

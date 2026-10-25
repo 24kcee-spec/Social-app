@@ -1,0 +1,95 @@
+# Sidle platform release handover
+
+Updated 25 October 2026 (Africa/Harare). This supersedes earlier media/feed/monetization deferrals and the earlier low-pressure-only direction. The 88-item [implementation ledger](sidle_superb_88_implementation_status.md) remains the complete recommendation map.
+
+## What this release adds
+
+| Area | Written and integrated | Current runtime boundary |
+|---|---|---|
+| Home and public feed | Paginated member-wide feed, following/saved views, explicit post audiences, text/images/video/audio, likes, comments, follows, bookmarks, sharing, removal and reporting | Public means other signed-in members. Anonymous internet browsing/indexing is not enabled. Upload and anti-spam limits apply. |
+| Reels | Video publishing, dedicated reel feed, native playback controls, lazy signed media access | Progressive MP4/WebM, manual load-more, no autoplay. Adaptive HLS/DASH processing is not deployed. |
+| Stories | Image/video/audio stories with server-generated 24-hour expiry | Database reads stop at expiry. Story-only bytes become cleanup-eligible after another 24 hours; shared assets used elsewhere are retained. |
+| Music | Original/licensed audio uploads, track titles/attribution, streaming controls and private playlists | A commercial music catalogue, rights grants, royalty collection and music distribution accounts are not supplied. |
+| Messaging | Photos/video/audio/voice attachments, browser voice recording, replies, reactions, 15-minute edits, removal tombstones, drafts and stable retry IDs | Existing message IDs/history/pagination remain. Rich RPC messages create in-app activity; the legacy API's Expo notifier is not invoked by that RPC path. |
+| Voice/video calls | Actual WebRTC capture/offer/answer/ICE, connection-only signaling, accept/decline/end, mute/camera controls, teardown, short-lived coturn credentials | Disabled until TURN is configured or direct mode is deliberately enabled. No relay credentials/server are currently configured; remote physical calls are unverified. |
+| Live video | Host-only publishing, eligible viewers, short-lived LiveKit grants, room limits, end-room action, membership/session/block/expiry guard | Disabled until a LiveKit deployment, credentials and healthy separate guard exist. Healthy guard polling has up to a 30-second removal delay; outages require operations. |
+| Precise live location | Explicit browser permission, selected current connections, 15/30/60-minute expiry, bounded updates, stop, accuracy and external map link | No public location broadcast or background native tracking. Recipients can retain what they see; offline revocation falls back to expiry. |
+| Advertising | Campaign submission, image rights confirmation, administrator review, pause, funded wallet, labelled sponsored cards, unique daily click accounting, budgets and refund debt handling | Delivery defaults off. A funded wallet and approved campaign are required, plus eligible commercial hosting/operator enablement. No sensitive-content or precise-location targeting. |
+| Payments | Hosted Stripe Checkout and Portal, fixed server-side price IDs, verified raw webhook signatures, authoritative session checks, event/session deduplication, refund reconciliation | Disabled: merchant keys, webhook/price configuration and eligible commercial hosting are missing. One-time support/ad-credit purchases are implemented; subscriptions, payouts and marketplace escrow are not. No real charge was made. |
+| Profile | Readable identity dashboard, actual counts, Posts/Photos/About, explicit Edit/Settings/Create; handle/pronouns/campus/course/year/website with audience | Optional extra fields share one audience selector. Existing privacy/badge rules remain; email confirmation is not identity verification. |
+| Settings | Low-pressure introduction mode moved here on web/native; intent/availability, synced private labels, mute management, receipt privacy, UTC quiet hours, consented counters, account export, media manager and authenticator setup/step-up | MFA enforcement is optional. Platform admin enforcement and legacy API `ADMIN_MFA_REQUIRED` are separate controls and default off. Verify a factor/recovery procedure before enabling. |
+| Activity/search/Plans | Private multi-domain Activity inbox, read/all-read, eligible people/community/upcoming-Plan search, connection invitations, UTC calendar export | Invitation acceptance does not RSVP/reserve capacity. Conversation-name search is local; indexed message full-text search remains future work. |
+| Operations | Content report/media/ad queues, upload pause/review settings, storage reservations, usage/opt-in counters, retention and deletion worker extension | Human moderation coverage, legal policies and provider monitoring still need named owners. Quarantine is manual, not an automated safety classifier. |
+| Mobile | Profile tab now reads as a profile; edit is explicit, low-pressure switch moved to Settings; first-party embedded feature hub and camera/microphone/location declarations | New media/commerce/location/call screens are responsive embedded screens with a separate browser sign-in session. A new signed APK/iOS build and physical-device QA were not produced. |
+
+## Supabase changes and data preservation
+
+The existing project `mdekznpqmadhhsmouuhx` is retained. Its portable Fastify migration ledger remains exactly **0001–0015**. The independent checksum-verified product ledger now contains:
+
+1. `202610240001_social_context.sql` — previously applied; unchanged.
+2. `202610240002_social_platform.sql` — content, media reservations/private Storage, preferences/profile details, following, activity, search, moderation, invitations, calls and location.
+3. `202610240003_messaging_and_commerce.sql` — rich message metadata/reactions, payment reconciliation, advertising wallets/campaigns/clicks.
+4. `202610240004_live_and_operations.sql` — live rooms/guard, bounded retention, activity/counter integration, quiet-hour push eligibility and restrictive read-receipt privacy.
+
+All four are applied and checksum-verified. Each migration runs transactionally with an independent ledger lock/checksum. No applied migration was rewritten and no legacy production row was overwritten or reseeded. Before this release, production had 2 application users, 2 profiles, 10 messages, 1 group, 1 event and 2 Auth users. Browser fixtures use newly created, marked accounts and remove only their own data/bytes; final counts must match that baseline.
+
+New private tables have RLS and revoked direct client access. Public RPC wrappers are invokers over private implementations. Every member operation checks the active account/session; content audiences, blocks, account removal and call/location membership are enforced in SQL. Payment credit grants and operational server RPCs require `service_role`. Receipt preferences restrict direct PostgREST/Realtime watermark reads as well as the updated API response.
+
+The private `sidle-social-media` bucket uses scoped reservations and upload/read/delete policies. Finalization verifies actual object metadata against reserved size/type and cannot lift an administrator quarantine. Storage caps are serialized in the database. Signed media URLs last at most 60 seconds, or the remaining story lifetime. Already issued links/downloaded copies cannot be recalled instantly.
+
+The existing cleanup worker was updated to **ACTIVE version 4**, preserving its Edge/Vault credential and schedule. It handles both profile/social buckets, expired coordinates/signals, explicit asset removals, abandoned upload reservations, expired story-only bytes and bounded old activity/counters. A new authenticated `?dryRun=true` path reads queue state without invoking retention/deletion. It returned HTTP 200 with zero due jobs. Automatic approval review rejected forcing the destructive production worker; the safe authenticated dry run and rollback-only probes were used instead. No production cleanup was forced.
+
+## Free-tier budget and deployment gates
+
+- Default social-media reservations: **256 MiB globally, 50 MiB/member**. Images: 5 MiB; video: 20 MiB/3 minutes; music/audio: 10 MiB/10 minutes; voice: 2 MiB/2 minutes. These are deliberate app limits, not promises of unlimited provider storage/bandwidth. Durations are client-reported; stronger server media probing remains future work.
+- Images are re-encoded without source metadata and resized to a 1600-pixel maximum dimension. Media loads lazily, plays only on request and is served directly from Supabase. The browser does not proxy media bytes through Vercel.
+- Background badge/event refresh is reduced and hidden/offline work is skipped where appropriate. Location/call polling runs only on their active screens. Existing direct-message Realtime remains the source for live message updates.
+- Supabase cached/uncached egress quotas are separate; consult the actual organization dashboard. Its [bandwidth documentation](https://supabase.com/docs/guides/storage/serving/bandwidth) describes 5 GB cached plus 5 GB uncached on Free; these are not an interchangeable unlimited pool. [Realtime Free peak connections](https://supabase.com/docs/guides/platform/manage-your-usage/realtime-peak-connections) are 200. Video replay can exhaust egress long before storage fills.
+- Render Free [spins down after inactivity](https://render.com/docs/free). The app gives API authentication up to 60 seconds and displays loading/retry states; it does not use artificial keep-alive pings or promise always-on service. Render disk is not used for permanent media.
+- Vercel [Hobby fair-use rules](https://vercel.com/docs/limits/fair-use-guidelines) restrict commercial usage. Payments and advertising remain gated; hosting at NUST or an eligible commercial plan is needed before enabling them. No plan was upgraded and no paid integration/account was purchased.
+- Git contains code and configuration templates, never production media or database backups. Existing configured credentials are reused; missing provider keys are not invented or requested again.
+
+## Validation evidence
+
+- **484 automated tests**: API 323, profile client 77, auth client 19, validation 27, configuration 7, design tokens 2, web contracts 23 and web server/calendar 6.
+- All workspace TypeScript checks and the Next.js production build pass. The build includes the new media/location/live/billing/admin routes.
+- Four live rollback-only SQL suites pass against the actual Supabase project: original product persistence, platform authorization, messaging/commerce/live grants, and media/story/playlist/privacy behavior. Every synthetic SQL write rolls back.
+- HMAC freshness/raw-body checks, missing-provider gates, TURN credential derivation, redirect restrictions, sanitized server errors and calendar escaping/line folding have automated coverage.
+- Cleanup unit tests cover authentication, both Storage buckets, storage failure/retry, unsafe path rejection and the mutation-free dry-run path. The deployed dry run passed; forced destructive execution was not used.
+- Mobile build-config checks and Expo public configuration evaluation pass. Public values only are bundled. Physical APK/iOS, camera/microphone permissions, cellular relay, push and screen-reader tests remain separate evidence gates.
+- NUST Compose configuration parses with all optional services; backup/restore shell scripts pass syntax checks. The ffmpeg preparation utility successfully normalized a generated two-second video and extracted a poster. Containers were not deployed on NUST infrastructure; an encrypted backup/restore drill was not run.
+- Browser and final deployment evidence is recorded in [platform validation](../docs/platform-validation.md). GitHub CI and Vercel must pass for the exact feature head before main is advanced; release check links are on the pull request.
+
+## What requires your accounts, infrastructure or decisions
+
+1. **Email:** choose/configure custom Supabase Auth SMTP, verify the sending domain and test confirmation/reset/legacy access-link delivery. SMTP env presence alone is not Auth configuration.
+2. **Calls:** supply TURN host/domain/IP/TLS and matching runtime secret/URLs; test two devices across mobile/Wi-Fi/NAT. Direct mode is optional and has peer-IP/NAT limitations.
+3. **Live streaming:** host LiveKit and the membership guard, configure WSS/ports/keys and bandwidth caps, then test host/viewer/block/revoke/end/expiry on real devices. Keep the feature off until the guard and monitoring are operational.
+4. **Commerce:** establish a Stripe-supported merchant account for the actual business jurisdiction, configure test/live keys, prices, webhook and Portal, verify taxes/refunds/disputes/legal terms, and use commercial-eligible hosting. Test real provider outcomes before live mode.
+5. **Music/media rights:** obtain licences for any commercial catalogue, music-in-video or rebroadcasting. Current code supports content the uploader is entitled to share; it cannot grant third-party rights.
+6. **Mobile release/push:** link the actual EAS project, release app IDs/signing certificates and HTTPS service URLs. Build/install the app, test App/Universal Links, media/call/location permissions, keyboard/background behavior and real Expo/FCM/APNs delivery. Browser push and new rich-message delivery need additional implementation.
+7. **Recovery:** provide age recipient/identity keys, an offsite backup destination and a disposable restore host. Back up Storage bytes/provider configuration separately; run a measured restore drill. Leaked-password protection/PITR remain provider-plan gates; no paid upgrade was attempted.
+8. **Public operations:** decide eligibility/age/admission (D-007), publish real legal/privacy/terms/copyright/retention notices and support contact, assign moderation/incident owners and response coverage, and establish bandwidth/spend alerts.
+9. **NUST:** obtain actual machine/network/domain access, persistent storage and staffing, then deploy the reviewed SHA using [the hosting runbook](../ops/nust/README.md). Keep the managed Supabase project initially; full self-hosted Supabase requires an isolated migration/restore rehearsal.
+
+## Remaining code and scale work
+
+These are not silently marked complete: fully native implementations of the embedded new features; browser/connection-request/rich-RPC push delivery; server-side file sniffing, malware scanning and duration probing; automated adaptive transcoding/CDN lifecycle and scaled moderation; indexed full-text/message search; authority-backed campus/faculty ranking and featured group ranking; a per-field profile ACL rather than one shared optional-details audience; a unified dialog/toast/skeleton primitive migration; comprehensive real-device/assistive-technology coverage; and production object-backup automation/restore verification. Subscription billing, marketplace payouts/escrow, a licensed streaming catalogue and automated ad-fraud detection are outside this one-time-payment release.
+
+No implementation can promise unlimited global media, guaranteed delivery or parity with every top social network on free shared hosting. This release provides the named feature code, working Supabase foundations and explicit migration/deployment paths without hiding provider and operations requirements.
+
+## Operator commands
+
+```bash
+pnpm install --frozen-lockfile
+pnpm verify
+pnpm --filter @sp/web build
+pnpm --filter @sp/mobile config:check
+python3 scripts/supabase-product-maintenance.py --verify
+python3 scripts/supabase-maintenance.py --verify-rls
+# Review genuinely new pending migrations before applying; never reset/reseed production.
+python3 scripts/supabase-product-maintenance.py --apply --verify
+python3 scripts/deploy-supabase-cleanup.py
+```
+
+The production web entry remains https://social-platform-web-two.vercel.app. New server-only integration variables are documented in `.env.example`; none belong in browser/native public configuration.

@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 
-export const alt = 'Sidle — Find your people. At your pace.';
+export const alt = 'Sidle — People. Moments. Possibilities.';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -48,7 +48,7 @@ export default function OpenGraphImage() {
           <div style={{ fontSize: 92, fontWeight: 800, letterSpacing: -6 }}>sidle</div>
         </div>
         <div style={{ fontSize: 54, fontWeight: 700, letterSpacing: -2, lineHeight: 1.05 }}>
-          Find your people. At your pace.
+          People. Moments. Possibilities.
         </div>
         <div style={{ fontSize: 27, lineHeight: 1.35, color: '#59626E' }}>
           Low-pressure campus connection built around people, conversations, groups and real plans —
