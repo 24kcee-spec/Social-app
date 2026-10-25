@@ -1,6 +1,6 @@
 # Sidle — current status and remaining work
 
-Updated 25 October 2026: the [expanded release handover](../Documents/PLATFORM_RELEASE_HANDOVER.md) and [platform validation](platform-validation.md) supersede the previous media deferrals and test counts below. The platform now has four independent Supabase migrations, media/feed/creator tools, rich messaging, precise sharing, and provider-gated calls/live/commerce. Full local verification is 484 tests; original production data is preserved.
+Updated 25 October 2026: the [expanded release handover](../Documents/PLATFORM_RELEASE_HANDOVER.md) and [platform validation](platform-validation.md) supersede the previous media deferrals and test counts below. The platform now has five independent Supabase migrations, media/feed/creator tools, rich messaging, precise sharing, and provider-gated calls/live/commerce. Full local verification is 487 tests; original production data is preserved.
 
 ## Historical baseline before the expanded platform release
 

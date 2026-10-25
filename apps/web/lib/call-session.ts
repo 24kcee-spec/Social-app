@@ -28,7 +28,7 @@ export class CallSession {
     });
     if (this.closed) {
       this.stream.getTracks().forEach((track) => track.stop());
-      return;
+      throw new Error('The call has ended.');
     }
     this.events.local(this.stream);
     this.peer = new RTCPeerConnection({
@@ -40,8 +40,16 @@ export class CallSession {
       const stream = event.streams[0];
       if (stream) this.events.remote(stream);
     };
-    this.peer.onconnectionstatechange = () =>
-      this.events.state(this.peer?.connectionState ?? 'closed');
+    this.peer.onconnectionstatechange = () => {
+      if (this.closed) return;
+      const state = this.peer?.connectionState ?? 'closed';
+      this.events.state(state);
+      if (state === 'failed') {
+        void this.client.setCallState(this.id, 'ended').catch(() => undefined);
+        this.close();
+        this.events.state('ended');
+      }
+    };
     this.peer.onicecandidate = (event) => {
       if (event.candidate && !this.closed)
         void this.client
@@ -66,7 +74,14 @@ export class CallSession {
         this.cursor = Math.max(this.cursor, signal.id);
       }
     } catch (error) {
-      if (!this.closed) this.events.error(error);
+      if (!this.closed) {
+        this.events.error(error);
+        const status = (error as { status?: number })?.status;
+        if (status === 401 || status === 403) {
+          this.close();
+          this.events.state('ended');
+        }
+      }
     } finally {
       this.polling = false;
     }

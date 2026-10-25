@@ -3,11 +3,13 @@
 This package is the Expo React Native client for the app.
 
 ## Purpose
+
 - Cross-platform mobile app experience
 - Connects to the same shared packages as the web frontend
 - Includes image upload / picker capabilities and local storage support
 
 ## Key scripts
+
 ```bash
 pnpm --filter @sp/mobile start
 pnpm --filter @sp/mobile android
@@ -21,6 +23,7 @@ pnpm --filter @sp/mobile run config:check
 The checked-in `eas.json` defines an **internal preview APK** and a separate **production** profile. A preview APK is for test devices; it is not a Play Store release. The app is not considered launch-ready merely because an APK builds.
 
 ### One-time EAS setup
+
 1. Create/sign in to an Expo account, then from this directory run:
    ```bash
    pnpm dlx eas-cli login
@@ -33,7 +36,9 @@ The checked-in `eas.json` defines an **internal preview APK** and a separate **p
 The remote build deliberately fails if the required public service configuration is missing, uses HTTP/local addresses, or production lacks a stable Android application ID. Local Expo development can still use the root `.env` and its development defaults.
 
 ### Build and install the preview APK
+
 From `apps/mobile/`:
+
 ```bash
 pnpm dlx eas-cli build --platform android --profile preview
 ```
@@ -41,7 +46,9 @@ pnpm dlx eas-cli build --platform android --profile preview
 Follow EAS prompts to create Android signing credentials if asked. When the build finishes, open its EAS install link on the Android test phone and install the APK. The phone must have network access to the configured API and Supabase project.
 
 ### Physical-device smoke test
+
 Use dedicated test accounts and run the repeatable cases in `docs/phase1-live-gate.md`. At minimum verify on the installed APK:
+
 - Cold start, sign up/sign in, onboarding, sign out, and restart/session persistence.
 - Profile/photo picker permission, upload, remove, and retry after a network failure.
 - Discover a second test account, send/accept a connection request, then message both directions.
@@ -52,6 +59,7 @@ Use dedicated test accounts and run the repeatable cases in `docs/phase1-live-ga
 Record failures with the Android version, device model, app build URL/commit, and steps to reproduce. Do not use real personal data in test accounts. The backend live gate, database migration review, production database TLS verification and moderation/support readiness remain release gates. Only make a production AAB after the stable Android ID and live gates are approved.
 
 ## Main structure
+
 ```text
 apps/mobile/
 ├── src/
@@ -80,7 +88,9 @@ apps/mobile/
 ```
 
 ## Dependencies
+
 This app uses the workspace packages:
+
 - `@sp/auth-client`
 - `@sp/profile-client`
 - `@sp/types`
@@ -89,13 +99,16 @@ This app uses the workspace packages:
 It also includes Expo and React Native packages for mobile behavior, image handling, and async storage.
 
 ## Local run
+
 ```bash
 pnpm install
 pnpm --filter @sp/mobile start
 ```
 
 ## Notes
+
 The structure mirrors the web app’s social flows:
+
 - community
 - discover
 - messages
@@ -103,9 +116,11 @@ The structure mirrors the web app’s social flows:
 - say-hi interactions
 
 ### Native link configuration update (24 October 2026)
+
 Set `EAS_PROJECT_ID` to the linked Expo project's UUID in preview/production. App/Universal Link hosts now come from `PUBLIC_WEB_URL`; there is no `.local` release host. On the web deployment configure `ANDROID_PACKAGE` and comma-separated `ANDROID_SIGNING_SHA256` certificates from the actual EAS/Play signing identity. For iOS set `APPLE_TEAM_ID` and `IOS_BUNDLE_IDENTIFIER` on web and keep the native bundle identifier aligned. Missing release identities publish empty association documents, not development certificates or placeholder team IDs. Test installed cold/warm share links against those exact deployed documents. Remote build and physical-device validation still require the actual Expo project and device; no APK is claimed built here.
 
 ### Phone-alert verification
+
 The installed build includes `expo-notifications`; rebuild the APK after pulling this change. Configure the linked Expo project's FCM v1/APNs credentials, apply migration 0013, and set server `PUSH_PROVIDER=expo` (optionally server-only `EXPO_ACCESS_TOKEN` if Expo enhanced push security is enabled). Enable alerts from mobile Settings → Notifications on a physical device. Confirm two-account message delivery with the app foreground/background/closed, notification taps, preference-off behavior, token rotation, sign-out and session revocation. The API stores and checks Expo ticket receipts; monitor `push_delivery_receipts.outcome` for provider errors/expired receipts. No live push or APK build has been verified in this cloud machine. Connection-request and browser push are not implemented; their preferences do not imply delivery. Direct-message photos are not supported; the former pretend attachment control has been removed.
 
 ## Expanded platform release

@@ -52,7 +52,10 @@ function Composer() {
               className={`chip-btn ${kind === value ? 'on' : ''}`}
               aria-pressed={kind === value}
               disabled={busy}
-              onClick={() => setKind(value)}
+              onClick={() => {
+                setKind(value);
+                clientId.current = null;
+              }}
             >
               {value[0]!.toUpperCase() + value.slice(1)}
             </button>
@@ -140,8 +143,12 @@ function Composer() {
             <label>
               Audience
               <select
-                aria-label="Audience" value={audience}
-                onChange={(event) => setAudience(event.target.value as Audience)}
+                aria-label="Audience"
+                value={audience}
+                onChange={(event) => {
+                  setAudience(event.target.value as Audience);
+                  clientId.current = null;
+                }}
               >
                 <option value="public">Everyone on Sidle</option>
                 <option value="connections">My connections</option>

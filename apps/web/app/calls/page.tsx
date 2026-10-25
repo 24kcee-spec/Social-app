@@ -111,7 +111,16 @@ function Calls() {
       const controller = new CallSession(getPlatformClient(), room.id, {
         local: setLocal,
         remote: setRemote,
-        state: setState,
+        state: (value) => {
+          setState(value);
+          if (value === 'ended') {
+            activeRef.current = null;
+            session.current = null;
+            setActive(null);
+            setLocal(null);
+            setRemote(null);
+          }
+        },
         error: (err) => setError(errorMessage(err)),
       });
       session.current = controller;

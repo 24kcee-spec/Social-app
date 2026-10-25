@@ -50,22 +50,26 @@ Social-app/
 ## Tech stack
 
 ### Web
+
 - Next.js
 - React
 - TypeScript
 
 ### Mobile
+
 - Expo
 - React Native
 - TypeScript
 
 ### API
+
 - Fastify
 - PostgreSQL-ready architecture
 - JWT/JWE support via `jose`
 - `pg` client for database access
 
 ### Shared tooling
+
 - pnpm workspaces
 - TypeScript
 - Vitest for tests

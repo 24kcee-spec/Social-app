@@ -25,6 +25,7 @@ do $$declare r jsonb;first_id text;begin
  begin perform public.sidle_platform('music.playlist.track',jsonb_build_object('playlistId',(select playlist from pg_temp.media_probe),'postId',(select reel from pg_temp.media_probe)));raise exception 'Video added as music';exception when insufficient_privilege then null;end;
  r:=public.sidle_platform('posts.list','{"limit":1}');first_id:=r->'items'->0->>'id';if r->>'cursor' is null then raise exception 'Feed pagination cursor';end if;
  r:=public.sidle_platform('posts.list',jsonb_build_object('limit',1,'cursor',r->>'cursor'));if r->'items'->0->>'id'=first_id then raise exception 'Feed pagination duplicated';end if;
+ begin perform public.sidle_platform('profile.details.set','{"handle":"AdMiN"}');raise exception 'Mixed-case reserved handle accepted';exception when check_violation then null;end;
  perform public.sidle_platform('preferences.set','{"readReceipts":false,"quietHoursStart":0,"quietHoursEnd":0}');
 end;$$;
 reset role;

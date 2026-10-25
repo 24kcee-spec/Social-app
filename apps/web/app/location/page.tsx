@@ -40,6 +40,16 @@ function LocationControl() {
       setConnections(people);
       setShares(locations);
       setMe(user.id);
+      const existing = locations.find((share) => share.userId === user.id);
+      setOwn(existing ? { id: existing.id, expiresAt: existing.expiresAt } : null);
+      if (existing && watch.current === null)
+        setNotice(
+          'An active share was found for this account. This device is not sending updates. Stop the share before choosing new recipients.',
+        );
+      if (!existing && watch.current !== null) {
+        navigator.geolocation.clearWatch(watch.current);
+        watch.current = null;
+      }
     } catch (err) {
       setError(errorMessage(err));
     }

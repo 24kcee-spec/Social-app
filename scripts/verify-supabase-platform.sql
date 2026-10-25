@@ -98,6 +98,7 @@ update public.user_sessions set revoked_at=now() where user_id=(select b from pl
 set local role authenticated;
 do $$ begin begin perform public.sidle_platform('posts.list','{}');raise exception 'Revoked platform session';exception when insufficient_privilege then null;end;end; $$;
 reset role;
+update app_private.social_assets set status='quarantined' where id=(select asset from platform_probe);
 select set_config('request.jwt.claims',jsonb_build_object('sub',admin,'role','authenticated','session_id','platform-admin')::text,true) from platform_probe;
 set local role authenticated;
 do $$ declare r jsonb; begin
@@ -110,6 +111,7 @@ do $$ declare r jsonb; begin
  perform public.sidle_platform('admin.settings','{"adminMfaRequired":true}');
  perform set_config('request.jwt.claims',(current_setting('request.jwt.claims')::jsonb- 'aal')::text,true);
  begin perform public.sidle_platform('admin.usage','{}');raise exception 'Admin MFA bypass';exception when insufficient_privilege then null;end;
+ if public.sidle_social_media_read((select a::text||'/'||asset::text||'.jpg' from pg_temp.platform_probe)) then raise exception 'MFA bypass through quarantine Storage reads';end if;
  perform set_config('request.jwt.claims',(current_setting('request.jwt.claims')::jsonb||'{"aal":"aal2"}'::jsonb)::text,true);
  perform public.sidle_platform('admin.settings','{"adminMfaRequired":false}');
 end; $$;
