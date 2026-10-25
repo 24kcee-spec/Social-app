@@ -69,11 +69,12 @@ export function Messages({
   const [photos, setPhotos] = useState<Record<string, string>>({});
   const [openId, setOpenId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const loadedOnce = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
   const load = useCallback(async () => {
-    setLoading(true);
+    if (!loadedOnce.current) setLoading(true);
     setError(null);
     try {
       const list = await client.listConversations();
@@ -95,6 +96,7 @@ export function Messages({
     } catch (err) {
       setError(errorMessage(err));
     } finally {
+      loadedOnce.current = true;
       setLoading(false);
     }
   }, [client, onUnread]);
@@ -331,7 +333,8 @@ function Thread({
       setHasMore(page.hasMore);
       setNextCursor(page.nextCursor);
       setError(null);
-      await client.markRead(conversation.id);
+      // A delayed read receipt must not prevent loaded history from appearing.
+      void client.markRead(conversation.id).catch(() => undefined);
     } catch (err) {
       // A transient resync failure should not discard the local thread. Realtime can retry later.
       setError(errorMessage(err));

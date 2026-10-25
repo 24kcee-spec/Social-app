@@ -828,6 +828,24 @@
 .message-tools > small {
   opacity: 0.8;
 }
+.message-tools form {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+}
+.message-tools form input {
+  width: 100%;
+  min-width: 0;
+}
+.message-tools form .muted {
+  color: var(--text-muted);
+}
+.message-tools form button + button {
+  margin-left: 8px;
+}
 .message-quoted-reply {
   margin: 7px 0 10px;
   padding: 7px 10px;
@@ -1024,10 +1042,17 @@
   }
 }
 @media (max-width: 840px) {
+  .messages-page:has(.has-open-thread) > .discover-header-bar {
+    display: none;
+  }
   .messages-page .messages-layout {
     grid-template-columns: minmax(0, 1fr);
     min-height: 390px;
     height: calc(100dvh - 240px);
+  }
+  .messages-page .messages-layout.has-open-thread {
+    height: calc(100dvh - 205px);
+    min-height: 340px;
   }
   .messages-page .messages-layout.has-open-thread .conversations-sidebar {
     display: none;
