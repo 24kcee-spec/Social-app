@@ -8,3 +8,13 @@
 [build.environment]
   NODE_VERSION = "22"
   PNPM_VERSION = "9.15.4"
+  PUBLIC_API_URL = "https://social-app-bh1h.onrender.com"
+  PUBLIC_WEB_URL = "https://sidlezw.netlify.app"
+  COMMERCIAL_DEPLOYMENT_APPROVED = "false"
+  ENABLE_PAYMENTS = "false"
+  ADSENSE_VERIFICATION_ENABLED = "false"
+  CALL_ICE_MODE = "disabled"
+  LIVEKIT_GUARD_ENABLED = "false"
+  # These settings are public configuration, including the browser publishable key.
+  # Keep secret scanning enabled for all other variables and credentials.
+  SECRETS_SCAN_OMIT_KEYS = "APP_ENV,PORT,SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY"
