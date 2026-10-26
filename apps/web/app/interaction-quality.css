@@ -254,6 +254,10 @@ kbd {
 .message-body {
   overflow-wrap: anywhere;
 }
+.messages-page .chat-messages-scroll {
+  /* Position restoration is immediate; only an explicit jump animates. */
+  scroll-behavior: auto;
+}
 @media (min-width: 901px) {
   .messages-page .messages-layout {
     height: calc(100dvh - 190px);

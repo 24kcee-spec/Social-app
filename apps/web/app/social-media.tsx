@@ -67,6 +67,7 @@ export function SocialMedia({
     } else setError(true);
   }
   function restore(event: React.SyntheticEvent<HTMLMediaElement>) {
+    automaticRetry.current = false;
     if (playback.current.at > 0) event.currentTarget.currentTime = playback.current.at;
     if (playback.current.playing) void event.currentTarget.play().catch(() => undefined);
   }

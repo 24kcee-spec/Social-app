@@ -35,9 +35,10 @@ test('new arrivals preserve history position and offer a jump to latest', async 
   await page.getByRole('button', { name: 'Chat partner', exact: true }).click();
   await expect(page.getByText('Live updates connected')).toBeVisible();
   await expect(page.locator('.chat-bubble-row')).toHaveCount(50);
+  await expect(page.locator('.message-action-menu')).toHaveCount(50);
   const scroller = page.locator('.chat-messages-scroll');
   await scroller.evaluate((element) => element.scrollTo(0, 0));
-  await page.waitForTimeout(100);
+  await expect.poll(() => scroller.evaluate((element) => element.scrollTop)).toBeLessThan(2);
   chat.incomingMessage();
   await expect(page.getByRole('button', { name: 'New messages ↓' })).toBeVisible();
   expect(await scroller.evaluate((element) => element.scrollTop)).toBeLessThan(100);
