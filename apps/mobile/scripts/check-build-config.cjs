@@ -22,6 +22,7 @@ const validEnv = {
   EAS_PROJECT_ID: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
   ANDROID_PACKAGE: "",
   MOBILE_ADS_PREVIEW: "",
+  ADMOB_ANDROID_APP_ID: "",
   ANDROID_GOOGLE_SERVICES_FILE: ""
 };
 
@@ -49,6 +50,22 @@ const appConfig = JSON.parse(resolved.stdout).expo;
 assert.equal(appConfig.android.intentFilters[0].data[0].host, "social-app.invalid");
 assert.deepEqual(appConfig.ios.associatedDomains, ["applinks:social-app.invalid"]);
 assert.equal(appConfig.extra.eas.projectId, validEnv.EAS_PROJECT_ID);
+
+const publisherId = "ca-app-pub-1234567890123456~1234567890";
+for (const invalid of [publisherId.replace("~", "/"), "ca-app-pub-3940256099942544~3347511713", "invalid"]) {
+  expectFailure(loadConfig("preview", { ADMOB_ANDROID_APP_ID: invalid }), "your own AdMob app ID", "wrong advertising identifier");
+}
+for (const testMode of [false, true]) {
+  const config = spawnSync(process.execPath, ["-e", "process.stdout.write(JSON.stringify(require('./app.config.js')))"], {
+    cwd: appDir,
+    env: { ...process.env, ...validEnv, ADMOB_ANDROID_APP_ID: publisherId, MOBILE_ADS_PREVIEW: String(testMode) },
+    encoding: "utf8"
+  });
+  assert.equal(config.status, 0, config.stderr);
+  const ads = JSON.parse(config.stdout).expo.plugins.find((plugin) => Array.isArray(plugin) && plugin[0] === "react-native-google-mobile-ads");
+  assert.equal(ads[1].androidAppId, testMode ? "ca-app-pub-3940256099942544~3347511713" : publisherId);
+  assert.equal(ads[1].delayAppMeasurementInit, true);
+}
 
 const missingApi = loadConfig("preview", { MOBILE_API_URL: "" });
 expectFailure(missingApi, "MOBILE_API_URL", "missing preview API URL");
