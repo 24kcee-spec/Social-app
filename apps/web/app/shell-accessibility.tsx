@@ -7,10 +7,39 @@ const DEFAULT_TITLE = 'Sidle — People. Moments. Possibilities.';
 
 function navigationLabel() {
   const params = new URLSearchParams(window.location.search);
+  const routeNames: Record<string, string> = {
+    feed: 'Feed',
+    discover: 'Discover',
+    connections: 'Connections',
+    messages: 'Messages',
+    plans: 'Plans',
+    profile: 'Profile',
+    settings: 'Settings',
+    activity: 'Activity',
+    search: 'Search',
+    studio: 'Create',
+    reels: 'Reels',
+    stories: 'Stories',
+    music: 'Music',
+    calls: 'Calls',
+    location: 'Location',
+    live: 'Live',
+    billing: 'Billing',
+    help: 'Help & safety',
+    privacy: 'Privacy',
+    'community-guidelines': 'Community guidelines',
+    'whats-new': 'What’s new',
+    reset: 'Password recovery',
+    offline: 'Offline',
+    u: 'Member profile',
+    post: 'Post',
+  };
+  const route = window.location.pathname.split('/')[1] ?? '';
+  if (routeNames[route]) return routeNames[route];
   const view = params.get('view');
   if (view === 'settings') return 'Settings';
   if (view === 'notifications') return 'Notification settings';
-  if (view === 'profile-preview') return 'Profile preview';
+  if (view === 'profile-preview') return 'Profile';
 
   const section = params.get('section');
   if (section === 'profile-details') return 'Profile editor';
@@ -37,42 +66,6 @@ function syncDocumentTitle() {
   document.title = label === 'Feed' ? DEFAULT_TITLE : `${label} · Sidle`;
 }
 
-function syncPrimaryNavigation() {
-  const buttons = document.querySelectorAll<HTMLButtonElement>(
-    '.app-header nav.nav-pill-bar .nav-pill-btn',
-  );
-  buttons.forEach((button) => {
-    button.setAttribute('type', 'button');
-    button.removeAttribute('role');
-    button.removeAttribute('aria-selected');
-
-    const active = button.classList.contains('active');
-    if (active) button.setAttribute('aria-current', 'page');
-    else button.removeAttribute('aria-current');
-
-    const icon = button.querySelector<HTMLElement>(':scope > span:first-child');
-    icon?.setAttribute('aria-hidden', 'true');
-
-    const label =
-      button.querySelector<HTMLElement>(':scope > span:nth-child(2)')?.textContent?.trim() ?? '';
-    const badge = button.querySelector<HTMLElement>('.nav-badge');
-    const count = badge?.textContent?.trim();
-    badge?.setAttribute('aria-hidden', 'true');
-
-    if (label && count) {
-      const suffix =
-        label === 'Messages'
-          ? 'unread messages'
-          : label === 'Connections'
-            ? 'pending requests'
-            : 'notifications';
-      button.setAttribute('aria-label', `${label}, ${count} ${suffix}`);
-    } else if (label) {
-      button.setAttribute('aria-label', label);
-    }
-  });
-}
-
 function focusNavigationTarget() {
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
@@ -92,12 +85,15 @@ export function ShellAccessibility() {
     let semanticFrame = 0;
     const scheduleSemantics = () => {
       cancelAnimationFrame(semanticFrame);
-      semanticFrame = requestAnimationFrame(syncPrimaryNavigation);
+      semanticFrame = requestAnimationFrame(syncDocumentTitle);
     };
 
     scheduleSemantics();
     syncDocumentTitle();
-    const observer = new MutationObserver(scheduleSemantics);
+    const observer = new MutationObserver(() => {
+      scheduleSemantics();
+      syncDocumentTitle();
+    });
     observer.observe(document.body, {
       subtree: true,
       childList: true,

@@ -79,7 +79,7 @@ export function SocialFeed({
           </button>
         </p>
       )}
-      {loading ? (
+      {loading && posts.length === 0 ? (
         <div className="empty-state-card" aria-busy="true">
           Loading updates…
         </div>
@@ -88,9 +88,24 @@ export function SocialFeed({
           <h2>
             {scope === 'saved'
               ? 'Your saved posts will appear here'
-              : 'Be part of the first conversation'}
+              : scope === 'following'
+                ? 'Your people, in one place'
+                : userId
+                  ? 'Your first post starts here'
+                  : 'Be part of the first conversation'}
           </h2>
-          <p>Share a moment, a creative work or something your community can join.</p>
+          <p>
+            {scope === 'saved'
+              ? 'Save a post with its bookmark action and find it here later.'
+              : scope === 'following'
+                ? 'Follow people whose updates you want to see.'
+                : 'Share a moment, a creative work or something your community can join.'}
+          </p>
+          {(scope === 'following' || scope === 'saved') && (
+            <a className="secondary" href="/discover">
+              Find your people
+            </a>
+          )}
           <a className="secondary" href="/studio">
             Create an update
           </a>

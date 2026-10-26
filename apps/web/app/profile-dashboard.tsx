@@ -5,6 +5,7 @@ import type { ProfileDetails } from '@sp/profile-client';
 import { getPlatformClient } from '../lib/platform';
 import { getSignedMediaUrl } from '../lib/profile';
 import { SocialFeed } from './social-feed';
+import { PhotoViewer } from './photo-viewer';
 
 export function ProfileDashboard({
   profile,
@@ -15,6 +16,7 @@ export function ProfileDashboard({
   onEdit: () => void;
   onSettings?: () => void;
 }) {
+  const [openedPhoto, setOpenedPhoto] = useState<string | null>(null);
   const [tab, setTab] = useState<'posts' | 'photos' | 'about'>('posts');
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [details, setDetails] = useState<ProfileDetails | null>(null);
@@ -43,6 +45,13 @@ export function ProfileDashboard({
   }, [profile.userId, profile.media]);
   return (
     <section className="profile-dashboard" aria-label="Your profile">
+      {openedPhoto && (
+        <PhotoViewer
+          url={openedPhoto}
+          alt="Your profile photo"
+          onClose={() => setOpenedPhoto(null)}
+        />
+      )}
       <header className="profile-identity">
         {profile.media[0] && urls[profile.media[0].id] ? (
           <img
@@ -117,12 +126,14 @@ export function ProfileDashboard({
             <div className="profile-gallery">
               {profile.media.map((media) =>
                 urls[media.id] ? (
-                  <img
+                  <button
                     key={media.id}
-                    src={urls[media.id]}
-                    alt="Your saved profile photo"
-                    loading="lazy"
-                  />
+                    className="profile-photo-open"
+                    aria-label="Open profile photo"
+                    onClick={() => setOpenedPhoto(urls[media.id]!)}
+                  >
+                    <img src={urls[media.id]} alt="Your saved profile photo" loading="lazy" />
+                  </button>
                 ) : null,
               )}
             </div>

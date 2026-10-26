@@ -4,6 +4,7 @@ import { getAuth, errorMessage } from '../lib/auth';
 import { getDiscoveryClient } from '../lib/discovery';
 import { getPlatformClient } from '../lib/platform';
 import { ReportModal } from './report-modal';
+import { confirmAction } from '../lib/confirm-action';
 export function MemberActions({ id, name }: { id: string; name: string }) {
   const [me, setMe] = useState('');
   const [report, setReport] = useState(false);
@@ -48,7 +49,12 @@ export function MemberActions({ id, name }: { id: string; name: string }) {
         className="danger compact"
         disabled={busy}
         onClick={async () => {
-          if (!window.confirm(`Block ${name}? This ends the connection and prevents contact.`))
+          if (
+            !(await confirmAction(
+              `Block ${name}? This ends the connection and prevents contact.`,
+              'Block member',
+            ))
+          )
             return;
           setBusy(true);
           try {
