@@ -1,4 +1,5 @@
 const { loadEnvFile } = require("node:process");
+const { readFileSync } = require("node:fs");
 const path = require("node:path");
 
 // One .env at the repo root feeds API, web and mobile. Only PUBLIC values go into the app bundle.
@@ -53,6 +54,26 @@ const webUrl = process.env.PUBLIC_WEB_URL || "http://localhost:3000";
 const linkHost = new URL(webUrl).protocol === "https:" ? new URL(webUrl).hostname : null;
 
 const androidPackage = process.env.ANDROID_PACKAGE?.trim() || "app.social.dev";
+const androidGoogleServicesFile = process.env.ANDROID_GOOGLE_SERVICES_FILE?.trim();
+if (androidGoogleServicesFile) {
+  let firebase;
+  try {
+    const filename = path.resolve(__dirname, androidGoogleServicesFile);
+    firebase = JSON.parse(readFileSync(filename, "utf8"));
+  } catch {
+    throw new Error("ANDROID_GOOGLE_SERVICES_FILE must point to a readable Firebase Android google-services.json file.");
+  }
+  if (firebase?.type === "service_account" || firebase?.private_key || firebase?.private_key_id) {
+    throw new Error("Never bundle an FCM service-account private key. ANDROID_GOOGLE_SERVICES_FILE requires the client google-services.json; upload the FCM v1 service account to EAS credentials separately.");
+  }
+  const clients = Array.isArray(firebase?.client) ? firebase.client : [];
+  if (!firebase?.project_info?.project_number || !clients.some((client) =>
+    client?.client_info?.android_client_info?.package_name === androidPackage &&
+    client?.client_info?.mobilesdk_app_id
+  )) {
+    throw new Error("Firebase google-services.json must contain an Android client matching ANDROID_PACKAGE.");
+  }
+}
 if (easProfile === "production") {
   const packageNamePattern = /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/;
   if (!process.env.ANDROID_PACKAGE?.trim()) {
@@ -84,6 +105,7 @@ module.exports = {
     },
     android: {
       package: androidPackage,
+      ...(androidGoogleServicesFile ? { googleServicesFile: androidGoogleServicesFile } : {}),
       permissions:["CAMERA","RECORD_AUDIO","ACCESS_COARSE_LOCATION","ACCESS_FINE_LOCATION"],
       adaptiveIcon: { foregroundImage: "./assets/adaptive-icon.png", backgroundColor: "#F7F6F2" },
       intentFilters: linkHost ? [

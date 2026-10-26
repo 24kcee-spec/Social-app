@@ -2,6 +2,8 @@
 
 This release implements the messaging and visual corrections from the [26 October audit](product-audit-2026-10-26.md), followed by deployment/recovery tooling. The original audit remains a record of the earlier `bd3598a` build, not a description of the corrected release.
 
+For the Zimbabwe owner's next provider/account steps, use the [free-first setup guide](free-first-launch-setup.md). It distinguishes recurring free allowances from transaction fees, store fees and unverified provider/device gates.
+
 ## Messaging
 
 - Both open clients receive opaque, member-only change signals for replies, reactions, edits and removal. Original private content and reaction tables remain outside the exposed schema. Revoked sessions, blocked pairs and outsiders cannot subscribe to the conversation signal. Shared inbox counts refresh after signals and recover on visibility/network changes.
