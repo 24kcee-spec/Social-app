@@ -56,7 +56,7 @@ revoke all on app_private.product_migrations from public,anon,authenticated;
         if args.verify:
             if pending:
                 raise RuntimeError('Apply the reviewed product migration before live verification')
-            for probe in ['verify-supabase-product.sql','verify-supabase-platform.sql','verify-supabase-commerce.sql','verify-supabase-media.sql']:
+            for probe in ['verify-supabase-product.sql','verify-supabase-platform.sql','verify-supabase-commerce.sql','verify-supabase-media.sql','verify-supabase-chat.sql']:
                 result=client.sql((ROOT/'scripts'/probe).read_text(),False)
                 if not result or not str(result[0].get('result','')).startswith('PASS:'):
                     raise RuntimeError('Product probes did not return a verified result: '+probe)

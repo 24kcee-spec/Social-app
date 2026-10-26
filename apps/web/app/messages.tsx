@@ -2,10 +2,13 @@
 
 import type { ConversationView } from '@sp/types';
 import { applyReadWatermark, mergeMessages, type ThreadMessage } from '@sp/profile-client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { errorMessage } from '../lib/auth';
 import { getMessagingClient, subscribeToConversation } from '../lib/messaging';
 import { getSignedMediaUrl } from '../lib/profile';
+import { dayLabel, nearLatest, type OutgoingMessage } from '../lib/chat-state';
+import { MemberActions } from './member-actions';
+import { ConversationTools } from './conversation-tools';
 
 import type { RichMessage } from '@sp/profile-client';
 import { getPlatformClient } from '../lib/platform';
@@ -67,7 +70,11 @@ export function Messages({
   const client = getMessagingClient();
   const [conversations, setConversations] = useState<ConversationView[]>([]);
   const [photos, setPhotos] = useState<Record<string, string>>({});
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(() =>
+    typeof window === 'undefined'
+      ? null
+      : new URLSearchParams(window.location.search).get('conversation'),
+  );
   const [loading, setLoading] = useState(true);
   const loadedOnce = useRef(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,6 +112,19 @@ export function Messages({
     void load();
   }, [load]);
 
+  useEffect(() => {
+    const refresh = () => {
+      if (!document.hidden && navigator.onLine) void load();
+    };
+    const timer = setInterval(refresh, 15_000);
+    window.addEventListener('sidle:messages-changed', refresh);
+    window.addEventListener('focus', refresh);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('sidle:messages-changed', refresh);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [load]);
   const onOpenedRef = useRef(onOpened);
   onOpenedRef.current = onOpened;
   useEffect(() => {
@@ -263,6 +283,7 @@ export function Messages({
                 key={openConversation.id}
                 conversation={openConversation}
                 photo={photos[openConversation.other.userId]}
+                onChanged={load}
                 onBack={() => {
                   setOpenId(null);
                   void load();
@@ -304,10 +325,12 @@ function Thread({
   conversation,
   photo,
   onBack,
+  onChanged,
 }: {
   conversation: ConversationView;
   photo?: string;
   onBack: () => void;
+  onChanged: () => Promise<void>;
 }) {
   const client = getMessagingClient();
   const [messages, setMessages] = useState<Bubble[]>([]);
@@ -320,7 +343,51 @@ function Thread({
   const bottomRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [details, setDetails] = useState<Record<string, RichMessage>>({});
+  const detailsRef = useRef(details);
+  detailsRef.current = details;
+  const messagesRef = useRef<Bubble[]>([]);
+  messagesRef.current = messages;
+  const stickToBottom = useRef(true);
+  const olderAnchor = useRef<{ height: number; top: number } | null>(null);
+  const [newMessages, setNewMessages] = useState(false);
+  const [unreadDivider] = useState(conversation.unreadCount);
+  const [firstUnread, setFirstUnread] = useState<string | null>(null);
+  const initialNewest = useRef<string | null>(null);
+  useEffect(() => {
+    if (firstUnread || !unreadDivider || !initialNewest.current) return;
+    const incoming = messages.filter(
+      (message) =>
+        message.senderId === conversation.other.userId &&
+        message.createdAt <= initialNewest.current!,
+    );
+    if (incoming.length >= unreadDivider)
+      setFirstUnread(incoming[incoming.length - unreadDivider]!.id);
+  }, [messages, firstUnread, unreadDivider, conversation.other.userId]);
+  const readInFlight = useRef(false);
+  const markVisibleRead = useCallback(async () => {
+    if (document.hidden || !document.hasFocus() || !stickToBottom.current || readInFlight.current)
+      return;
+    readInFlight.current = true;
+    try {
+      await client.markRead(conversation.id);
+      void onChanged();
+    } catch {
+      /* A receipt failure does not hide loaded history. */
+    } finally {
+      readInFlight.current = false;
+    }
+  }, [client, conversation.id, onChanged]);
   const [replyTo, setReplyTo] = useState<{ id: string; body: string } | null>(null);
+  useEffect(() => {
+    const discard = (event: Event) =>
+      setMessages((current) =>
+        current.filter(
+          (message) => message.id !== `local-${(event as CustomEvent<string>).detail}`,
+        ),
+      );
+    window.addEventListener('sidle:discard-outgoing', discard);
+    return () => window.removeEventListener('sidle:discard-outgoing', discard);
+  }, []);
 
   const merge = useCallback((incoming: Bubble[]) => {
     setMessages((current) => mergeMessages(current, incoming));
@@ -329,83 +396,153 @@ function Thread({
   const refetchLatest = useCallback(async () => {
     try {
       const page = await client.listMessages(conversation.id, { limit: 50 });
+      if (!initialNewest.current && page.messages.length)
+        initialNewest.current = page.messages.at(-1)!.createdAt;
       merge(page.messages);
-      setHasMore(page.hasMore);
-      setNextCursor(page.nextCursor);
+      if (messagesRef.current.length <= 50) {
+        setHasMore(page.hasMore);
+        setNextCursor(page.nextCursor);
+      }
       setError(null);
       // A delayed read receipt must not prevent loaded history from appearing.
-      void client.markRead(conversation.id).catch(() => undefined);
+      void markVisibleRead();
     } catch (err) {
       // A transient resync failure should not discard the local thread. Realtime can retry later.
       setError(errorMessage(err));
     } finally {
       setLoadingThread(false);
     }
-  }, [client, conversation.id, merge]);
+  }, [client, conversation.id, merge, markVisibleRead]);
 
-  const refreshDetails = useCallback(async () => {
-    const ids = messages
+  const refreshDetails = useCallback(async (force = false) => {
+    const ids = messagesRef.current
       .filter((message) => !message.id.startsWith('local-'))
-      .slice(-100)
+      .filter((message) => force || !detailsRef.current[message.id])
       .map((message) => message.id);
-    if (ids.length) {
-      const values = await getPlatformClient().getMessageDetails(ids);
-      setDetails(Object.fromEntries(values.map((value) => [value.id, value])));
+    for (let offset = 0; offset < ids.length; offset += 100) {
+      const values = await getPlatformClient().getMessageDetails(ids.slice(offset, offset + 100));
+      setDetails((current) => ({
+        ...current,
+        ...Object.fromEntries(values.map((value) => [value.id, value])),
+      }));
     }
-  }, [messages]);
+  }, []);
   useEffect(() => {
-    void refreshDetails().catch(() => undefined);
-  }, [refreshDetails]);
-  async function changed() {
+    void refreshDetails().catch(() =>
+      setError('Some message details could not be loaded. Try again.'),
+    );
+  }, [messages, refreshDetails]);
+  const changed = useCallback(async () => {
     await refetchLatest();
-    await refreshDetails();
-  }
+    await refreshDetails(true);
+    await onChanged();
+    window.dispatchEvent(new Event('sidle:messages-changed'));
+  }, [refetchLatest, refreshDetails, onChanged]);
 
   useEffect(() => {
-    setMessages([]);
-    setError(null);
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const invalidate = () => {
+      if (timer) return;
+      timer = setTimeout(() => {
+        timer = null;
+        void changed().catch(() => setError('Updates were interrupted. Try again.'));
+      }, 120);
+    };
     void refetchLatest();
     const sub = subscribeToConversation(conversation.id, {
       onMessage: (message) => {
         merge([{ ...message, read: false }]);
-        if (message.senderId !== conversation.other.userId) return;
-        void client.markRead(conversation.id);
+        if (!stickToBottom.current) setNewMessages(true);
+        if (message.senderId === conversation.other.userId) void markVisibleRead();
+        void onChanged();
       },
       onStatus: setStatus,
       onRead: (read) => {
-        if (read.userId === conversation.other.userId) {
+        if (read.userId === conversation.other.userId)
           setMessages((current) =>
             applyReadWatermark(current, conversation.other.userId, read.lastReadAt),
           );
-        }
       },
-      onResync: () => void refetchLatest(),
+      onChange: invalidate,
+      onResync: invalidate,
     });
-    return () => sub.close();
-  }, [conversation.id, conversation.other.userId, client, merge, refetchLatest]);
+    const resume = () => {
+      if (!document.hidden) {
+        invalidate();
+        void markVisibleRead();
+      }
+    };
+    window.addEventListener('focus', resume);
+    document.addEventListener('visibilitychange', resume);
+    return () => {
+      sub.close();
+      if (timer) clearTimeout(timer);
+      window.removeEventListener('focus', resume);
+      document.removeEventListener('visibilitychange', resume);
+    };
+  }, [
+    conversation.id,
+    conversation.other.userId,
+    client,
+    merge,
+    refetchLatest,
+    changed,
+    markVisibleRead,
+    onChanged,
+  ]);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
-  }, [messages.length]);
+  useLayoutEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    if (olderAnchor.current) {
+      el.scrollTop = olderAnchor.current.top + el.scrollHeight - olderAnchor.current.height;
+      olderAnchor.current = null;
+    } else if (stickToBottom.current) el.scrollTop = el.scrollHeight;
+  }, [messages.length, details, loadingThread]);
 
   async function loadOlder() {
     if (!nextCursor || loadingOlder) return;
     const el = scrollerRef.current;
-    const previousHeight = el?.scrollHeight ?? 0;
     setLoadingOlder(true);
     setError(null);
     try {
       const page = await client.listMessages(conversation.id, { limit: 50, before: nextCursor });
+      if (el) olderAnchor.current = { height: el.scrollHeight, top: el.scrollTop };
       merge(page.messages);
       setHasMore(page.hasMore);
       setNextCursor(page.nextCursor);
-      requestAnimationFrame(() => {
-        if (el) el.scrollTop = el.scrollHeight - previousHeight;
-      });
     } catch (err) {
       setError(errorMessage(err));
     } finally {
       setLoadingOlder(false);
+    }
+  }
+  const jumpLatest = () => {
+    stickToBottom.current = true;
+    setNewMessages(false);
+    scrollerRef.current?.scrollTo({
+      top: scrollerRef.current.scrollHeight,
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+    });
+    void markVisibleRead();
+  };
+  async function jumpReply(id: string) {
+    try {
+      if (!messagesRef.current.some((message) => message.id === id))
+        merge([await getPlatformClient().lookupMessage(conversation.id, id)]);
+      stickToBottom.current = false;
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          const element = document.querySelector<HTMLElement>(`[data-message-id="${id}"]`);
+          if (element) {
+            element.tabIndex = -1;
+            element.focus({ preventScroll: true });
+            element.scrollIntoView({ block: 'center' });
+          }
+        }),
+      );
+    } catch (err) {
+      setError(errorMessage(err));
     }
   }
 
@@ -467,7 +604,22 @@ function Thread({
         </div>
       )}
 
+      <details className="conversation-options">
+        <summary>Conversation options</summary>
+        <a href={`/u/${conversation.other.userId}`}>View profile</a>
+        <MemberActions id={conversation.other.userId} name={conversation.other.displayName} />
+        <ConversationTools id={conversation.id} onJump={jumpReply} />
+      </details>
       <div
+        onScroll={() => {
+          const el = scrollerRef.current;
+          if (el)
+            stickToBottom.current = nearLatest(el.scrollTop, el.scrollHeight, el.clientHeight);
+          if (stickToBottom.current) {
+            setNewMessages(false);
+            void markVisibleRead();
+          }
+        }}
         className="chat-messages-scroll"
         ref={scrollerRef}
         role="log"
@@ -504,65 +656,118 @@ function Thread({
             </p>
           </div>
         ) : (
-          messages.map((message) => {
+          messages.map((message, index) => {
             const isMine = message.senderId !== conversation.other.userId;
+            const previous = messages[index - 1];
+            const showDay =
+              !previous || dayLabel(previous.createdAt) !== dayLabel(message.createdAt);
+            const grouped =
+              previous &&
+              previous.senderId === message.senderId &&
+              !showDay &&
+              Date.parse(message.createdAt) - Date.parse(previous.createdAt) < 180_000;
             return (
-              <div
-                key={message.id}
-                className={`chat-bubble-row ${isMine ? 'mine' : 'theirs'}`}
-                aria-label={
-                  isMine ? 'Message from you' : `Message from ${conversation.other.displayName}`
-                }
-                data-message-id={message.id}
-              >
-                <div className="chat-bubble">
-                  <span className="message-sender">
-                    {isMine ? 'You' : conversation.other.displayName}
-                  </span>
-                  {details[message.id]?.replyTo && !details[message.id]?.deleted && (
-                    <blockquote className="message-quoted-reply">
-                      {details[message.id]?.replyBody ?? 'Earlier message'}
-                    </blockquote>
-                  )}
-                  <div className="message-body">
-                    {details[message.id]?.deleted ? 'Message removed' : message.body}
+              <Fragment key={message.id}>
+                {showDay && <div className="chat-date-divider">{dayLabel(message.createdAt)}</div>}
+                {message.id === firstUnread && (
+                  <div className="chat-unread-divider">Unread messages</div>
+                )}
+                <div
+                  className={`chat-bubble-row ${isMine ? 'mine' : 'theirs'} ${grouped ? 'grouped' : ''}`}
+                  aria-label={
+                    isMine ? 'Message from you' : `Message from ${conversation.other.displayName}`
+                  }
+                  data-message-id={message.id}
+                >
+                  <div className="chat-bubble">
+                    <span className="message-sender">
+                      {isMine ? 'You' : conversation.other.displayName}
+                    </span>
+                    {details[message.id]?.replyTo && !details[message.id]?.deleted && (
+                      <blockquote
+                        className="message-quoted-reply"
+                        onClick={() => void jumpReply(details[message.id]!.replyTo!)}
+                      >
+                        <button
+                          className="link"
+                          type="button"
+                          aria-label="Jump to original message"
+                        >
+                          {details[message.id]?.replyBody ?? 'Earlier message'}
+                        </button>
+                      </blockquote>
+                    )}
+                    <div className="message-body">
+                      {details[message.id]?.deleted ? 'Message removed' : message.body}
+                    </div>
+                    {details[message.id] && (
+                      <MessageDetails
+                        message={details[message.id]!}
+                        mine={isMine}
+                        body={message.body}
+                        onReply={() => setReplyTo({ id: message.id, body: message.body })}
+                        onChanged={changed}
+                      />
+                    )}
+                    {message.failed && (
+                      <button
+                        className="link"
+                        onClick={() => window.dispatchEvent(new Event('sidle:retry-message'))}
+                      >
+                        Retry message
+                      </button>
+                    )}
+                    <span className="bubble-time">
+                      {message.pending
+                        ? 'Sending…'
+                        : message.failed
+                          ? 'Failed to send'
+                          : new Date(message.createdAt).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                      {isMine &&
+                        !message.pending &&
+                        !message.failed &&
+                        (message.read ? ' · Read' : ' · Sent')}
+                    </span>
                   </div>
-                  {details[message.id] && (
-                    <MessageDetails
-                      message={details[message.id]!}
-                      mine={isMine}
-                      body={message.body}
-                      onReply={() => setReplyTo({ id: message.id, body: message.body })}
-                      onChanged={changed}
-                    />
-                  )}
-                  <span className="bubble-time">
-                    {message.pending
-                      ? 'Sending…'
-                      : message.failed
-                        ? 'Failed to send'
-                        : new Date(message.createdAt).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                    {isMine &&
-                      !message.pending &&
-                      !message.failed &&
-                      (message.read ? ' · Read' : ' · Sent')}
-                  </span>
                 </div>
-              </div>
+              </Fragment>
             );
           })
         )}
         <div ref={bottomRef} />
       </div>
 
+      {newMessages && (
+        <button className="chat-jump-latest" type="button" onClick={jumpLatest}>
+          New messages ↓
+        </button>
+      )}
       <RichComposer
         key={conversation.id}
         conversationId={conversation.id}
         replyTo={replyTo}
         onCancelReply={() => setReplyTo(null)}
+        onOutgoing={(item: OutgoingMessage | null) => {
+          if (!item) return;
+          stickToBottom.current = true;
+          merge([
+            {
+              id: `local-${item.clientId}`,
+              conversationId: item.conversationId,
+              senderId: item.senderId,
+              kind: 'text',
+              body: item.body || 'Attachment',
+              clientTag: item.clientId,
+              createdAt: item.createdAt,
+              pending: !item.failed,
+              failed: item.failed,
+              read: false,
+            },
+          ]);
+        }}
         onSent={changed}
       />
     </div>

@@ -39,7 +39,7 @@ export function createMessageNotifier(
   log: (msg: string, err?: unknown) => void = () => {},
 ) {
   let platformPreferences: boolean | undefined;
-  async function messageSent(event: MessageSentEvent): Promise<{ sent: number }> {
+  async function messageSent(event: MessageSentEvent): Promise<{ sent: number; failed?: boolean }> {
     const { rows: settings } = await db.query<{ messages: boolean }>(
       `select messages from notification_settings where user_id = $1`,
       [event.recipientId],
@@ -67,7 +67,10 @@ export function createMessageNotifier(
     }
 
     const { rows: tokens } = await db.query<PushToken>(
-      `select platform, token from device_push_tokens where user_id = $1`,
+      `select t.platform, t.token from device_push_tokens t
+       join user_sessions s on s.id=t.session_id and s.user_id=t.user_id and s.revoked_at is null
+       join users u on u.id=t.user_id and u.status='active'
+       where t.user_id = $1`,
       [event.recipientId],
     );
     if (tokens.length === 0) return { sent: 0 };
@@ -81,7 +84,7 @@ export function createMessageNotifier(
       return { sent: typeof accepted === 'number' ? accepted : tokens.length };
     } catch (err) {
       log('push send failed', err);
-      return { sent: 0 };
+      return { sent: 0, failed: true };
     }
   }
 

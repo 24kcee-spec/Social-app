@@ -1,4 +1,4 @@
-import type { MessageKind, RealtimeMessage } from "@sp/types";
+import type { MessageKind, RealtimeMessage } from '@sp/types';
 
 /**
  * Minimal shape of a Supabase Realtime channel. `supabase.channel(name)` satisfies this, so no
@@ -6,7 +6,7 @@ import type { MessageKind, RealtimeMessage } from "@sp/types";
  */
 export interface RealtimeChannelLike {
   on(
-    type: "postgres_changes",
+    type: 'postgres_changes',
     filter: { event: string; schema: string; table: string; filter?: string },
     callback: (payload: { new: Record<string, unknown> }) => void,
   ): RealtimeChannelLike;
@@ -21,7 +21,7 @@ export interface ReadReceipt {
   lastReadAt: string;
 }
 
-export type RealtimeStatus = "connecting" | "live" | "reconnecting" | "closed";
+export type RealtimeStatus = 'connecting' | 'live' | 'reconnecting' | 'closed';
 
 export interface ConversationSubscriptionOptions {
   conversationId: string;
@@ -30,6 +30,8 @@ export interface ConversationSubscriptionOptions {
   onStatus?: (status: RealtimeStatus) => void;
   /** Live read receipts: fires when either member's read watermark moves. Optional. */
   onRead?: (receipt: ReadReceipt) => void;
+  /** Member-only opaque invalidation for edits, reactions and removal. */
+  onChange?: () => void;
   /**
    * Called after every (re)subscribe. Fetch the latest page from the API here: Realtime can drop
    * messages while the socket is down, so the stream alone is never the source of truth.
@@ -49,17 +51,17 @@ const DEFAULT_DELAYS = [1_000, 2_000, 5_000, 10_000, 30_000];
 const DEDUPE_CAP = 500;
 
 function toMessage(raw: Record<string, unknown>, conversationId: string): RealtimeMessage | null {
-  if (String(raw.conversation_id ?? "") !== conversationId) return null;
-  const id = String(raw.id ?? "");
+  if (String(raw.conversation_id ?? '') !== conversationId) return null;
+  const id = String(raw.id ?? '');
   if (!id) return null;
   return {
     id,
     conversationId,
-    senderId: String(raw.sender_id ?? ""),
-    kind: String(raw.kind ?? "text") as MessageKind,
-    body: String(raw.body ?? ""),
-    clientTag: String(raw.client_tag ?? ""),
-    createdAt: new Date(String(raw.created_at ?? "")).toISOString(),
+    senderId: String(raw.sender_id ?? ''),
+    kind: String(raw.kind ?? 'text') as MessageKind,
+    body: String(raw.body ?? ''),
+    clientTag: String(raw.client_tag ?? ''),
+    createdAt: new Date(String(raw.created_at ?? '')).toISOString(),
   };
 }
 
@@ -92,31 +94,62 @@ export function subscribeToConversationMessages(
 
   function open() {
     if (closed) return;
-    status(attempts === 0 ? "connecting" : "reconnecting");
+    status(attempts === 0 ? 'connecting' : 'reconnecting');
     channel = createChannel(`messages:${opts.conversationId}`);
     channel
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${opts.conversationId}` }, (payload) => {
-        if (closed) return;
-        const msg = toMessage(payload.new, opts.conversationId);
-        if (!msg || seen.has(msg.id)) return;
-        remember(msg.id);
-        opts.onMessage(msg);
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "conversation_members", filter: `conversation_id=eq.${opts.conversationId}` }, (payload) => {
-        if (closed || !opts.onRead) return;
-        const raw = payload.new;
-        if (String(raw.conversation_id ?? "") !== opts.conversationId) return;
-        const at = new Date(String(raw.last_read_at ?? ""));
-        if (!raw.user_id || Number.isNaN(at.getTime())) return;
-        opts.onRead({ userId: String(raw.user_id), lastReadAt: at.toISOString() });
-      })
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${opts.conversationId}`,
+        },
+        (payload) => {
+          if (closed) return;
+          const msg = toMessage(payload.new, opts.conversationId);
+          if (!msg || seen.has(msg.id)) return;
+          remember(msg.id);
+          opts.onMessage(msg);
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'conversation_members',
+          filter: `conversation_id=eq.${opts.conversationId}`,
+        },
+        (payload) => {
+          if (closed || !opts.onRead) return;
+          const raw = payload.new;
+          if (String(raw.conversation_id ?? '') !== opts.conversationId) return;
+          const at = new Date(String(raw.last_read_at ?? ''));
+          if (!raw.user_id || Number.isNaN(at.getTime())) return;
+          opts.onRead({ userId: String(raw.user_id), lastReadAt: at.toISOString() });
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'conversation_changes',
+          filter: `conversation_id=eq.${opts.conversationId}`,
+        },
+        (payload) => {
+          if (!closed && String(payload.new.conversation_id ?? '') === opts.conversationId)
+            (opts.onChange ?? opts.onResync)?.();
+        },
+      )
       .subscribe((s) => {
         if (closed) return;
-        if (s === "SUBSCRIBED") {
+        if (s === 'SUBSCRIBED') {
           attempts = 0;
-          status("live");
+          status('live');
           opts.onResync?.();
-        } else if (s === "TIMED_OUT" || s === "CHANNEL_ERROR" || s === "CLOSED") {
+        } else if (s === 'TIMED_OUT' || s === 'CHANNEL_ERROR' || s === 'CLOSED') {
           scheduleRetry();
         }
       });
@@ -126,11 +159,15 @@ export function subscribeToConversationMessages(
     if (closed || timer !== null) return;
     const delay = delays[Math.min(attempts, delays.length - 1)]!;
     attempts += 1;
-    status("reconnecting");
+    status('reconnecting');
     timer = setT(() => {
       timer = null;
       // The old channel may be wedged; drop it and build a fresh one.
-      try { channel?.unsubscribe(); } catch { /* best effort */ }
+      try {
+        channel?.unsubscribe();
+      } catch {
+        /* best effort */
+      }
       channel = null;
       open();
     }, delay);
@@ -144,9 +181,13 @@ export function subscribeToConversationMessages(
       closed = true;
       if (timer !== null) clearT(timer);
       timer = null;
-      try { channel?.unsubscribe(); } catch { /* best effort */ }
+      try {
+        channel?.unsubscribe();
+      } catch {
+        /* best effort */
+      }
       channel = null;
-      status("closed");
+      status('closed');
     },
   };
 }
