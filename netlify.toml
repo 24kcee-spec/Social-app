@@ -1,0 +1,3 @@
+# Hosting stays on Vercel. Stop stale connected Netlify projects from building.
+[build]
+  ignore = "exit 0"

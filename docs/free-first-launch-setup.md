@@ -26,7 +26,7 @@ Google Play currently has a US$25 one-time registration fee. Apple's developer p
 
 ## 2. Keep the existing Vercel host
 
-The owner explicitly chose to keep Vercel. **No Netlify migration is active**, and the optional Netlify configuration has been removed. The APK connects to `https://social-platform-web-two.vercel.app` and the existing hosted API. See [the APK guide](android-preview.md) for the current build and email-activation instructions.
+The owner explicitly chose to keep Vercel. **No Netlify migration is active**; the repository's Netlify configuration now explicitly skips stale connected builds. The APK connects to `https://social-platform-web-two.vercel.app` and the existing hosted API. See [the APK guide](android-preview.md) for the current build and email-activation instructions.
 
 A shorter free `*.vercel.app` alias can be configured through the owning Vercel project's domain settings if the name is available. Codex needs a scoped Vercel connection/token to perform that account change; the current cloud environment has no Vercel token. No short alias has been reserved or activated.
 
