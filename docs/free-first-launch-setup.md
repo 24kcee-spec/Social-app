@@ -138,8 +138,19 @@ For Resend instead, verify your domain there and use `SMTP_HOST=smtp.resend.com`
 2. Add the eligible public production site on the commercial-compatible host. If Google does not accept the hostname, supply an owned supported domain; do not claim ownership of the hosting provider's parent domain.
 3. Google needs substantial original, policy-compliant public content to review. A login wall and empty social feed are insufficient launch evidence. Never publish private member profiles or conversations merely to pass ad review.
 4. Publish accurate Privacy, Terms, Contact, community/content rules and reporting information. Finalize the real support address and moderation owner; template pages alone do not establish staffed support or legal approval.
-5. Complete Google's site verification and review. Send Codex the public publisher identifier (`ca-pub-…`), site URL, approved ad-unit IDs and the exact **ads.txt** line Google supplies. These identifiers are not account passwords. No AdSense SDK/slot or ads.txt publisher entry is currently installed in Sidle.
-6. Codex then adds the approved script and a small, labeled placement in an eligible feed/public content view, with reserved space so the page does not jump. Start with a low ad density. Keep ads away from message bubbles, send buttons, sign-in/reset, settings, reporting and private conversations. Only mark the deployment commercially approved after the actual host/plan is verified; keep `ENABLE_PAYMENTS=false` while preparing ads. The hosting flag does not itself buy a plan or enable Google ads.
+5. When Google gives you a site-verification method, send Codex the public publisher identifier (`ca-pub-…`), site URL and exact **ads.txt** line Google supplies. Use the ownership **meta tag** method where available. The repository now supports the verification meta tag and `/ads.txt`; no publisher is configured by default. On the verified commercial-compatible host only, these public/server bindings activate verification:
+
+   ```dotenv
+   COMMERCIAL_DEPLOYMENT_APPROVED=true
+   ADSENSE_VERIFICATION_ENABLED=true
+   ADSENSE_PUBLISHER_ID=REPLACE_WITH_YOUR_ca-pub_AND_16_DIGITS
+   ADSENSE_ADS_TXT=PASTE_THE_EXACT_SINGLE_GOOGLE_DIRECT_RECORD
+   ENABLE_PAYMENTS=false
+   ```
+
+   Leave `ADSENSE_ADS_TXT` blank until Google supplies it; metadata verification does not require inventing a record. The publisher must match in both values. Disabled/unapproved hosts publish neither ownership metadata nor an authorized ads.txt record. No Google advertising JavaScript or ad slot is installed by these settings. Identifiers/records are public, not account passwords. Verify the deployed meta tag and file, then request Google's site review.
+
+6. After approval, supply the approved ad-unit IDs. Codex then adds the approved script and a small, labeled placement in an eligible feed/public content view, with reserved space so the page does not jump. Start with a low ad density. Keep ads away from message bubbles, send buttons, sign-in/reset, settings, reporting and private conversations. Only mark the deployment commercially approved after the actual host/plan is verified; keep `ENABLE_PAYMENTS=false` while preparing ads. The hosting flag does not itself buy a plan or enable Google ads.
 7. Set up Google's applicable privacy/consent controls before serving ads. For EEA/UK/Swiss traffic, use a Google-certified CMP where required; a home-made toggle or non-personalized ads alone does not automatically meet that requirement. Google's own available Privacy & messaging flow is the first option to evaluate.
 8. Never click your own live ads or ask friends to click. Test with supported preview/test tooling. Google performs its own approval, identity/payment verification and invalid-traffic checks. Payouts depend on reaching its threshold and the payment methods actually offered to the Zimbabwe account; receiving-bank charges may apply.
 
@@ -212,6 +223,8 @@ Advertising payouts can be received through Google's own payout process without 
 
 There is no claim that ordinary card/mobile-money processing is free. Adding a Stripe API key does not resolve country eligibility, provider fees or hosting terms.
 
+Calls/live broadcasting remain disabled for this zero-spend pilot. Reliable TURN relay and guarded live streaming require their own capacity, credentials and network/device validation; no unlimited, permanently free service has been provisioned. Neither is required to begin the web ads/account-email setup. Native feature parity, media inspection and staffed operational coverage also remain implementation/operational work rather than switches a provider key can complete.
+
 ## 8. Monitoring, backup and security without a paid upgrade
 
 1. In GitHub repository **Actions**, confirm `production health` runs hourly and that your GitHub notification email receives failures. Use a controlled check to verify notifications; do not deliberately break production. The workflow already exists, but a staffed responder still needs a real owner.
@@ -249,7 +262,7 @@ Already confirmed: Zimbabwe, Android phone, **no owned domain**, priority = earn
 | Controlled email test recipient                                       | Email address plus approval for a few tests; no inbox password required.                                                                                                      |
 | Netlify account/project                                               | Connect GitHub/import the site, send its public URL, and save a deployment token securely if automation is desired.                                                           |
 | Expo + Firebase                                                       | Expo project UUID, public Android client file through an EAS file variable, private FCM credential through EAS Credentials; secure `EXPO_TOKEN` for CLI automation if needed. |
-| AdSense                                                               | Your own verified account, approved public site, publisher/ad-unit IDs and exact ads.txt entry. Google handles payee/bank details directly.                                   |
+| AdSense                                                               | Your own account, public site, publisher/verification ID and exact ads.txt entry first; ad-unit IDs after approval. Google handles payee/bank details directly.               |
 | Recovery                                                              | Public age recipient and an authorized offsite destination; keep the private recovery identity yourself.                                                                      |
 | Support/moderation                                                    | Real monitored support address and responsible owner.                                                                                                                         |
 
@@ -265,5 +278,6 @@ Do not paste secrets, government ID, bank details or recovery private keys into 
 - [Google app passwords](https://support.google.com/accounts/answer/185833?hl=en) · [Gmail limits](https://support.google.com/mail/answer/22839?hl=en) · [Gmail app-password access](https://support.google.com/mail/answer/7126229?hl=en) · [Supabase custom SMTP and rate limits](https://supabase.com/docs/guides/auth/auth-smtp)
 - [Expo pricing](https://expo.dev/pricing) · [Expo push cost](https://docs.expo.dev/push-notifications/faq/) · [Firebase pricing/FCM](https://firebase.google.com/pricing)
 - [AdSense availability](https://support.google.com/adsense/answer/13402307?hl=en) · [free participation](https://support.google.com/adsense/answer/9712?hl=en) · [consent requirements](https://support.google.com/adsense/answer/13554116?hl=en) · [AdMob app review](https://support.google.com/admob/answer/10564477?hl=en)
+- [AdSense verification methods and metadata](https://support.google.com/adsense/answer/7584263?hl=en)
 - [Stripe merchant countries](https://stripe.com/global) · [Paynow fees](https://www.paynow.co.zw/Home/Fees)
 - [Google Play registration](https://support.google.com/googleplay/android-developer/answer/6112435?hl=en) · [Apple enrollment fees](https://developer.apple.com/programs/enroll/) · [Google storage plans](https://one.google.com/about/plans)

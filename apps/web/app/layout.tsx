@@ -14,6 +14,9 @@ import './profile-chat.css';
 import './interaction-quality.css';
 import { ProductExperience } from './product-experience';
 import { ShellAccessibility } from './shell-accessibility';
+import { adsenseVerification } from '../lib/adsense-verification';
+
+const adsense = adsenseVerification(process.env);
 
 const description =
   'People. Moments. Possibilities. Share photos, reels, music and conversations, discover communities and make plans on Sidle.';
@@ -24,6 +27,7 @@ export const metadata: Metadata = {
   title: { default: 'Sidle — People. Moments. Possibilities.', template: '%s · Sidle' },
   description,
   manifest: '/manifest.webmanifest',
+  ...(adsense ? { other: { 'google-adsense-account': adsense.publisherId } } : {}),
   icons: {
     icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
     apple: [{ url: '/apple-icon.png', sizes: '180x180', type: 'image/png' }],
