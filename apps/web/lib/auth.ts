@@ -1,4 +1,5 @@
 import { createAuthClient, type AuthClient } from '@sp/auth-client';
+import { clearChatStorage } from './chat-state';
 
 let client: AuthClient | null = null;
 
@@ -17,8 +18,17 @@ export function getAuth(): AuthClient {
     detectSessionInUrl: true,
     apiTimeoutMs: 60000,
   });
+  if (!listening && typeof window !== 'undefined') {
+    listening = true;
+    client.onAuthChange((event) => {
+      if (event !== 'SIGNED_OUT') return;
+      clearChatStorage(sessionStorage);
+      indexedDB.deleteDatabase('sidle-chat-outbox');
+    });
+  }
   return client;
 }
+let listening = false;
 
 export function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : 'Something went wrong. Please try again.';

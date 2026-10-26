@@ -501,7 +501,7 @@ export function RichComposer({
             <button
               type="button"
               className="icon-control"
-              disabled={busy}
+              disabled={busy || !!queued}
               aria-label="Remove attachment"
               onClick={() => {
                 setFile(null);
@@ -659,7 +659,7 @@ export function RichComposer({
             className={`icon-control composer-mic ${recording ? 'recording' : ''}`}
             aria-label={recording ? 'Stop recording' : 'Record voice'}
             title={recording ? 'Stop recording' : 'Record voice'}
-            disabled={busy || recordStarting}
+            disabled={busy || !!queued || recordStarting}
             onClick={() => (recording ? recorder.current?.stop() : void record())}
           >
             {recording ? (

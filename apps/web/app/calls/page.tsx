@@ -173,8 +173,8 @@ function Calls() {
         <h2>Your connections</h2>
         {enabled === false && (
           <p className="provider-status">
-            Calling code is installed. A TURN relay or explicit direct-call configuration is still
-            required before calls can start.
+            Calling is coming soon. Your microphone and camera stay off until calls are available
+            and you choose to start.
           </p>
         )}
         {people.length ? (

@@ -135,8 +135,8 @@ function Live() {
     <div>
       {!enabled && (
         <p className="provider-status">
-          Streaming code is installed. Configure a self-hosted or managed LiveKit server to enable
-          broadcasts. Live video bandwidth is not included in the free hosting budget.
+          Live broadcasts are coming soon. You can keep sharing posts, videos and stories in the
+          meantime.
         </p>
       )}
       {error && (

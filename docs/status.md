@@ -1,6 +1,16 @@
-# Sidle — current status and remaining work
+# Sidle — current status
 
-Updated 25 October 2026: the [expanded release handover](../Documents/PLATFORM_RELEASE_HANDOVER.md) and [platform validation](platform-validation.md) supersede the previous media deferrals and test counts below. The platform now has five independent Supabase migrations, media/feed/creator tools, rich messaging, precise sharing, and provider-gated calls/live/commerce. The subsequent [profile/settings/chat follow-up](../Documents/PROFILE_CHAT_POLISH.md) brings full local verification to 497 tests, adds photo editing and fixes repeated profile saves. Original production data is preserved.
+Updated 26 October 2026 (Africa/Harare). The [interaction release](production-release.md) supersedes the older feature/test notes below. The [audit](product-audit-2026-10-26.md) records the defects found in the preceding build.
+
+- Messaging now synchronizes rich changes, preserves history position, retains sender-scoped retry IDs/attachments across reload, supports indexed conversation search/shared media/reply lookup, and queues rich/legacy push through the same durable delivery path.
+- Core/platform pages use one named-icon navigation/account menu. Feed labels/contrast, active destinations, Settings history/drafts and authentication return paths are corrected. Voice preview/cancel, photo viewing and accessible destructive dialogs are included.
+- Supabase has all 15 portable and seven independent product migrations applied. Live rollback-only suites cover the new signal/search/queue permissions as well as existing privacy/security. No real-user data was reset.
+- Local workspace baseline is 509 tests, with separate Chromium interaction tests and operator-tool tests. CI also builds the web app. Exact release deployment checks must pass before merging.
+- All 17 implementation live-browser assertions passed with owned temporary accounts; original counts were restored.
+
+Remaining launch gates: actual SMTP/inbox delivery, provider-plan protection/recoverable backups, offsite database-plus-Storage restoration, signed physical-device/App Link/push/assistive-technology evidence, optional TURN/LiveKit/merchant integrations, and named support/moderation/legal operations. The legacy native screen still needs full rich-control parity; no physical-device release is claimed.
+
+Use `python scripts/production-readiness.py --scope core` for deployed code/services, or the default all-gates audit for the honest external readiness result. See [production release](production-release.md) for commands and evidence requirements.
 
 ## Historical baseline before the expanded platform release
 

@@ -24,3 +24,6 @@ bun.lock
 # Python maintenance tooling
 __pycache__/
 *.pyc
+playwright-report/
+test-results/
+production-evidence.local.json

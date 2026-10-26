@@ -1,0 +1,326 @@
+[
+  {
+    "path": "/feed",
+    "url": "/feed",
+    "title": "Sidle \u2014 People. Moments. Possibilities.",
+    "navigation": [],
+    "filters": [
+      {
+        "text": "For everyone",
+        "color": "rgb(49, 94, 231)",
+        "background": "color(srgb 0.192157 0.368627 0.905882 / 0.12)"
+      },
+      {
+        "text": "Following",
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Saved",
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(255, 255, 255)"
+      }
+    ],
+    "violations": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "nodes": [
+          {
+            "target": [
+              ".on"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.29 (foreground color: #315ee7, background color: #dee5f9, font size: 11.3pt (15px), font weight: normal). Expected contrast ratio of 4.5:1"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "path": "/profile",
+    "url": "/?view=profile-preview",
+    "title": "Sidle \u2014 People. Moments. Possibilities.",
+    "navigation": [
+      {
+        "text": "\u25a6Feed",
+        "current": "page",
+        "visible": true,
+        "iconMask": "present"
+      },
+      {
+        "text": "\ud83e\uddedDiscover",
+        "current": null,
+        "visible": true,
+        "iconMask": "present"
+      },
+      {
+        "text": "\ud83e\udd1dConnections",
+        "current": null,
+        "visible": false,
+        "iconMask": "present"
+      },
+      {
+        "text": "\ud83d\udcacMessages",
+        "current": null,
+        "visible": true,
+        "iconMask": "present"
+      },
+      {
+        "text": "\ud83c\udf88Plans",
+        "current": null,
+        "visible": true,
+        "iconMask": "present"
+      },
+      {
+        "text": "\ud83d\udc64Profile",
+        "current": null,
+        "visible": true,
+        "iconMask": "missing"
+      }
+    ],
+    "filters": [],
+    "violations": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "nodes": [
+          {
+            "target": [
+              ".footer-note > span"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.75 (foreground color: #777f91, background color: #f6f7fb, font size: 9.8pt (13.12px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "target": [
+              ".footer-note > span > strong"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.75 (foreground color: #777f91, background color: #f6f7fb, font size: 9.8pt (13.12px), font weight: bold). Expected contrast ratio of 4.5:1"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "path": "/settings",
+    "url": "/?view=settings",
+    "title": "Sidle \u2014 People. Moments. Possibilities.",
+    "navigation": [
+      {
+        "text": "\u25a6Feed",
+        "current": "page",
+        "visible": true,
+        "iconMask": "present"
+      },
+      {
+        "text": "\ud83e\uddedDiscover",
+        "current": null,
+        "visible": true,
+        "iconMask": "present"
+      },
+      {
+        "text": "\ud83e\udd1dConnections",
+        "current": null,
+        "visible": false,
+        "iconMask": "present"
+      },
+      {
+        "text": "\ud83d\udcacMessages",
+        "current": null,
+        "visible": true,
+        "iconMask": "present"
+      },
+      {
+        "text": "\ud83c\udf88Plans",
+        "current": null,
+        "visible": true,
+        "iconMask": "present"
+      },
+      {
+        "text": "\ud83d\udc64Profile",
+        "current": null,
+        "visible": true,
+        "iconMask": "missing"
+      }
+    ],
+    "filters": [],
+    "violations": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "nodes": [
+          {
+            "target": [
+              ".footer-note > span"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.75 (foreground color: #777f91, background color: #f6f7fb, font size: 9.8pt (13.12px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "target": [
+              ".footer-note > span > strong"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.75 (foreground color: #777f91, background color: #f6f7fb, font size: 9.8pt (13.12px), font weight: bold). Expected contrast ratio of 4.5:1"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "check": "Settings subsection survives reload",
+    "passed": false,
+    "selected_after_reload": "Overview"
+  },
+  {
+    "path": "/messages",
+    "url": "/?tab=messages",
+    "title": "Sidle \u2014 People. Moments. Possibilities.",
+    "navigation": [
+      {
+        "text": "\u25a6Feed",
+        "current": null,
+        "visible": true,
+        "iconMask": "present"
+      },
+      {
+        "text": "\ud83e\uddedDiscover",
+        "current": null,
+        "visible": true,
+        "iconMask": "present"
+      },
+      {
+        "text": "\ud83e\udd1dConnections",
+        "current": null,
+        "visible": false,
+        "iconMask": "present"
+      },
+      {
+        "text": "\ud83d\udcacMessages",
+        "current": "page",
+        "visible": true,
+        "iconMask": "present"
+      },
+      {
+        "text": "\ud83c\udf88Plans",
+        "current": null,
+        "visible": true,
+        "iconMask": "present"
+      },
+      {
+        "text": "\ud83d\udc64Profile",
+        "current": null,
+        "visible": true,
+        "iconMask": "missing"
+      }
+    ],
+    "filters": [],
+    "violations": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "nodes": [
+          {
+            "target": [
+              ".footer-note > span"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.75 (foreground color: #777f91, background color: #f6f7fb, font size: 9.8pt (13.12px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "target": [
+              "strong"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.75 (foreground color: #777f91, background color: #f6f7fb, font size: 9.8pt (13.12px), font weight: bold). Expected contrast ratio of 4.5:1"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "path": "/?next=%2Flive",
+    "url": "/?next=%2Flive",
+    "title": "Sidle \u2014 People. Moments. Possibilities.",
+    "navigation": [
+      {
+        "text": "\u25a6Feed",
+        "current": "page",
+        "visible": true,
+        "iconMask": "present"
+      },
+      {
+        "text": "\ud83e\uddedDiscover",
+        "current": null,
+        "visible": true,
+        "iconMask": "present"
+      },
+      {
+        "text": "\ud83e\udd1dConnections",
+        "current": null,
+        "visible": false,
+        "iconMask": "present"
+      },
+      {
+        "text": "\ud83d\udcacMessages",
+        "current": null,
+        "visible": true,
+        "iconMask": "present"
+      },
+      {
+        "text": "\ud83c\udf88Plans",
+        "current": null,
+        "visible": true,
+        "iconMask": "present"
+      },
+      {
+        "text": "\ud83d\udc64Profile",
+        "current": null,
+        "visible": true,
+        "iconMask": "missing"
+      }
+    ],
+    "filters": [
+      {
+        "text": "For everyone",
+        "color": "rgb(49, 94, 231)",
+        "background": "color(srgb 0.192157 0.368627 0.905882 / 0.12)"
+      },
+      {
+        "text": "Following",
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(255, 255, 255)"
+      },
+      {
+        "text": "Saved",
+        "color": "rgb(255, 255, 255)",
+        "background": "rgb(255, 255, 255)"
+      }
+    ],
+    "violations": [
+      {
+        "id": "color-contrast",
+        "impact": "serious",
+        "nodes": [
+          {
+            "target": [
+              ".on"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 4.29 (foreground color: #315ee7, background color: #dee5f9, font size: 11.3pt (15px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "target": [
+              ".footer-note > span"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.75 (foreground color: #777f91, background color: #f6f7fb, font size: 9.8pt (13.12px), font weight: normal). Expected contrast ratio of 4.5:1"
+          },
+          {
+            "target": [
+              "strong"
+            ],
+            "summary": "Fix any of the following:\n  Element has insufficient color contrast of 3.75 (foreground color: #777f91, background color: #f6f7fb, font size: 9.8pt (13.12px), font weight: bold). Expected contrast ratio of 4.5:1"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "check": "Owned visual fixtures removed; original counts restored",
+    "passed": true
+  }
+]
