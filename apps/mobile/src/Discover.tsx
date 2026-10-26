@@ -7,6 +7,7 @@ import { getSignedMediaUrl } from "./profile";
 import { SayHi } from "./SayHi";
 import { useTheme } from "./theme";
 import { Avatar, Badge, Banner, Button, Chip, EmptyState, ReportSheet } from "./ui";
+import { SponsoredBanner } from "./SponsoredBanner";
 
 const STYLE_LABELS: Record<SocialStyle, string> = {
   small_group: "Small groups",
@@ -181,6 +182,7 @@ export function Discover() {
         </Text>
       </View>
 
+      {!loading && !error && people.length > 0 && !reportingUser && <SponsoredBanner />}
       {error ? <Banner tone="error">{error}</Banner> : null}
       {notice ? <Banner tone="success">{notice}</Banner> : null}
 

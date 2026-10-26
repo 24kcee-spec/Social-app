@@ -5,7 +5,7 @@ cd -- "$(dirname -- "$0")/.."
 : "${ANDROID_HOME:?Install Android SDK and set ANDROID_HOME}"
 : "${SUPABASE_URL:?Configure the public Supabase project URL}"
 : "${SUPABASE_PUBLISHABLE_KEY:?Configure the public Supabase publishable key}"
-export CI=1 EXPO_NO_TELEMETRY=1 EXPO_NO_DOTENV=1 MOBILE_ADS_PREVIEW=true
+export CI=1 EXPO_NO_TELEMETRY=1 EXPO_NO_DOTENV=1 MOBILE_ADS_PREVIEW=true MOBILE_ADS_ENABLED=false
 export ANDROID_PACKAGE="${ANDROID_PACKAGE:-app.kcee24.sidle}"
 export MOBILE_API_URL="${MOBILE_API_URL:-https://social-app-bh1h.onrender.com}"
 export PUBLIC_WEB_URL="${PUBLIC_WEB_URL:-https://social-platform-web-two.vercel.app}"

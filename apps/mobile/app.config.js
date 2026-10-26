@@ -1,6 +1,7 @@
 const { loadEnvFile } = require("node:process");
 const { readFileSync } = require("node:fs");
 const path = require("node:path");
+const publisherAds = require("./admob.config.json");
 
 // One .env at the repo root feeds API, web and mobile. Only PUBLIC values go into the app bundle.
 try {
@@ -52,13 +53,13 @@ if (isRemoteTestOrProductionBuild) {
 
 const webUrl = process.env.PUBLIC_WEB_URL || "http://localhost:3000";
 const linkHost = new URL(webUrl).protocol === "https:" ? new URL(webUrl).hostname : null;
-// Sample identifiers remain the default. A publisher app ID alone never enables ads.
+// Public owner identifiers never enable live requests by themselves.
 const mobileAdPreview = process.env.MOBILE_ADS_PREVIEW === "true";
 if (easProfile === "production" && mobileAdPreview) {
   throw new Error("MOBILE_ADS_PREVIEW is only for an internal preview APK, not a production release.");
 }
 const sampleAndroidAdAppId = "ca-app-pub-3940256099942544~3347511713";
-const publisherAndroidAdAppId = process.env.ADMOB_ANDROID_APP_ID?.trim();
+const publisherAndroidAdAppId = process.env.ADMOB_ANDROID_APP_ID?.trim() || publisherAds.androidAppId;
 if (publisherAndroidAdAppId && (
   !/^ca-app-pub-[0-9]{16}~[0-9]{10}$/.test(publisherAndroidAdAppId) ||
   publisherAndroidAdAppId.startsWith("ca-app-pub-3940256099942544~")
@@ -66,6 +67,26 @@ if (publisherAndroidAdAppId && (
   throw new Error("ADMOB_ANDROID_APP_ID must be your own AdMob app ID (with ~), not an ad-unit ID or a Google sample ID.");
 }
 const androidAdAppId = mobileAdPreview ? sampleAndroidAdAppId : publisherAndroidAdAppId || sampleAndroidAdAppId;
+const androidBannerUnitId = process.env.ADMOB_ANDROID_BANNER_ID?.trim() || publisherAds.androidBannerUnitId;
+const mobileAdsEnabled = process.env.MOBILE_ADS_ENABLED === "true";
+if (mobileAdsEnabled) {
+  if (mobileAdPreview || easProfile === "preview") {
+    throw new Error("Live ads cannot run in an internal preview APK.");
+  }
+  if (process.env.COMMERCIAL_DEPLOYMENT_APPROVED !== "true") {
+    throw new Error("Live ads require verified commercial-compatible hosting before MOBILE_ADS_ENABLED can be enabled.");
+  }
+  const publisher = publisherAndroidAdAppId.match(/^ca-app-(pub-[0-9]{16})~/)?.[1];
+  if (!publisher || !new RegExp("^ca-app-" + publisher + "/[0-9]{10}$").test(androidBannerUnitId)) {
+    throw new Error("ADMOB_ANDROID_BANNER_ID must be a banner unit belonging to the Android app's publisher.");
+  }
+  requirePublicHttpsUrl("SUPABASE_URL");
+  requirePublicHttpsUrl("MOBILE_API_URL");
+  requirePublicHttpsUrl("PUBLIC_WEB_URL");
+  if (!process.env.SUPABASE_PUBLISHABLE_KEY?.trim() || process.env.ANDROID_PACKAGE !== "app.kcee24.sidle") {
+    throw new Error("Live Sidle ads require the public Supabase key and the stable app.kcee24.sidle package.");
+  }
+}
 
 const androidPackage = process.env.ANDROID_PACKAGE?.trim() || "app.social.dev";
 const androidGoogleServicesFile = process.env.ANDROID_GOOGLE_SERVICES_FILE?.trim();
@@ -106,7 +127,7 @@ module.exports = {
   expo: {
     name: "Sidle",
     slug: "social-app",
-    version: "0.0.1",
+    version: "0.0.2",
     orientation: "portrait",
     icon: "./assets/icon.png",
     scheme: "socialapp",
@@ -121,6 +142,7 @@ module.exports = {
     },
     android: {
       package: androidPackage,
+      versionCode: 2,
       ...(androidGoogleServicesFile ? { googleServicesFile: androidGoogleServicesFile } : {}),
       permissions:["CAMERA","RECORD_AUDIO","ACCESS_COARSE_LOCATION","ACCESS_FINE_LOCATION"],
       adaptiveIcon: { foregroundImage: "./assets/adaptive-icon.png", backgroundColor: "#F7F6F2" },
@@ -148,6 +170,8 @@ module.exports = {
       // Where password-reset emails send the user (the web app's /reset page).
       webUrl: process.env.PUBLIC_WEB_URL || "http://localhost:3000",
       mobileAdPreview,
+      mobileAdsEnabled,
+      ...(mobileAdsEnabled ? { admobBannerUnitId: androidBannerUnitId } : {}),
     },
   },
 };

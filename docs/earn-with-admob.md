@@ -2,7 +2,7 @@
 
 AdMob registration is free. Google pays for eligible real ad traffic after account/app approval, verification and the applicable payout threshold; test ads earn nothing. Revenue depends on real usage and advertiser demand. Neither an APK nor this setup guarantees approval or income.
 
-Current state: Sidle's APK includes the Google Mobile Ads SDK and opt-in Google test banners. Source now accepts an owner's Android AdMob app ID and can prepare a matching developer website/app-ads.txt. Live ad units, consent handling, store approval and payouts are **not activated**. Gmail SMTP is configured separately and does not generate ad revenue.
+Current state: the owner's screenshot supplied the Android app and banner IDs, now saved as public configuration in `apps/mobile/admob.config.json`. A Discovery banner, Google UMP consent-before-initialization flow, non-personalized requests, general-rated content limit and privacy-options entry point are implemented. Live serving remains **off**: hosting eligibility, Google review, audience/privacy-message setup and physical-device checks are still open. Internal preview APKs use Google sample/test IDs. Gmail SMTP is configured separately and does not generate ad revenue.
 
 ## 1. Create your AdMob account
 
@@ -21,7 +21,7 @@ ADMOB_PUBLISHER_ID=pub-YOUR_16_DIGIT_PUBLISHER
 ADMOB_APP_ADS_TXT=google.com, pub-YOUR_16_DIGIT_PUBLISHER, DIRECT, f08c47fec0942fa0
 ```
 
-Supply the banner unit ID for the later live-placement implementation. Saving the app ID alone does not enable live ad requests. Internal preview mode continues to use Google's sample app ID even when an owner app ID exists. Build configuration rejects ad-unit IDs accidentally supplied as app IDs.
+The provided screenshot's app and banner IDs are already saved; do not re-enter them unless changing accounts. Environment overrides remain available as `ADMOB_ANDROID_APP_ID` and `ADMOB_ANDROID_BANNER_ID`. Saving IDs alone does not enable live requests. Internal preview mode continues to use Google's sample app ID even when an owner app ID exists. Build configuration rejects ad-unit IDs supplied as app IDs and mismatched publishers in a live build.
 
 ## 2. Use a free developer website for app-ads.txt
 
@@ -56,9 +56,21 @@ AdMob's supported third-party Android stores currently include Samsung Galaxy St
 
 Use the same stable `app.kcee24.sidle` package. Prepare the reviewed release APK, production signing backup, icon, screenshots, accurate privacy policy, age/content and ads disclosures, reviewer access and moderation/contact information. Sidle's current `/privacy` page is a product overview and explicitly says it is not a formal legal privacy notice; the owner-approved notice and real support contact remain necessary before submitting a monetized release. The existing preview APK is for device testing; it is not an approved store release. Link the actual public supported-store listing in AdMob to start app readiness review. Google Play's registration fee is excluded from this zero-upfront-fee plan.
 
-## 4. Activate earnings only after these inputs exist
+## 4. Finish Google's consent configuration and release checks
 
-Codex can finish a live banner placement after the real public identifiers, eligible listing, appropriate hosting and owner/account requirements are available. That build needs Google's consent flow and privacy-options access where required, audience/age handling, no request before consent eligibility, development test-device safeguards, limited placements away from private conversation controls, and physical Android testing. Non-personalized ads alone do not replace required consent. No ad unit is connected to the current APK by this preparation.
+In AdMob, open **Privacy & messaging**, select Sidle and configure/publish the Google consent messages required for the regions where the app will operate. Use the real published privacy notice. Complete the target-audience/age assessment and account/store disclosures; the content-rating limit in code is not age verification or a child-directed declaration.
+
+The implemented Discovery placement is optional: **Show sponsored content** gathers fresh Google UMP consent before initializing ads. A failure or `canRequestAds=false` leaves the banner off. **Ad privacy choices** removes the banner before reopening the relevant form, and does not initialize ads by itself. Leaving the screen during consent prevents a later ad request. No messages, profile data, location or user identifier are supplied as ad targeting. Non-personalized requests still require the applicable consent and disclosures.
+
+After account/app review, actual commercial hosting eligibility, audience/privacy configuration and device tests are complete, a release operator can set:
+
+```dotenv
+MOBILE_ADS_ENABLED=true
+COMMERCIAL_DEPLOYMENT_APPROVED=true
+MOBILE_ADS_PREVIEW=false
+```
+
+These flags do not certify Google approval or purchase an eligible hosting plan. Build guards reject live ads in internal previews, development runtime never renders a live placement, and only Android's stable `app.kcee24.sidle` package is supported. Real-device consent/privacy changes, no-fill/failure behavior, layout and ad loading still need verification. No live serving or income is claimed by source tests or a test APK.
 
 Never click your own live ads or ask others to click. Use test ads during development and device QA. Users installing and enjoying Sidle can create eligible impressions; revenue and payout timing remain subject to Google's rules and real demand.
 
