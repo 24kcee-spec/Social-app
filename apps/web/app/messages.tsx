@@ -389,9 +389,26 @@ function Thread({
     return () => window.removeEventListener('sidle:discard-outgoing', discard);
   }, []);
 
-  const merge = useCallback((incoming: Bubble[]) => {
-    setMessages((current) => mergeMessages(current, incoming));
+  const preserveReadingPosition = useCallback(() => {
+    const el = scrollerRef.current;
+    // Scroll events can arrive after a realtime update. Read the current geometry
+    // before changing the DOM so an already-scrolled reader never follows it down.
+    if (
+      el &&
+      messagesRef.current.length &&
+      !nearLatest(el.scrollTop, el.scrollHeight, el.clientHeight)
+    )
+      stickToBottom.current = false;
   }, []);
+
+  const merge = useCallback(
+    (incoming: Bubble[], followLatest = false) => {
+      if (followLatest) stickToBottom.current = true;
+      else preserveReadingPosition();
+      setMessages((current) => mergeMessages(current, incoming));
+    },
+    [preserveReadingPosition],
+  );
 
   const refetchLatest = useCallback(async () => {
     try {
@@ -414,19 +431,23 @@ function Thread({
     }
   }, [client, conversation.id, merge, markVisibleRead]);
 
-  const refreshDetails = useCallback(async (force = false) => {
-    const ids = messagesRef.current
-      .filter((message) => !message.id.startsWith('local-'))
-      .filter((message) => force || !detailsRef.current[message.id])
-      .map((message) => message.id);
-    for (let offset = 0; offset < ids.length; offset += 100) {
-      const values = await getPlatformClient().getMessageDetails(ids.slice(offset, offset + 100));
-      setDetails((current) => ({
-        ...current,
-        ...Object.fromEntries(values.map((value) => [value.id, value])),
-      }));
-    }
-  }, []);
+  const refreshDetails = useCallback(
+    async (force = false) => {
+      const ids = messagesRef.current
+        .filter((message) => !message.id.startsWith('local-'))
+        .filter((message) => force || !detailsRef.current[message.id])
+        .map((message) => message.id);
+      for (let offset = 0; offset < ids.length; offset += 100) {
+        const values = await getPlatformClient().getMessageDetails(ids.slice(offset, offset + 100));
+        preserveReadingPosition();
+        setDetails((current) => ({
+          ...current,
+          ...Object.fromEntries(values.map((value) => [value.id, value])),
+        }));
+      }
+    },
+    [preserveReadingPosition],
+  );
   useEffect(() => {
     void refreshDetails().catch(() =>
       setError('Some message details could not be loaded. Try again.'),
@@ -752,21 +773,23 @@ function Thread({
         onCancelReply={() => setReplyTo(null)}
         onOutgoing={(item: OutgoingMessage | null) => {
           if (!item) return;
-          stickToBottom.current = true;
-          merge([
-            {
-              id: `local-${item.clientId}`,
-              conversationId: item.conversationId,
-              senderId: item.senderId,
-              kind: 'text',
-              body: item.body || 'Attachment',
-              clientTag: item.clientId,
-              createdAt: item.createdAt,
-              pending: !item.failed,
-              failed: item.failed,
-              read: false,
-            },
-          ]);
+          merge(
+            [
+              {
+                id: `local-${item.clientId}`,
+                conversationId: item.conversationId,
+                senderId: item.senderId,
+                kind: 'text',
+                body: item.body || 'Attachment',
+                clientTag: item.clientId,
+                createdAt: item.createdAt,
+                pending: !item.failed,
+                failed: item.failed,
+                read: false,
+              },
+            ],
+            true,
+          );
         }}
         onSent={changed}
       />
