@@ -35,6 +35,8 @@ The release adds real Chromium interaction checks to CI alongside the existing w
 
 During implementation, all 17 live browser assertions passed, including the four previously failing two-client/scroll checks. Original Auth/application/message counts were restored. Re-run the same deployment checks after merge; final GitHub/Vercel results apply to the exact release head.
 
+The first main-branch browser run exposed an additional scroll-event timing race. Incoming history and detail updates now sample the actual reading position before changing the DOM, even when the browser has not dispatched its queued scroll event. The existing regression passed ten consecutive runs on each desktop and phone viewport after this correction; sending still explicitly follows the member's own message.
+
 Commands:
 
 ```bash
