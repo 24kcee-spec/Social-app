@@ -1,0 +1,15 @@
+{
+  "source_commit": "91114dad3454411e3f84242d4040b9b1ce2ead95",
+  "package": "app.kcee24.sidle",
+  "version": "0.0.2",
+  "version_code": 2,
+  "abi": "arm64-v8a",
+  "bytes": 33556956,
+  "sha256": "fabf248bf2d63422251a5fb4319e72e2d3d0f4bb6d3f019e9c76874be8da1498",
+  "bundled_javascript": true,
+  "same_preview_signer_verified": true,
+  "public_endpoints_verified": true,
+  "server_credentials_absent": true,
+  "live_ad_units": false,
+  "physical_device_tested": false
+}
