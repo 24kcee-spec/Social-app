@@ -1,6 +1,6 @@
 # Sidle: free-first setup for Zimbabwe
 
-Prepared 26 October 2026 for a Zimbabwe-based owner with an Android test phone and **no owned domain**. The first monetization target is **earning revenue from ads shown in Sidle**. Account creation, sender/domain verification, payout verification and physical-device tests are still pending. This guide does not claim that any new provider account has been created or activated.
+Prepared 26 October 2026; updated to keep Vercel and build an APK directly. For a Zimbabwe-based owner with an Android test phone and **no owned domain**. The first monetization target is **earning revenue from ads shown in Sidle**. Account creation, sender/domain verification, payout verification and physical-device tests are still pending. This guide does not claim that any new provider account has been created or activated.
 
 Use ongoing free plans rather than temporary credit trials. Provider terms and quotas can change. A free pilot can have good security and interactions, but these plans do not provide unlimited capacity, guaranteed uptime or a permanent price promise.
 
@@ -8,7 +8,7 @@ Use ongoing free plans rather than temporary credit trials. Provider terms and q
 
 | Purpose                                    | Choice                                                     | Actual limit / cost boundary                                                                                                                                                                                                    |
 | ------------------------------------------ | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Commercial web hosting                     | Netlify Free                                               | Commercial projects permitted. Current plan has 300 credits/month; production deployments use 15 credits each, and traffic/compute also consume credits. Hard cap means a service pause rather than automatic overage charges.  |
+| Alternative commercial web hosting         | Netlify Free                                               | Commercial projects permitted. Current plan has 300 credits/month; production deployments use 15 credits each, and traffic/compute also consume credits. Hard cap means a service pause rather than automatic overage charges.  |
 | API                                        | Existing Render Free service                               | Sleeps after 15 minutes without traffic; cold starts are expected. Shared free instance-hour and bandwidth limits apply. Do not create a separate free Render Postgres database: it expires after 30 days.                      |
 | Auth/database/media                        | Existing Supabase Free project                             | Current allowance: 500 MB database, 1 GB file storage, 5 GB egress and 50,000 monthly active users. Idle projects may pause. Paid recovery features are not enabled.                                                            |
 | Signup/reset email now                     | Dedicated free Gmail + app-password SMTP, small pilot only | No domain purchase needed. Google documents blocks beyond 500 emails/day; lower/anti-abuse limits can apply. Start Supabase Auth at 10 emails/hour. No transactional delivery SLA; app passwords can be unavailable or revoked. |
@@ -24,48 +24,19 @@ Use ongoing free plans rather than temporary credit trials. Provider terms and q
 
 Google Play currently has a US$25 one-time registration fee. Apple's developer program is normally US$99/year, with limited eligibility-based waivers. Neither belongs in a strictly free launch. Android distribution rules continue to evolve; an internal test APK is not a guarantee of unrestricted public distribution forever.
 
-## 2. Set up a free commercial host before monetization
+## 2. Keep the existing Vercel host
 
-Vercel Hobby restricts use to personal/non-commercial projects. Keep the current site working while preparing a separate Netlify deployment. Do not enable revenue-generating ads or payments on the Hobby deployment.
+The owner explicitly chose to keep Vercel. **No Netlify migration is active**; the repository's Netlify configuration now explicitly skips stale connected builds. The APK connects to `https://social-platform-web-two.vercel.app` and the existing hosted API. See [the APK guide](android-preview.md) for the current build and email-activation instructions.
 
-1. Open <https://app.netlify.com/signup> and sign in with GitHub.
-2. Choose **Free**. Do not add paid extensions, a paid plan or automatic recharges.
-3. Import `24kcee-spec/Social-app`, branch `main`. In the project settings, choose the short name **`sidlezw`** if available, producing `https://sidlezw.netlify.app`. This is a suggested name, not a reserved URL; choose another short available name if occupied.
-4. Use repository root as the base directory and `apps/web` as the package directory. The root `netlify.toml` supplies:
+A shorter free `*.vercel.app` alias can be configured through the owning Vercel project's domain settings if the name is available. Codex needs a scoped Vercel connection/token to perform that account change; the current cloud environment has no Vercel token. No short alias has been reserved or activated.
 
-   ```text
-   Build command: pnpm --filter @sp/web build
-   Publish directory: apps/web/.next
-   Node: 22
-   pnpm: 9.15.4
-   ```
+A real customized `.com` generally requires annual registration **and renewal**. No enduring free `.com` has been obtained or promised. Keep using the existing free address until a real domain budget exists; no purchase is authorized now.
 
-5. Let Netlify detect Next.js and use its maintained OpenNext adapter. Do not configure a static export: Sidle has server routes, security headers and a backend proxy.
-6. Add the following production environment variables using the existing project's real values. Obtain Supabase's **publishable** key from its API settings; do not substitute a secret/service key.
-
-   ```dotenv
-   SUPABASE_URL=https://mdekznpqmadhhsmouuhx.supabase.co
-   SUPABASE_PUBLISHABLE_KEY=REPLACE_WITH_EXISTING_PUBLISHABLE_KEY
-   PUBLIC_API_URL=https://social-app-bh1h.onrender.com
-   PUBLIC_WEB_URL=https://REPLACE_WITH_YOUR_SITE.netlify.app
-   COMMERCIAL_DEPLOYMENT_APPROVED=false
-   ENABLE_PAYMENTS=false
-   CALL_ICE_MODE=disabled
-   LIVEKIT_GUARD_ENABLED=false
-   ```
-
-7. Add `SUPABASE_SECRET_KEY` only as a protected **server/function** variable if this deployment's server integrations need it. Never name it `NEXT_PUBLIC_*`, paste it into source, put it in an APK or share it in chat. Do not copy database, SMTP or Expo private credentials to browser configuration.
-8. Publish the first deployment. A successful Next build alone does not verify Netlify routing: test `/feed`, `/messages`, `/settings`, `/reset`, `/api/sidle/ready`, unauthenticated `/api/sidle/me` (must deny access), security headers and media handling.
-9. Send the new public URL and connect Netlify through its account dashboard/secure deployment token if you want Codex to manage it. A URL alone does not grant account access.
-10. Before moving members, update Supabase Auth's Site URL and exact allowed redirect URLs for the new root origin, `/reset` and `/settings`; retain the old trusted origin during transition. Current web signup/resend returns to the root origin, password reset to `/reset` and the Settings access link to `/settings`; Sidle does not require a new invented `/auth/callback` page. Update Render's `CORS_ORIGINS`, mobile `PUBLIC_WEB_URL`, association documents, monitoring origin and production-evidence origin.
-11. Sign-in sessions are origin-specific: members may need to sign in again on the new host. Do not move refresh tokens between origins or silently turn off email confirmation.
-12. Batch tested releases: at 15 credits each, 20 production deployments would exhaust 300 credits before any traffic/compute. Check the current Netlify usage meter. Do not claim unlimited free hosting.
-
-The current code has not yet been deployed or interaction-tested on Netlify. This configuration prepares that deployment; Vercel remains the verified live host until the new host passes.
-
-A real customized `.com` generally requires annual registration **and renewal**. No enduring free `.com` has been obtained or promised. Free-host subdomains can be shorter and use HTTPS without purchasing a domain; they do not grant control of the provider's email/DNS parent domain. Trial domains that become paid later are excluded. If you later accept a domain budget, compare renewal cost and ownership/transfer rights before registering; no purchase is authorized by the current zero-spend preference.
+Vercel Hobby is personal/non-commercial. A preview APK with Google test IDs is not a live ad/revenue launch. Do not mark a Hobby deployment commercially approved or enable paid/live advertising integrations without resolving the actual hosting eligibility. The owner's current free-only instruction remains in force.
 
 ## 3. Set up email without a domain, then upgrade its reliability
+
+The current simpler route needs only two secure bindings and `--provider gmail`; see the [APK/email guide](android-preview.md). The six-field manual configuration below remains supported.
 
 ### Free small-pilot path: a dedicated Gmail account
 
@@ -205,7 +176,7 @@ No Expo account/project, Firebase key, APK or physical push delivery has been cr
 
 AdMob registration is free, but live serving needs a supported published app, app review and developer-site/app-ads.txt verification. A sideload-only preview is not sufficient. Paid Google Play registration is excluded unless you later accept that fee. An alternative supported store can be considered only after checking its current fees, Zimbabwe seller eligibility and device reach; no alternative listing is claimed here.
 
-The native AdMob SDK is not installed. After an eligible account/listing exists, supply the public Android AdMob app ID, test/approved unit IDs and consent requirements. Then integrate it in a separate development build, use Google test ads during development, verify consent and ensure no ads enter private chat/auth/safety actions. Approval and earnings cannot be fabricated with test IDs.
+The native AdMob SDK is now installed for the internal APK with Google sample/test identifiers and an opt-in test-ad preview. No live publisher units are requested. After an eligible account/listing exists, supply the public Android AdMob app ID, approved unit IDs and consent requirements. Implement and verify the live consent/placement path in a separate tested build; approval and earnings cannot be fabricated with test IDs.
 
 ## 7. Billing: distinguish no monthly fee from no transaction fee
 

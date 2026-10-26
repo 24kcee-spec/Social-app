@@ -102,6 +102,18 @@ class SMTPConfiguration(unittest.TestCase):
                 smtp.smtp_settings({**self.env, key: value})
             self.assertNotIn(self.env["SMTP_PASSWORD"], str(error.exception))
 
+    def test_gmail_preset_needs_only_two_bindings_and_cannot_spoof_the_sender(self):
+        result = smtp.smtp_settings({"SMTP_USER": "sidle-test@gmail.com", "SMTP_PASSWORD": "abcd efgh ijkl mnop", "SMTP_ADMIN_EMAIL": "spoof@example.com"}, "gmail")
+        self.assertEqual(result["smtp_admin_email"], "sidle-test@gmail.com")
+        self.assertEqual(result["smtp_pass"], "abcdefghijklmnop")
+        self.assertEqual(result["rate_limit_email_sent"], 10)
+        self.assertIs(result["mailer_autoconfirm"], False)
+
+    def test_gmail_rejects_non_gmail_senders_and_invalid_app_keys_without_exposing_values(self):
+        for env in [{"SMTP_USER": "spoof@example.com", "SMTP_PASSWORD": "abcdefghijklmnop"}, {"SMTP_USER": "sidle-test@gmail.com", "SMTP_PASSWORD": "private-password-value"}]:
+            with self.assertRaises(ValueError) as error: smtp.smtp_settings(env, "gmail")
+            self.assertNotIn(env["SMTP_PASSWORD"], str(error.exception))
+
 
 class StorageBackupPaths(unittest.TestCase):
     def test_archive_paths_cannot_escape_the_private_bucket_prefix(self):

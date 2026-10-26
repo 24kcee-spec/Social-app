@@ -52,6 +52,11 @@ if (isRemoteTestOrProductionBuild) {
 
 const webUrl = process.env.PUBLIC_WEB_URL || "http://localhost:3000";
 const linkHost = new URL(webUrl).protocol === "https:" ? new URL(webUrl).hostname : null;
+// Google's official Android sample app ID: preview integration never earns revenue.
+const mobileAdPreview = process.env.MOBILE_ADS_PREVIEW === "true";
+if (easProfile === "production" && mobileAdPreview) {
+  throw new Error("MOBILE_ADS_PREVIEW is only for an internal preview APK, not a production release.");
+}
 
 const androidPackage = process.env.ANDROID_PACKAGE?.trim() || "app.social.dev";
 const androidGoogleServicesFile = process.env.ANDROID_GOOGLE_SERVICES_FILE?.trim();
@@ -96,7 +101,9 @@ module.exports = {
     orientation: "portrait",
     icon: "./assets/icon.png",
     scheme: "socialapp",
-    plugins: [["expo-image-picker", { photosPermission: "Allow Sidle to use your photos for your profile." }], "expo-notifications"],
+    plugins: [["expo-image-picker", { photosPermission: "Allow Sidle to use your photos for your profile." }], "expo-notifications",
+      ["react-native-google-mobile-ads", { androidAppId: "ca-app-pub-3940256099942544~3347511713", iosAppId: "ca-app-pub-3940256099942544~1458002511", delayAppMeasurementInit: true }]
+    ],
     ios: {
       supportsTablet: false,
       infoPlist:{NSCameraUsageDescription:"Allow Sidle to use your camera when you start video.",NSMicrophoneUsageDescription:"Allow Sidle to record voice and place calls when you choose.",NSLocationWhenInUseUsageDescription:"Allow Sidle to share your location with selected connections while this screen is open."},
@@ -131,6 +138,7 @@ module.exports = {
       apiUrl: process.env.MOBILE_API_URL || "http://localhost:4000",
       // Where password-reset emails send the user (the web app's /reset page).
       webUrl: process.env.PUBLIC_WEB_URL || "http://localhost:3000",
+      mobileAdPreview,
     },
   },
 };

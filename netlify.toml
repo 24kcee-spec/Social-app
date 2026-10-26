@@ -1,10 +1,3 @@
-# Optional commercial-compatible free host. This does not move the live site.
-# Select the Free plan and set the package directory to apps/web in Netlify.
-# Netlify detects Next.js and supplies its maintained OpenNext adapter.
+# Hosting stays on Vercel. Stop stale connected Netlify projects from building.
 [build]
-  command = "pnpm --filter @sp/web build"
-  publish = "apps/web/.next"
-
-[build.environment]
-  NODE_VERSION = "22"
-  PNPM_VERSION = "9.15.4"
+  ignore = "exit 0"
