@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const { spawnSync } = require("node:child_process");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 
 const appDir = path.resolve(__dirname, "..");
@@ -19,7 +20,8 @@ const validEnv = {
   MOBILE_API_URL: "https://api.social-app.invalid",
   PUBLIC_WEB_URL: "https://social-app.invalid",
   EAS_PROJECT_ID: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-  ANDROID_PACKAGE: ""
+  ANDROID_PACKAGE: "",
+  ANDROID_GOOGLE_SERVICES_FILE: ""
 };
 
 function loadConfig(profile, overrides = {}) {
@@ -62,4 +64,30 @@ expectFailure(missingAndroidId, "ANDROID_PACKAGE", "missing production Android I
 const production = loadConfig("production", { ANDROID_PACKAGE: "com.socialapp.mobile" });
 assert.equal(production.status, 0, "valid production config should load:\n" + production.stderr);
 
-console.log("Mobile EAS config checks passed (preview APK profile, HTTPS/API guards, and production app-ID guard).");
+// Firebase has two very different JSON files: only the Android client config may
+// enter an APK. Reject a server private key before spending a cloud build slot.
+const firebaseDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "sidle-firebase-config-"));
+try {
+  const filename = path.join(firebaseDirectory, "google-services.json");
+  fs.writeFileSync(filename, JSON.stringify({
+    project_info: { project_number: "1234567890" },
+    client: [{ client_info: { mobilesdk_app_id: "1:1234567890:android:fixture", android_client_info: { package_name: "com.socialapp.mobile" } } }]
+  }));
+  const env = { ...process.env, ...validEnv, ANDROID_PACKAGE: "com.socialapp.mobile", ANDROID_GOOGLE_SERVICES_FILE: filename };
+  const firebaseConfig = spawnSync(process.execPath, ["-e", "process.stdout.write(JSON.stringify(require('./app.config.js')))"], { cwd: appDir, env, encoding: "utf8" });
+  assert.equal(firebaseConfig.status, 0, "matching Firebase client config should load:\n" + firebaseConfig.stderr);
+  assert.equal(JSON.parse(firebaseConfig.stdout).expo.android.googleServicesFile, filename);
+  expectFailure(loadConfig("preview", { ANDROID_GOOGLE_SERVICES_FILE: filename, ANDROID_PACKAGE: "com.other.mobile" }), "matching ANDROID_PACKAGE", "wrong Firebase app ID");
+  fs.writeFileSync(filename, JSON.stringify({ type: "service_account", private_key: "PRIVATE_KEY_MUST_NEVER_APPEAR_IN_OUTPUT" }));
+  const serverKey = loadConfig("preview", { ANDROID_GOOGLE_SERVICES_FILE: filename });
+  expectFailure(serverKey, "Never bundle an FCM service-account private key", "server credential passed as client config");
+  assert.ok(!serverKey.stderr.includes("PRIVATE_KEY_MUST_NEVER_APPEAR_IN_OUTPUT"));
+  fs.writeFileSync(filename, '{"private_key":"PRIVATE_KEY_MUST_NEVER_APPEAR_IN_OUTPUT",');
+  const malformed = loadConfig("preview", { ANDROID_GOOGLE_SERVICES_FILE: filename });
+  expectFailure(malformed, "readable Firebase Android google-services.json", "malformed provider file");
+  assert.ok(!malformed.stderr.includes("PRIVATE_KEY_MUST_NEVER_APPEAR_IN_OUTPUT"));
+} finally {
+  fs.rmSync(firebaseDirectory, { recursive: true, force: true });
+}
+
+console.log("Mobile EAS config checks passed (preview APK, HTTPS/API and app-ID guards, Firebase package matching, and server-key exclusion).");
