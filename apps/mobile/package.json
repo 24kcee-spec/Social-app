@@ -8,7 +8,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "typecheck": "tsc -p tsconfig.json",
-    "config:check": "node scripts/check-build-config.cjs"
+    "config:check": "node scripts/check-build-config.cjs && node --experimental-strip-types scripts/check-ads-consent.cjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",

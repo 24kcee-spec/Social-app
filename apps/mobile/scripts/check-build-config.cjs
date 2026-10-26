@@ -23,6 +23,9 @@ const validEnv = {
   ANDROID_PACKAGE: "",
   MOBILE_ADS_PREVIEW: "",
   ADMOB_ANDROID_APP_ID: "",
+  ADMOB_ANDROID_BANNER_ID: "",
+  MOBILE_ADS_ENABLED: "",
+  COMMERCIAL_DEPLOYMENT_APPROVED: "",
   ANDROID_GOOGLE_SERVICES_FILE: ""
 };
 
@@ -66,6 +69,22 @@ for (const testMode of [false, true]) {
   assert.equal(ads[1].androidAppId, testMode ? "ca-app-pub-3940256099942544~3347511713" : publisherId);
   assert.equal(ads[1].delayAppMeasurementInit, true);
 }
+assert.equal(appConfig.extra.mobileAdsEnabled, false, "publisher IDs alone must not enable live requests");
+assert.equal(appConfig.extra.admobBannerUnitId, undefined, "disabled builds do not expose a live unit to the UI");
+const liveEnv = { ANDROID_PACKAGE: "app.kcee24.sidle", MOBILE_ADS_ENABLED: "true", COMMERCIAL_DEPLOYMENT_APPROVED: "true" };
+expectFailure(loadConfig("preview", liveEnv), "Live ads cannot run", "live ad requests in an internal build");
+expectFailure(loadConfig("production", { ...liveEnv, COMMERCIAL_DEPLOYMENT_APPROVED: "false" }), "commercial-compatible hosting", "commercial hosting not verified");
+expectFailure(loadConfig("production", { ...liveEnv, ADMOB_ANDROID_BANNER_ID: "ca-app-pub-9999999999999999/1234567890" }), "belonging to the Android app's publisher", "banner belongs to another publisher");
+const live = spawnSync(process.execPath, ["-e", "process.stdout.write(JSON.stringify(require('./app.config.js')))"], {
+  cwd: appDir, env: { ...process.env, ...validEnv, EAS_BUILD_PROFILE: "production", ...liveEnv }, encoding: "utf8"
+});
+assert.equal(live.status, 0, live.stderr);
+const liveConfig = JSON.parse(live.stdout).expo;
+const ownerAds = require('../admob.config.json');
+assert.equal(liveConfig.extra.mobileAdsEnabled, true);
+assert.equal(liveConfig.extra.admobBannerUnitId, ownerAds.androidBannerUnitId);
+assert.ok(ownerAds.androidAppId.startsWith("ca-app-" + ownerAds.publisherId + "~"));
+assert.ok(ownerAds.androidBannerUnitId.startsWith("ca-app-" + ownerAds.publisherId + "/"));
 
 const missingApi = loadConfig("preview", { MOBILE_API_URL: "" });
 expectFailure(missingApi, "MOBILE_API_URL", "missing preview API URL");

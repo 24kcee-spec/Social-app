@@ -178,7 +178,7 @@ Use [the ordered AdMob setup guide](earn-with-admob.md) for the actual account i
 
 AdMob registration is free, but live serving needs a supported published app, app review and developer-site/app-ads.txt verification. A sideload-only preview is not sufficient. Paid Google Play registration is excluded unless you later accept that fee. An alternative supported store can be considered only after checking its current fees, Zimbabwe seller eligibility and device reach; no alternative listing is claimed here.
 
-The native AdMob SDK is now installed for the internal APK with Google sample/test identifiers and an opt-in test-ad preview. No live publisher units are requested. After an eligible account/listing exists, supply the public Android AdMob app ID, approved unit IDs and consent requirements. Implement and verify the live consent/placement path in a separate tested build; approval and earnings cannot be fabricated with test IDs.
+The native AdMob SDK is installed for the internal APK with Google sample/test identifiers and an opt-in test-ad preview. The owner has now supplied the real app/banner IDs, saved in `apps/mobile/admob.config.json`; an optional Discovery banner and Google consent/privacy path are implemented behind a disabled live-serving flag. No live publisher units are requested by preview builds. Eligible account/listing, actual hosting eligibility, published consent messages, audience assessment and physical device verification remain required; approval and earnings cannot be fabricated with test IDs.
 
 ## 7. Billing: distinguish no monthly fee from no transaction fee
 

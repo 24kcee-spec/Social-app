@@ -1,6 +1,6 @@
 # Android APK, Google test ads and email activation
 
-The current plan keeps Vercel and the existing API. No Netlify account or host migration is required. Android can be built locally without an EAS subscription/account. The native Google Mobile Ads module is installed; this preview deliberately uses Google's official sample app and test-unit identifiers, with ad measurement initialization delayed.
+The current preview keeps Vercel and the existing API. No Netlify account or host migration is required for testing. Android can be built locally without an EAS subscription/account. The native Google Mobile Ads module is installed; internal previews deliberately use Google's official sample app and test-unit identifiers, with ad measurement initialization delayed. Owner app/banner IDs are saved separately for a future eligible release, whose live serving remains disabled.
 
 In the preview APK, sign in, open **Your Sidle**, and choose **Show test ad**. Nothing in this preview requests a real publisher ad unit or earns revenue. The native module is loaded on demand so ordinary Expo Go development still works. Test-ad mode is rejected for the production EAS profile. The Expo native plugin supplies valid sample Android and iOS IDs even when the preview UI is off, preventing the SDK's missing-app-ID startup crash.
 
@@ -39,8 +39,8 @@ The app cannot send through an account that has not been created or whose creden
 
 ## Still needed for real ad earnings and phone alerts
 
-- Follow [the AdMob account, free developer website and store-listing steps](earn-with-admob.md). The build accepts an owner's public `ADMOB_ANDROID_APP_ID` without activating live ad serving; internal preview mode always keeps Google's sample Android app ID.
-- Real AdMob app/unit IDs, publisher account/review, an eligible public app listing, consent configuration and device testing. The preview uses only test IDs; the old Google web AdSense preparation is separate.
+- Follow [the AdMob account, free developer website and store-listing steps](earn-with-admob.md). The owner app/banner IDs are saved and the Discovery consent/privacy flow is implemented. Internal preview mode always keeps Google's sample Android app ID.
+- Publisher/app review, an eligible public app listing, configured Google privacy messages, audience assessment and device testing. The preview uses only test IDs; the Google web AdSense preparation is separate.
 - Firebase client configuration and Expo/FCM credentials for real notification delivery. Without them, the preview remains usable but phone-alert delivery is not activated.
 - Stable backed-up production signing and appropriate commercial hosting approval before a revenue launch. Vercel Hobby's commercial restriction remains; no paid upgrade or live billing is enabled here.
 
