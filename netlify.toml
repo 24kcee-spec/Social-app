@@ -8,3 +8,6 @@
 [build.environment]
   NODE_VERSION = "22"
   PNPM_VERSION = "9.15.4"
+  # These settings are public configuration, including the browser publishable key.
+  # Keep secret scanning enabled for all other variables and credentials.
+  SECRETS_SCAN_OMIT_KEYS = "APP_ENV,PORT,SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY"
