@@ -21,6 +21,7 @@ const validEnv = {
   PUBLIC_WEB_URL: "https://social-app.invalid",
   EAS_PROJECT_ID: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
   ANDROID_PACKAGE: "",
+  MOBILE_ADS_PREVIEW: "",
   ANDROID_GOOGLE_SERVICES_FILE: ""
 };
 
@@ -63,6 +64,7 @@ expectFailure(missingAndroidId, "ANDROID_PACKAGE", "missing production Android I
 
 const production = loadConfig("production", { ANDROID_PACKAGE: "com.socialapp.mobile" });
 assert.equal(production.status, 0, "valid production config should load:\n" + production.stderr);
+expectFailure(loadConfig("production", { ANDROID_PACKAGE: "com.socialapp.mobile", MOBILE_ADS_PREVIEW: "true" }), "internal preview APK", "test ads must not be mistaken for a production release");
 
 // Firebase has two very different JSON files: only the Android client config may
 // enter an APK. Reject a server private key before spending a cloud build slot.

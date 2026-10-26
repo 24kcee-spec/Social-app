@@ -4,6 +4,7 @@ import { WebView } from 'react-native-webview';
 import { config } from './auth';
 import { Button, Banner } from './ui';
 import { useTheme } from './theme';
+import { AdPreview } from './AdPreview';
 const destinations = [
   ['Feed', '/feed'],
   ['Reels', '/reels'],
@@ -31,6 +32,7 @@ export function PlatformHub() {
       <Text style={{ color: colors.textMuted }}>
         Moments, creativity and conversations in one place.
       </Text>
+      <AdPreview />
       {!secure && (
         <Banner tone="error">
           Configure PUBLIC_WEB_URL with your HTTPS deployment to open platform features.

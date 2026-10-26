@@ -10,7 +10,16 @@ import re
 import sys
 
 
-def smtp_settings(env):
+def smtp_settings(env, provider="manual"):
+    if provider == "gmail":
+        user = env.get("SMTP_USER", "").strip()
+        password = env.get("SMTP_PASSWORD", "").replace(" ", "")
+        if not re.fullmatch(r"[^@\s]+@(gmail|googlemail)\.com", user, re.IGNORECASE):
+            raise ValueError("Gmail pilot requires a dedicated Gmail address in SMTP_USER")
+        if not re.fullmatch(r"[A-Za-z0-9]{16}", password):
+            raise ValueError("SMTP_PASSWORD must be the 16-character Google app password, not your account password")
+        env = {**env, "SMTP_HOST": "smtp.gmail.com", "SMTP_PORT": "465", "SMTP_USER": user,
+               "SMTP_PASSWORD": password, "SMTP_ADMIN_EMAIL": user, "SMTP_SENDER_NAME": "Sidle"}
     names = {
         "smtp_host": "SMTP_HOST", "smtp_port": "SMTP_PORT", "smtp_user": "SMTP_USER",
         "smtp_pass": "SMTP_PASSWORD", "smtp_admin_email": "SMTP_ADMIN_EMAIL",
@@ -38,12 +47,13 @@ def smtp_settings(env):
     if any("\r" in value or "\n" in value for key, value in values.items() if key != "smtp_pass"):
         raise ValueError("SMTP settings must not contain line breaks")
     # Enabling production mail must never reopen the legacy auto-confirm bypass.
-    return {**values, "mailer_autoconfirm": False}
+    return {**values, "mailer_autoconfirm": False, **({"rate_limit_email_sent": 10} if provider == "gmail" else {})}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--provider", choices=("manual", "gmail"), default="manual")
     args = parser.parse_args()
     try:
         spec = importlib.util.spec_from_file_location("maintenance", Path(__file__).with_name("supabase-maintenance.py"))
@@ -51,13 +61,13 @@ def main():
         spec.loader.exec_module(module)
         client = module.Supabase()
         if args.apply:
-            settings = smtp_settings(os.environ)
+            settings = smtp_settings(os.environ, args.provider)
             client.request("/config/auth", "PATCH", settings)
         auth = client.request("/config/auth")
         print(json.dumps({"project": client.project, "custom_smtp_configured": bool(auth.get("smtp_host")),
                           "email_confirmation_required": auth.get("mailer_autoconfirm") is False,
                           "delivery_verified": False}, indent=2))
-        if args.apply and (any(str(auth.get(key)) != value for key, value in settings.items() if key not in ("smtp_pass", "mailer_autoconfirm")) or auth.get("mailer_autoconfirm") is not False):
+        if args.apply and (any(str(auth.get(key)) != str(value) for key, value in settings.items() if key not in ("smtp_pass", "mailer_autoconfirm")) or auth.get("mailer_autoconfirm") is not False):
             raise RuntimeError("SMTP read-back did not match; inspect provider state before retrying")
     except (ValueError, RuntimeError) as error:
         print(str(error), file=sys.stderr)

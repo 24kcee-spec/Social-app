@@ -1,5 +1,7 @@
 # Mobile
 
+For the current **local APK + Google test-ad module** path, keeping the existing Vercel host, see [Android preview and two-binding email activation](../../docs/android-preview.md). EAS is optional for this preview build.
+
 This package is the Expo React Native client for the app.
 
 ## Purpose
