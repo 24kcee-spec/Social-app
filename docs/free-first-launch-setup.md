@@ -174,6 +174,8 @@ No Expo account/project, Firebase key, APK or physical push delivery has been cr
 
 ## 6. Native ad revenue comes after the APK works
 
+Use [the ordered AdMob setup guide](earn-with-admob.md) for the actual account inputs, no-cost Firebase Hosting developer site, and supported-store requirements. Samsung's FAQ confirms no sign-up or annual publishing fee; its current seller approval and Zimbabwe eligibility still need checking in the owner's account.
+
 AdMob registration is free, but live serving needs a supported published app, app review and developer-site/app-ads.txt verification. A sideload-only preview is not sufficient. Paid Google Play registration is excluded unless you later accept that fee. An alternative supported store can be considered only after checking its current fees, Zimbabwe seller eligibility and device reach; no alternative listing is claimed here.
 
 The native AdMob SDK is now installed for the internal APK with Google sample/test identifiers and an opt-in test-ad preview. No live publisher units are requested. After an eligible account/listing exists, supply the public Android AdMob app ID, approved unit IDs and consent requirements. Implement and verify the live consent/placement path in a separate tested build; approval and earnings cannot be fabricated with test IDs.

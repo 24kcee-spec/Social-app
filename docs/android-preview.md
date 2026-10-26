@@ -39,6 +39,7 @@ The app cannot send through an account that has not been created or whose creden
 
 ## Still needed for real ad earnings and phone alerts
 
+- Follow [the AdMob account, free developer website and store-listing steps](earn-with-admob.md). The build accepts an owner's public `ADMOB_ANDROID_APP_ID` without activating live ad serving; internal preview mode always keeps Google's sample Android app ID.
 - Real AdMob app/unit IDs, publisher account/review, an eligible public app listing, consent configuration and device testing. The preview uses only test IDs; the old Google web AdSense preparation is separate.
 - Firebase client configuration and Expo/FCM credentials for real notification delivery. Without them, the preview remains usable but phone-alert delivery is not activated.
 - Stable backed-up production signing and appropriate commercial hosting approval before a revenue launch. Vercel Hobby's commercial restriction remains; no paid upgrade or live billing is enabled here.

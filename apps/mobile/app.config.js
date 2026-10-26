@@ -52,11 +52,20 @@ if (isRemoteTestOrProductionBuild) {
 
 const webUrl = process.env.PUBLIC_WEB_URL || "http://localhost:3000";
 const linkHost = new URL(webUrl).protocol === "https:" ? new URL(webUrl).hostname : null;
-// Google's official Android sample app ID: preview integration never earns revenue.
+// Sample identifiers remain the default. A publisher app ID alone never enables ads.
 const mobileAdPreview = process.env.MOBILE_ADS_PREVIEW === "true";
 if (easProfile === "production" && mobileAdPreview) {
   throw new Error("MOBILE_ADS_PREVIEW is only for an internal preview APK, not a production release.");
 }
+const sampleAndroidAdAppId = "ca-app-pub-3940256099942544~3347511713";
+const publisherAndroidAdAppId = process.env.ADMOB_ANDROID_APP_ID?.trim();
+if (publisherAndroidAdAppId && (
+  !/^ca-app-pub-[0-9]{16}~[0-9]{10}$/.test(publisherAndroidAdAppId) ||
+  publisherAndroidAdAppId.startsWith("ca-app-pub-3940256099942544~")
+)) {
+  throw new Error("ADMOB_ANDROID_APP_ID must be your own AdMob app ID (with ~), not an ad-unit ID or a Google sample ID.");
+}
+const androidAdAppId = mobileAdPreview ? sampleAndroidAdAppId : publisherAndroidAdAppId || sampleAndroidAdAppId;
 
 const androidPackage = process.env.ANDROID_PACKAGE?.trim() || "app.social.dev";
 const androidGoogleServicesFile = process.env.ANDROID_GOOGLE_SERVICES_FILE?.trim();
@@ -102,7 +111,7 @@ module.exports = {
     icon: "./assets/icon.png",
     scheme: "socialapp",
     plugins: [["expo-image-picker", { photosPermission: "Allow Sidle to use your photos for your profile." }], "expo-notifications",
-      ["react-native-google-mobile-ads", { androidAppId: "ca-app-pub-3940256099942544~3347511713", iosAppId: "ca-app-pub-3940256099942544~1458002511", delayAppMeasurementInit: true }]
+      ["react-native-google-mobile-ads", { androidAppId: androidAdAppId, iosAppId: "ca-app-pub-3940256099942544~1458002511", delayAppMeasurementInit: true }]
     ],
     ios: {
       supportsTablet: false,
