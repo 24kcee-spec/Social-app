@@ -1,0 +1,12 @@
+{
+  "package": "app.kcee24.sidle",
+  "abi": "arm64-v8a",
+  "bytes": 33552860,
+  "sha256": "7101343eb85f5003420a6b8f7163f187243207014a8f4ea5070b1e66a17ae939",
+  "bundled_javascript": true,
+  "dedicated_preview_signature_verified": true,
+  "public_endpoints_verified": true,
+  "live_ad_units": false,
+  "physical_device_tested": false,
+  "smtp_configured": false
+}
