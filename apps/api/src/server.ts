@@ -19,7 +19,7 @@ import { createMessagingStore } from './messaging/store';
 import { createMessageNotifier, createExpoPushSender, noopPushSender } from './messaging/notify';
 import { registerMessaging } from './messaging/plugin';
 import { createReceiptWorker } from './messaging/receipts';
-import { createQueuedPushWorker } from './messaging/queue';
+import { createQueuedPushWorker, createPushQueueDetector } from './messaging/queue';
 import { loadDotEnv } from './env';
 import { createCommunityStore } from './community/store';
 import { registerCommunity } from './community/plugin';
@@ -97,29 +97,24 @@ if (pool && env.SUPABASE_URL) {
   const notifier = createMessageNotifier(db, sender, () =>
     app.log.warn('Push delivery failed; message remains saved'),
   );
-  const durablePush =
-    (
-      await pool.query<{ installed: boolean }>(
-        "select to_regclass('app_private.message_push_jobs') is not null as installed",
-      )
-    ).rows[0]?.installed === true;
+  const hasPushQueue = createPushQueueDetector(db);
   registerMessaging(app, {
     requireAuth,
     pushEnabled,
-    store: createMessagingStore(
-      db,
-      undefined,
-      durablePush ? {} : { onMessageSent: notifier.messageSent },
-    ),
+    store: createMessagingStore(db, undefined, {
+      onMessageSent: async (event) =>
+        (await hasPushQueue()) ? { sent: 0 } : notifier.messageSent(event),
+    }),
   });
   if (pushEnabled) {
-    if (durablePush) {
+    {
       const deliver = createQueuedPushWorker(db, notifier);
       let delivering = false;
       const deliverTick = () => {
         if (delivering) return;
         delivering = true;
-        void deliver()
+        void hasPushQueue()
+          .then((installed) => (installed ? deliver() : undefined))
           .catch(() => app.log.warn('Queued message delivery needs attention'))
           .finally(() => {
             delivering = false;

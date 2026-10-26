@@ -2,6 +2,20 @@ import type { SqlRunner } from '../migrate';
 import type { MessageNotifier } from './notify';
 import type { MessageSentEvent } from './store';
 
+/** Detect lazily: a database outage must not prevent liveness from starting.
+ * Only a positive result is cached, so additive migrations can be discovered. */
+export function createPushQueueDetector(db: SqlRunner) {
+  let installed = false;
+  return async () => {
+    if (installed) return true;
+    const { rows } = await db.query<{ installed: boolean }>(
+      "select to_regclass('app_private.message_push_jobs') is not null as installed",
+    );
+    installed = rows[0]?.installed === true;
+    return installed;
+  };
+}
+
 /** Atomically claims committed sends from either client path. Never replay an
  * ambiguous provider POST: Expo does not provide an idempotency guarantee. */
 export function createQueuedPushWorker(db: SqlRunner, notifier: MessageNotifier) {

@@ -5,7 +5,7 @@ Updated 26 October 2026 (Africa/Harare). The [interaction release](production-re
 - Messaging now synchronizes rich changes, preserves history position, retains sender-scoped retry IDs/attachments across reload, supports indexed conversation search/shared media/reply lookup, and queues rich/legacy push through the same durable delivery path.
 - Core/platform pages use one named-icon navigation/account menu. Feed labels/contrast, active destinations, Settings history/drafts and authentication return paths are corrected. Voice preview/cancel, photo viewing and accessible destructive dialogs are included.
 - Supabase has all 15 portable and seven independent product migrations applied. Live rollback-only suites cover the new signal/search/queue permissions as well as existing privacy/security. No real-user data was reset.
-- Local workspace baseline is 509 tests, with separate Chromium interaction tests and operator-tool tests. CI also builds the web app. Exact release deployment checks must pass before merging.
+- Local workspace baseline is 511 tests, with separate Chromium interaction tests and operator-tool tests. CI also builds the web app. Exact release deployment checks must pass before merging.
 - All 17 implementation live-browser assertions passed with owned temporary accounts; original counts were restored.
 
 Remaining launch gates: actual SMTP/inbox delivery, provider-plan protection/recoverable backups, offsite database-plus-Storage restoration, signed physical-device/App Link/push/assistive-technology evidence, optional TURN/LiveKit/merchant integrations, and named support/moderation/legal operations. The legacy native screen still needs full rich-control parity; no physical-device release is claimed.

@@ -29,7 +29,7 @@ Both changes are additive. Already applied migrations were not rewritten. All pr
 
 ## Verification
 
-Local checks pass: **509 workspace tests**, all workspace typechecks, **20 Chromium interaction cases** across desktop/phone, and **13 operator-tool tests**. The browser suite includes a production build; mobile configuration guards pass separately. These results are also required in GitHub CI for the release head.
+Local checks pass: **511 workspace tests**, all workspace typechecks, **20 Chromium interaction cases** across desktop/phone, and **13 operator-tool tests**. The browser suite includes a production build; mobile configuration guards pass separately. These results are also required in GitHub CI for the release head.
 
 The release adds real Chromium interaction checks to CI alongside the existing workspace verification and production build. Fixtures in CI substitute provider/API transport deliberately; live two-account browser checks separately exercise actual Auth, hosted API, PostgREST, Storage policies and Realtime against Supabase. No source-string assertion alone closes an interaction gate.
 
