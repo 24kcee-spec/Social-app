@@ -1,85 +1,69 @@
 # Sidle
 
-Current implementation, validation and remaining release work: [release handover](Documents/PLATFORM_RELEASE_HANDOVER.md), [status](docs/status.md) and [NUST hosting](ops/nust/README.md).
+Sidle is a social connection platform with a web app, a React Native mobile app, and a Fastify API. The repository is organized as a pnpm monorepo and currently targets the core social product experience: profiles, discovery, communities, connections, messaging, and moderation.
 
 > People. Moments. Possibilities.
 
-Sidle is the codebase for a social connection product spanning web, mobile, and API layers. The current focus is on the core social experience: profiles, community, discover, connections, messaging, and safer sharing/reporting flows, with a shared design system and domain contracts across apps.
+## Repository overview
 
-## What this repo includes
+This monorepo contains:
 
-- Web app: Next.js + React for the product experience
-- Mobile app: Expo + React Native for Android/iOS coverage
-- API: Fastify backend with health/readiness checks and migration tooling
-- Shared packages: auth, profile helpers, validation, shared types, and design tokens
-- Monorepo tooling: pnpm workspaces and TypeScript project config
-
----
-
-## Current architecture
-
-```text
-Social-app/
-├── apps/
-│   ├── api/            # Fastify backend and server logic
-│   ├── mobile/         # Expo React Native app
-│   └── web/            # Next.js frontend
-├── packages/
-│   ├── auth-client/    # Auth utilities
-│   ├── config/         # Shared config helpers
-│   ├── design-tokens/  # Design tokens and design-system primitives
-│   ├── profile-client/  # Profile-related helpers
-│   ├── types/          # Shared domain types
-│   └── validation/     # Shared validation logic
-├── docs/               # Project docs and delivery notes
-├── DESIGN.md           # Current design system and UI rules
-├── .env.example
-├── .gitignore
-├── .nvmrc
-├── .prettierrc
-├── package.json
-├── pnpm-lock.yaml
-├── pnpm-workspace.yaml
-├── tsconfig.base.json
-├── README.md
-└── scripts/
-```
-
----
+- apps/web — Next.js web app
+- apps/mobile — Expo + React Native Android/iOS app
+- apps/api — Fastify backend and database access layer
+- packages/* — shared packages for auth, config, types, validation, and design tokens
+- docs/ and Documents/ — implementation notes, release artifacts, and product docs
+- supabase/ — database-related SQL and project artifacts
+- scripts/ — repo automation and verification scripts
 
 ## Tech stack
 
 ### Web
-
 - Next.js
 - React
 - TypeScript
 
 ### Mobile
-
 - Expo
 - React Native
 - TypeScript
+- Expo Image Picker / Notifications / constants
 
 ### API
-
 - Fastify
-- PostgreSQL-ready architecture
-- JWT/JWE support via `jose`
-- `pg` client for database access
+- TypeScript
+- PostgreSQL-ready integration via pg
+- JWT/JWE support via jose
+- migration tooling for database changes
 
 ### Shared tooling
-
 - pnpm workspaces
 - TypeScript
-- Vitest for tests
-- `@sp/design-tokens` for consistent UI primitives
+- Vitest for test execution
+- shared design tokens and validation packages
 
----
+## Current status
+
+This repository is actively under development as a social product, not a placeholder starter app.
+
+The codebase includes:
+- app shell and product screens for web and mobile
+- backend routes and service logic for social actions
+- shared validation and typed contracts across packages
+- mobile Android build setup via Expo EAS
+
+Important: the mobile app is configured for Expo/EAS Android builds, including preview APK generation, but it is not yet a fully finalized production store release. Production builds require additional project configuration, signing, and environment setup.
+
+## Requirements
+
+- Node.js 22+
+- pnpm 9.x
+- PostgreSQL-compatible database for API work
+- Expo/EAS account for Android remote builds
 
 ## Quick start
 
-### 1) Clone the repo
+### 1) Clone
 
 ```bash
 git clone https://github.com/24kcee-spec/Social-app.git
@@ -93,15 +77,17 @@ npm install -g pnpm
 pnpm install
 ```
 
-### 3) Set up environment variables
+### 3) Configure environment variables
+
+Copy the example environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-Then update `.env` with the values required by the API and app configuration.
+Then update `.env` with the values required for the app and API. The mobile app also validates public HTTPS URLs and required EAS config during Android remote builds.
 
-### 4) Run the backend
+### 4) Run the API
 
 ```bash
 pnpm --filter @sp/api dev
@@ -119,12 +105,10 @@ pnpm --filter @sp/web dev
 pnpm --filter @sp/mobile start
 ```
 
----
-
 ## Common commands
 
 ```bash
-# install dependencies
+# install all dependencies
 pnpm install
 
 # typecheck all workspaces
@@ -133,65 +117,104 @@ pnpm typecheck
 # run tests across the monorepo
 pnpm test
 
-# verify the repo
+# run repo verification
 pnpm verify
 
-# run the API
+# API
 pnpm --filter @sp/api dev
+pnpm --filter @sp/api migrate
+pnpm --filter @sp/api test
 
-# run the web app
+# Web
 pnpm --filter @sp/web dev
 
-# run the mobile app
+# Mobile
 pnpm --filter @sp/mobile start
+pnpm --filter @sp/mobile typecheck
 ```
 
----
+## Mobile Android build notes
 
-## Product focus right now
+The mobile app at `apps/mobile` is configured for Expo builds using `eas.json` and `app.config.js`.
 
-This repo is not just a generic starter app. The current implementation is centered around social product flows, including:
+The repo includes:
+- Expo app configuration
+- Android package metadata
+- EAS build profiles
+- a preview APK flow for internal testing
 
+Production Android builds require additional setup, including:
+- Expo project linking
+- EAS project ID
+- configured public HTTPS URLs
+- valid Supabase and API environment variables
+- final Android package name
+- signing configuration for release builds
+
+For preview/internal APK builds, the expected flow is:
+
+```bash
+cd apps/mobile
+pnpm dlx eas-cli login
+pnpm dlx eas-cli build --platform android --profile preview
+```
+
+This is for test builds and is not the same as a production Play Store release.
+
+## Project structure
+
+```text
+Social-app/
+├── apps/
+│   ├── api/             # Fastify backend and database logic
+│   ├── mobile/          # Expo React Native mobile app
+│   └── web/             # Next.js web frontend
+├── packages/
+│   ├── auth-client/     # auth helpers
+│   ├── config/          # shared config
+│   ├── design-tokens/   # design system tokens
+│   ├── profile-client/  # profile helpers
+│   ├── types/           # shared domain types
+│   └── validation/      # shared validation rules
+├── docs/                # project docs and delivery notes
+├── Documents/           # release and product documentation
+├── supabase/            # database/project SQL definitions
+├── scripts/             # automation and verification scripts
+├── .env.example
+├── .gitignore
+├── .nvmrc
+├── .prettierrc
+├── DESIGN.md
+├── README.md
+├── package.json
+├── pnpm-lock.yaml
+├── pnpm-workspace.yaml
+├── tsconfig.base.json
+└── .github/
+```
+
+## Product focus
+
+The current product direction centers on:
 - profiles and identity
+- community and discovery
 - connections and follow logic
-- community and discovery experiences
-- messaging and conversations
-- sharing/reporting actions
-- moderation and safety-oriented UX
-- consistent cross-platform design system
-
-The design direction is documented in `DESIGN.md`, which defines the actual implementation rules and token system used in the app.
-
----
-
-## Project structure keys
-
-- `apps/web/` — Next.js frontend and product UI
-- `apps/mobile/` — Expo mobile app
-- `apps/api/` — Fastify backend, DB access, health checks, migrations
-- `packages/design-tokens/` — design system tokens
-- `packages/types/` — shared domain models and DTOs
-- `packages/validation/` — common validation rules
-- `packages/auth-client/` — auth integration helpers
-- `packages/profile-client/` — profile functions and client logic
-- `docs/` — repository and delivery notes
-
----
+- messaging and chat
+- social sharing and moderation
+- cross-platform consistency via shared design tokens
 
 ## Notes
 
-- The monorepo uses `pnpm` workspaces.
-- Node version is set in `.nvmrc`.
-- The app is actively being built and refined around core social product flows.
-- The repo contains implementation-focused docs and design guidance rather than a placeholder marketing README.
-
----
+- The repo uses pnpm workspaces.
+- Node version is pinned by `.nvmrc`.
+- The project is intentionally implementation-focused rather than a template project.
+- API and mobile config validation expect real environment values, especially for remote Android builds.
 
 ## Contributing
 
-When making changes, keep the work aligned with the current social product goals and shared contracts across the monorepo.
+When making changes, keep them aligned with the cross-platform social product goals and the shared contracts used by the web, mobile, and API apps.
 
-Recommended checks before submitting work:
+Before submitting work, run:
 
 ```bash
 pnpm verify
