@@ -1,0 +1,22 @@
+[
+  {
+    "path": "/",
+    "violations": []
+  },
+  {
+    "path": "/help",
+    "violations": []
+  },
+  {
+    "path": "/privacy",
+    "violations": []
+  },
+  {
+    "path": "/community-guidelines",
+    "violations": []
+  },
+  {
+    "path": "/reset",
+    "violations": []
+  }
+]

@@ -22,7 +22,8 @@ import {
   getSignedMediaUrl,
   uploadProfileImage,
 } from '../lib/profile';
-import { AccountMenu } from './account-menu';
+import { AppHeader } from './app-header';
+import { useInboxCounts } from '../lib/use-inbox-counts';
 
 import { SettingsOverview, type ThemePreference } from './settings-overview';
 import { NotificationSettingsPage } from './notification-settings';
@@ -239,6 +240,35 @@ function AuthForm() {
   const [fields, setFields] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState<string | null>(null);
 
+  const [resendCoolingDown, setResendCoolingDown] = useState(false);
+
+  useEffect(() => {
+    if (!resendCoolingDown) return;
+    const timer = setTimeout(() => setResendCoolingDown(false), 60_000);
+    return () => clearTimeout(timer);
+  }, [resendCoolingDown]);
+
+  async function resendConfirmation() {
+    if (busy || resendCoolingDown) return;
+    setBusy(true);
+    setError(null);
+    setFields({});
+    setNotice(null);
+    try {
+      await getAuth().resendConfirmation(email, window.location.origin);
+      setNotice('If that account needs confirmation, check your inbox for a new link.');
+      setResendCoolingDown(true);
+    } catch (err) {
+      setError(errorMessage(err));
+      if (err instanceof AuthClientError) {
+        setFields(err.fieldErrors);
+        if (err.code === 'rate_limited') setResendCoolingDown(true);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -251,11 +281,14 @@ function AuthForm() {
       if (mode === 'signin') {
         await auth.signIn({ email, password });
       } else if (mode === 'signup') {
-        const r = await auth.signUp({
-          email,
-          password,
-          displayName: displayName.trim() || undefined,
-        });
+        const r = await auth.signUp(
+          {
+            email,
+            password,
+            displayName: displayName.trim() || undefined,
+          },
+          window.location.origin,
+        );
         if (r === 'confirm_email') {
           setNotice('Check your email and click the confirmation link, then sign in.');
         }
@@ -408,6 +441,16 @@ function AuthForm() {
               </button>
             )}
           </div>
+          {mode !== 'forgot' && (
+            <button
+              type="button"
+              className="link"
+              disabled={busy || resendCoolingDown}
+              onClick={() => void resendConfirmation()}
+            >
+              {resendCoolingDown ? 'Wait a minute before resending' : 'Resend confirmation email'}
+            </button>
+          )}
         </form>
       </div>
     </div>
@@ -532,11 +575,12 @@ function Account({
       const navigation = readAppNavigation(window.location.search);
       const previous = currentNavigationRef.current;
       const leavingEditor =
-        previous.shellView === 'app' &&
-        previous.tab === 'profile' &&
-        (navigation.shellView !== 'app' ||
-          navigation.tab !== 'profile' ||
-          navigation.focusSection !== previous.focusSection);
+        (previous.shellView === 'settings' && navigation.shellView !== 'settings') ||
+        (previous.shellView === 'app' &&
+          previous.tab === 'profile' &&
+          (navigation.shellView !== 'app' ||
+            navigation.tab !== 'profile' ||
+            navigation.focusSection !== previous.focusSection));
 
       if (leavingEditor && (profileEditorDirtyRef.current || profileEditorBusyRef.current)) {
         const confirmed =
@@ -619,7 +663,7 @@ function Account({
       window.alert('Please wait for the current save or photo operation to finish.');
       return false;
     }
-    if (!(shellView === 'app' && tab === 'profile') || !profileEditorDirtyRef.current) return true;
+    if (!profileEditorDirtyRef.current) return true;
     return window.confirm(
       'You have unsaved profile changes. Leave without saving? Photo uploads and removals are saved immediately and will not be undone.',
     );
@@ -637,6 +681,7 @@ function Account({
   }
 
   function returnToApp() {
+    if (!confirmLeaveProfileEditor()) return;
     applyNavigation(lastAppNavigation.current, 'replace');
   }
 
@@ -650,20 +695,11 @@ function Account({
     applyNavigation({ shellView: 'app', tab: 'profile', focusSection: safeSection });
   }
 
-  // Keep the Messages tab badge warm even while looking at other tabs.
+  const inboxCounts = useInboxCounts(true);
   useEffect(() => {
-    const messaging = getMessagingClient();
-    const tick = () => {
-      if (document.hidden || !navigator.onLine) return;
-      return messaging
-        .listConversations()
-        .then((l) => setUnread(l.reduce((n, c) => n + c.unreadCount, 0)))
-        .catch(() => undefined);
-    };
-    void tick();
-    const t = setInterval(tick, 60_000);
-    return () => clearInterval(t);
-  }, []);
+    setUnread(inboxCounts.unread);
+    setPendingIn(inboxCounts.pending);
+  }, [inboxCounts]);
 
   // Cross-device continuity: restore intended destination after authentication
   useEffect(() => {
@@ -673,12 +709,16 @@ function Account({
     const safeNext = validateSafeRedirect(next);
     if (!safeNext) return;
 
-    const parsed = parseShareUrl(safeNext);
-    if (parsed) {
-      const targetTab: AppTab =
-        parsed.targetType === 'group' || parsed.targetType === 'event' ? 'community' : 'discover';
-      applyNavigation({ shellView: 'app', tab: targetTab, focusSection: null }, 'replace');
-    }
+    const target = new URL(safeNext, window.location.origin);
+    if (
+      target.origin !== window.location.origin ||
+      (target.pathname === '/' && target.searchParams.has('next'))
+    )
+      return;
+    const allowed =
+      /^\/(feed|discover|connections|messages|plans|profile|settings|activity|search|studio|reels|stories|music|calls|location|live|billing|post|u|share)(\/|$)/;
+    if (allowed.test(target.pathname))
+      window.location.replace(target.pathname + target.search + target.hash);
   }, []);
 
   async function signOut() {
@@ -701,100 +741,40 @@ function Account({
 
   return (
     <div className="app-wrapper">
-      {/* Top Header */}
-      <header className="app-header" role="banner">
-        <div className="app-header-inner">
-          <button
-            type="button"
-            className="brand-group brand-home-button"
-            onClick={() => navigateTab('discover')}
-            aria-label="Go to Discover"
-          >
-            <img
-              className="sidle-mark sidle-mark-header"
-              src="/brand/sidle-mark.svg"
-              alt=""
-              aria-hidden="true"
-            />
-            <div className="brand-text-wrap">
-              <span className="brand-title sidle-wordmark">sidle</span>
-              <span className="brand-tagline">People. Moments. Possibilities.</span>
-            </div>
-          </button>
-
-          {profile?.onboardingCompleted && (
-            <nav className="nav-pill-bar" aria-label="Main Navigation">
-              <button
-                role="tab"
-                aria-selected={tab === 'feed'}
-                className={`nav-pill-btn ${tab === 'feed' ? 'active' : ''}`}
-                onClick={() => navigateTab('feed')}
-              >
-                <span>▦</span>
-                <span>Feed</span>
-              </button>
-              <button
-                role="tab"
-                aria-selected={tab === 'discover'}
-                className={`nav-pill-btn ${tab === 'discover' ? 'active' : ''}`}
-                onClick={() => navigateTab('discover')}
-              >
-                <span>🧭</span>
-                <span>Discover</span>
-              </button>
-              <button
-                role="tab"
-                aria-selected={tab === 'connections'}
-                className={`nav-pill-btn nav-pill-btn-connections ${tab === 'connections' ? 'active' : ''}`}
-                onClick={() => navigateTab('connections')}
-              >
-                <span>🤝</span>
-                <span>Connections</span>
-                {pendingIn > 0 && <span className="nav-badge">{pendingIn}</span>}
-              </button>
-              <button
-                role="tab"
-                aria-selected={tab === 'messages'}
-                className={`nav-pill-btn ${tab === 'messages' ? 'active' : ''}`}
-                onClick={() => navigateTab('messages')}
-              >
-                <span>💬</span>
-                <span>Messages</span>
-                {unread > 0 && <span className="nav-badge">{unread}</span>}
-              </button>
-              <button
-                role="tab"
-                aria-selected={tab === 'community'}
-                className={`nav-pill-btn ${tab === 'community' ? 'active' : ''}`}
-                onClick={() => navigateTab('community')}
-              >
-                <span>🎈</span>
-                <span>Plans</span>
-              </button>
-              <button
-                role="tab"
-                aria-selected={tab === 'profile'}
-                className={`nav-pill-btn ${tab === 'profile' ? 'active' : ''}`}
-                onClick={() => navigateTab('profile')}
-              >
-                <span>👤</span>
-                <span>Profile</span>
-              </button>
-            </nav>
-          )}
-
-          <div className="user-bar">
-            <AccountMenu
-              displayName={profile?.displayName ?? 'Member'}
-              email={me.email}
-              onViewProfile={() => openShellView('viewProfile')}
-              onEditProfile={() => openProfileSection('profile-details')}
-              onOpenSettings={() => openShellView('settings')}
-              onSignOut={() => void signOut()}
-            />
-          </div>
-        </div>
-      </header>
+      <AppHeader
+        active={
+          shellView === 'settings' ||
+          shellView === 'notifications' ||
+          focusSection === 'privacy-settings' ||
+          focusSection === 'account-sessions' ||
+          focusSection === 'account-data'
+            ? 'settings'
+            : shellView === 'viewProfile'
+              ? 'profile'
+              : shellView === 'app'
+                ? tab
+                : undefined
+        }
+        displayName={profile?.displayName ?? 'Member'}
+        email={me.email}
+        unread={unread}
+        pending={pendingIn}
+        onSignOut={() => void signOut()}
+        onNavigate={(href) => {
+          if (href === '/settings') return openShellView('settings');
+          if (href === '/profile') return openShellView('viewProfile');
+          if (href === '/profile/edit') return openProfileSection('profile-details');
+          const destinations: Record<string, AppTab> = {
+            '/feed': 'feed',
+            '/discover': 'discover',
+            '/connections': 'connections',
+            '/messages': 'messages',
+            '/plans': 'community',
+          };
+          if (destinations[href]) return navigateTab(destinations[href]);
+          if (confirmLeaveProfileEditor()) window.location.assign(href);
+        }}
+      />
 
       {/* Main Content Area */}
       <main id="main" tabIndex={-1}>
@@ -823,6 +803,7 @@ function Account({
           />
         ) : profile && shellView === 'settings' ? (
           <SettingsOverview
+            onDirtyChange={setProfileDirty}
             me={me}
             profile={profile}
             sessions={sessions}

@@ -9,10 +9,17 @@ import { SocialContextEditor } from './social-context';
 export type MemberSettingsSection =
   'overview' | 'profile' | 'connections' | 'messaging' | 'appearance' | 'security' | 'data';
 
-export function MemberSettings({ section = 'connections' }: { section?: MemberSettingsSection }) {
+export function MemberSettings({
+  section = 'connections',
+  onDirtyChange,
+}: {
+  section?: MemberSettingsSection;
+  onDirtyChange?: (dirty: boolean, busy?: boolean) => void;
+}) {
   const [lowPressure, setLowPressure] = useState(false);
   const [prefs, setPrefs] = useState<MemberPreferences | null>(null);
   const [details, setDetails] = useState<ProfileDetails | null>(null);
+  const [savedDetails, setSavedDetails] = useState<ProfileDetails | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -26,9 +33,25 @@ export function MemberSettings({ section = 'connections' }: { section?: MemberSe
         setLowPressure(settings.lowPressureMode);
         setPrefs(preferences);
         setDetails(profile);
+        setSavedDetails(profile);
       })
       .catch((err) => setError(errorMessage(err)));
   }, []);
+  const dirty = JSON.stringify(details) !== JSON.stringify(savedDetails);
+  useEffect(() => {
+    onDirtyChange?.(dirty, busy);
+  }, [dirty, busy, onDirtyChange]);
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (dirty || busy) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty, busy]);
   async function act(work: () => Promise<unknown>) {
     setBusy(true);
     setError(null);
@@ -254,7 +277,11 @@ export function MemberSettings({ section = 'connections' }: { section?: MemberSe
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              void act(async () => setDetails(await getPlatformClient().setProfile(details)));
+              void act(async () => {
+                const saved = await getPlatformClient().setProfile(details);
+                setDetails(saved);
+                setSavedDetails(saved);
+              });
             }}
           >
             <fieldset disabled={busy} style={{ border: 0, padding: 0 }}>
@@ -305,7 +332,16 @@ export function MemberSettings({ section = 'connections' }: { section?: MemberSe
                 Handles are public within eligible profile views. Keep private addresses and
                 sensitive personal details out of your profile.
               </p>
-              <button>Save profile details</button>
+              {dirty && <p role="status">You have unsaved profile details.</p>}
+              <button disabled={!dirty}>Save profile details</button>
+              <button
+                type="button"
+                className="secondary"
+                disabled={!dirty}
+                onClick={() => setDetails(savedDetails)}
+              >
+                Discard changes
+              </button>
             </fieldset>
           </form>
         </section>

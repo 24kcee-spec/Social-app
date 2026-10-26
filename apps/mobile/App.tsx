@@ -174,6 +174,31 @@ function AuthForm() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  const [resendCoolingDown, setResendCoolingDown] = useState(false);
+
+  useEffect(() => {
+    if (!resendCoolingDown) return;
+    const timer = setTimeout(() => setResendCoolingDown(false), 60_000);
+    return () => clearTimeout(timer);
+  }, [resendCoolingDown]);
+
+  const resendConfirmation = async () => {
+    if (busy || resendCoolingDown) return;
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await auth.resendConfirmation(email, config.webUrl);
+      setNotice('If that account needs confirmation, check your inbox for a new link.');
+      setResendCoolingDown(true);
+    } catch (err) {
+      setError(errorMessage(err));
+      if (err instanceof AuthClientError && err.code === 'rate_limited') setResendCoolingDown(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const submit = async () => {
     setBusy(true);
     setError(null);
@@ -182,11 +207,14 @@ function AuthForm() {
       if (mode === 'signin') {
         await auth.signIn({ email, password });
       } else if (mode === 'signup') {
-        const r = await auth.signUp({
-          email,
-          password,
-          displayName: displayName.trim() || undefined,
-        });
+        const r = await auth.signUp(
+          {
+            email,
+            password,
+            displayName: displayName.trim() || undefined,
+          },
+          config.webUrl,
+        );
         if (r === 'confirm_email')
           setNotice('Check your email and tap the confirmation link, then sign in.');
       } else {
@@ -368,6 +396,13 @@ function AuthForm() {
           </Pressable>
         ) : null}
       </View>
+      {mode !== 'forgot' && (
+        <Button
+          label={resendCoolingDown ? 'Wait a minute before resending' : 'Resend confirmation email'}
+          disabled={busy || resendCoolingDown}
+          onPress={() => void resendConfirmation()}
+        />
+      )}
     </View>
   );
 }

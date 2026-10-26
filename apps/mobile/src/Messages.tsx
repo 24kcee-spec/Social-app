@@ -1,12 +1,29 @@
-import type { ConversationView } from "@sp/types";
-import { applyReadWatermark, mergeMessages, newClientTag, type ThreadMessage } from "@sp/profile-client";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
-import { errorMessage } from "./auth";
-import { getMessagingClient, subscribeToConversation } from "./messagingClient";
-import { getSignedMediaUrl } from "./profile";
-import { useTheme } from "./theme";
-import { Avatar, Badge, Banner, Button, EmptyState, ReportSheet } from "./ui";
+import type { ConversationView } from '@sp/types';
+import {
+  applyReadWatermark,
+  mergeMessages,
+  newClientTag,
+  type ThreadMessage,
+} from '@sp/profile-client';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  AppState,
+  ActivityIndicator,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { errorMessage } from './auth';
+import { getMessagingClient, subscribeToConversation } from './messagingClient';
+import { getSignedMediaUrl } from './profile';
+import { useTheme } from './theme';
+import { Avatar, Badge, Banner, Button, EmptyState, ReportSheet } from './ui';
 
 export function Messages({
   onUnread,
@@ -44,9 +61,11 @@ export function Messages({
           } catch {
             return null;
           }
-        })
+        }),
       );
-      setPhotos(Object.fromEntries(pairs.filter((p): p is readonly [string, string] => p !== null)));
+      setPhotos(
+        Object.fromEntries(pairs.filter((p): p is readonly [string, string] => p !== null)),
+      );
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -68,7 +87,9 @@ export function Messages({
       try {
         const conversation = await client.openConversation(openWithUserId);
         if (cancelled) return;
-        setConversations((list) => (list.some((c) => c.id === conversation.id) ? list : [conversation, ...list]));
+        setConversations((list) =>
+          list.some((c) => c.id === conversation.id) ? list : [conversation, ...list],
+        );
         setOpenId(conversation.id);
       } catch (err) {
         if (!cancelled) setError(errorMessage(err));
@@ -84,13 +105,22 @@ export function Messages({
   useEffect(() => {
     if (!openConversationId || loading) return;
     if (conversations.some((c) => c.id === openConversationId)) setOpenId(openConversationId);
-    else setError("That conversation is no longer available to this account.");
+    else setError('That conversation is no longer available to this account.');
     onPushOpened?.();
   }, [openConversationId, loading, conversations, onPushOpened]);
 
   const open = conversations.find((c) => c.id === openId) ?? null;
   if (open) {
-    return <Thread conversation={open} photo={photos[open.other.userId]} onBack={() => { setOpenId(null); void load(); }} />;
+    return (
+      <Thread
+        conversation={open}
+        photo={photos[open.other.userId]}
+        onBack={() => {
+          setOpenId(null);
+          void load();
+        }}
+      />
+    );
   }
 
   return (
@@ -118,7 +148,7 @@ export function Messages({
               <Pressable
                 key={c.id}
                 accessibilityRole="button"
-                accessibilityLabel={`Conversation with ${c.other.displayName}${hasUnread ? `, ${c.unreadCount} unread` : ""}`}
+                accessibilityLabel={`Conversation with ${c.other.displayName}${hasUnread ? `, ${c.unreadCount} unread` : ''}`}
                 onPress={() => setOpenId(c.id)}
                 style={({ pressed }) => [
                   styles.card,
@@ -137,33 +167,36 @@ export function Messages({
                   <Avatar name={c.other.displayName} url={photos[c.other.userId]} size="md" />
                   <View style={{ flex: 1, marginLeft: space[3] }}>
                     <View style={styles.convoTop}>
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flex: 1 }}>
-                        <Text style={[styles.convoName, { color: colors.text, fontSize: type.bodyStrong.size }]}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                        <Text
+                          style={[
+                            styles.convoName,
+                            { color: colors.text, fontSize: type.bodyStrong.size },
+                          ]}
+                        >
                           {c.other.displayName}
                         </Text>
-                        {c.other.verificationLevel === "student_verified" ? (
+                        {c.other.verificationLevel === 'student_verified' ? (
                           <Badge label="✓ Campus" tone="success" compact />
-                        ) : c.other.verificationLevel === "trusted" ? (
+                        ) : c.other.verificationLevel === 'trusted' ? (
                           <Badge label="✓" tone="accent" compact />
                         ) : null}
                       </View>
-                      {hasUnread ? (
-                        <Badge count={c.unreadCount} tone="accent" compact />
-                      ) : null}
+                      {hasUnread ? <Badge count={c.unreadCount} tone="accent" compact /> : null}
                     </View>
                     <Text
                       style={[
                         styles.convoPreview,
                         {
                           color: hasUnread ? colors.text : colors.textMuted,
-                          fontWeight: hasUnread ? "600" : "400",
+                          fontWeight: hasUnread ? '600' : '400',
                           fontSize: type.small.size,
                           marginTop: 2,
                         },
                       ]}
                       numberOfLines={1}
                     >
-                      {c.lastMessage ? c.lastMessage.body : "Say hello."}
+                      {c.lastMessage ? c.lastMessage.body : 'Say hello.'}
                     </Text>
                   </View>
                 </View>
@@ -191,12 +224,14 @@ function Thread({
   const [messages, setMessages] = useState<ThreadMessage[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
-  const [status, setStatus] = useState("connecting");
-  const [draft, setDraft] = useState("");
+  const [status, setStatus] = useState('connecting');
+  const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reporting, setReporting] = useState(false);
   const scroller = useRef<ScrollView>(null);
+  const followLatest = useRef(true);
+  const [newMessages, setNewMessages] = useState(false);
 
   const merge = useCallback((incoming: ThreadMessage[]) => {
     setMessages((current) => mergeMessages(current, incoming));
@@ -208,7 +243,8 @@ function Thread({
       merge(page.messages);
       setHasMore(page.hasMore);
       setNextCursor(page.nextCursor);
-      await client.markRead(conversation.id);
+      if (AppState.currentState === 'active' && followLatest.current)
+        await client.markRead(conversation.id);
     } catch {
       // transient; the next realtime resync retries
     }
@@ -220,17 +256,31 @@ function Thread({
     const sub = subscribeToConversation(conversation.id, {
       onMessage: (msg) => {
         merge([{ ...msg, read: false }]);
-        if (msg.senderId === conversation.other.userId) void client.markRead(conversation.id).catch(() => undefined);
+        if (!followLatest.current) setNewMessages(true);
+        if (
+          AppState.currentState === 'active' &&
+          followLatest.current &&
+          msg.senderId === conversation.other.userId
+        )
+          void client.markRead(conversation.id).catch(() => undefined);
       },
       onStatus: setStatus,
       onRead: (r) => {
         if (r.userId === conversation.other.userId) {
-          setMessages((current) => applyReadWatermark(current, conversation.other.userId, r.lastReadAt));
+          setMessages((current) =>
+            applyReadWatermark(current, conversation.other.userId, r.lastReadAt),
+          );
         }
       },
       onResync: () => void refetchLatest(),
     });
-    return () => sub.close();
+    const foreground = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void refetchLatest();
+    });
+    return () => {
+      sub.close();
+      foreground.remove();
+    };
   }, [conversation.id, conversation.other.userId, client, merge, refetchLatest]);
 
   async function loadOlder() {
@@ -250,10 +300,12 @@ function Thread({
     setError(null);
     try {
       merge([await client.sendMessage(conversation.id, body, tag)]);
-      setDraft("");
+      setDraft('');
     } catch (err) {
       setMessages((current) =>
-        current.map((x) => (x.clientTag === tag && x.pending ? { ...x, pending: false, failed: true } : x))
+        current.map((x) =>
+          x.clientTag === tag && x.pending ? { ...x, pending: false, failed: true } : x,
+        ),
       );
       setError(errorMessage(err));
     } finally {
@@ -270,8 +322,8 @@ function Thread({
       {
         id: `local-${tag}`,
         conversationId: conversation.id,
-        senderId: "me",
-        kind: "text",
+        senderId: 'me',
+        kind: 'text',
         body,
         clientTag: tag,
         createdAt: new Date().toISOString(),
@@ -285,8 +337,8 @@ function Thread({
   return (
     <KeyboardAvoidingView
       style={styles.threadContainer}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 88 : 0}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
     >
       {/* Thread Top Bar */}
       <View
@@ -304,18 +356,23 @@ function Thread({
         <View style={styles.topbarCenter}>
           <Avatar name={conversation.other.displayName} url={photo} size="sm" />
           <View style={{ marginLeft: 8 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <Text style={[styles.threadName, { color: colors.text, fontSize: type.small.size }]}>
                 {conversation.other.displayName}
               </Text>
-              {conversation.other.verificationLevel === "student_verified" ? (
+              {conversation.other.verificationLevel === 'student_verified' ? (
                 <Badge label="✓ Campus Verified" tone="success" compact />
-              ) : conversation.other.verificationLevel === "trusted" ? (
+              ) : conversation.other.verificationLevel === 'trusted' ? (
                 <Badge label="✓ Verified" tone="accent" compact />
               ) : null}
             </View>
-            <Text style={[styles.statusText, { color: status === "live" ? colors.success : colors.textMuted }]}>
-              {status === "live" ? "Connected" : status === "closed" ? "Offline" : "Reconnecting…"}
+            <Text
+              style={[
+                styles.statusText,
+                { color: status === 'live' ? colors.success : colors.textMuted },
+              ]}
+            >
+              {status === 'live' ? 'Connected' : status === 'closed' ? 'Offline' : 'Reconnecting…'}
             </Text>
           </View>
         </View>
@@ -332,6 +389,16 @@ function Thread({
 
       {error ? <Banner tone="error">{error}</Banner> : null}
 
+      {newMessages && (
+        <Button
+          label="New messages ↓"
+          onPress={() => {
+            followLatest.current = true;
+            setNewMessages(false);
+            scroller.current?.scrollToEnd({ animated: true });
+          }}
+        />
+      )}
       {/* Messages Scroll Area */}
       <ScrollView
         ref={scroller}
@@ -344,7 +411,15 @@ function Thread({
             padding: space[3],
           },
         ]}
-        onContentSizeChange={() => scroller.current?.scrollToEnd({ animated: false })}
+        scrollEventThrottle={100}
+        onScroll={({ nativeEvent: e }) => {
+          followLatest.current =
+            e.contentSize.height - e.contentOffset.y - e.layoutMeasurement.height < 100;
+          if (followLatest.current) setNewMessages(false);
+        }}
+        onContentSizeChange={() => {
+          if (followLatest.current) scroller.current?.scrollToEnd({ animated: false });
+        }}
       >
         {hasMore ? (
           <Button
@@ -352,7 +427,7 @@ function Thread({
             secondary
             compact
             onPress={() => void loadOlder()}
-            style={{ alignSelf: "center", marginBottom: space[3] }}
+            style={{ alignSelf: 'center', marginBottom: space[3] }}
           />
         ) : null}
 
@@ -403,11 +478,14 @@ function Thread({
                   ]}
                 >
                   {x.pending
-                    ? "Sending…"
+                    ? 'Sending…'
                     : x.failed
-                    ? "Not sent"
-                    : new Date(x.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  {!theirs && !x.pending && !x.failed && x.read ? " · Read" : ""}
+                      ? 'Not sent'
+                      : new Date(x.createdAt).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                  {!theirs && !x.pending && !x.failed && x.read ? ' · Read' : ''}
                 </Text>
 
                 {x.failed ? (
@@ -420,7 +498,9 @@ function Thread({
                     }}
                     style={{ marginTop: 4 }}
                   >
-                    <Text style={{ color: colors.onAccent, fontWeight: "700", fontSize: 13 }}>Retry</Text>
+                    <Text style={{ color: colors.onAccent, fontWeight: '700', fontSize: 13 }}>
+                      Retry
+                    </Text>
                   </Pressable>
                 ) : null}
               </View>
@@ -431,8 +511,6 @@ function Thread({
 
       {/* Message Composer */}
       <View style={[styles.composer, { marginTop: space[3] }]}>
-
-
         <TextInput
           style={[
             styles.input,
@@ -455,7 +533,7 @@ function Thread({
         />
 
         <Button
-          label={sending ? "…" : "Send"}
+          label={sending ? '…' : 'Send'}
           compact
           onPress={submit}
           disabled={sending || !draft.trim()}
@@ -489,15 +567,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   sectionTitle: {
-    fontWeight: "700",
+    fontWeight: '700',
   },
   settingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   settingName: {
-    fontWeight: "600",
+    fontWeight: '600',
     fontSize: 15,
   },
   muted: {
@@ -506,19 +584,19 @@ const styles = StyleSheet.create({
   },
   loaderWrap: {
     paddingVertical: 48,
-    alignItems: "center",
+    alignItems: 'center',
   },
   conversationRow: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   convoTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   convoName: {
-    fontWeight: "700",
+    fontWeight: '700',
   },
   convoPreview: {
     lineHeight: 18,
@@ -527,24 +605,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topbar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     borderWidth: 1,
     marginBottom: 8,
   },
   topbarCenter: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
     marginLeft: 8,
   },
   threadName: {
-    fontWeight: "700",
+    fontWeight: '700',
   },
   statusText: {
     fontSize: 11,
-    fontWeight: "500",
+    fontWeight: '500',
   },
   flagBtn: {
     padding: 6,
@@ -558,17 +636,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   bubbleRow: {
-    flexDirection: "row",
+    flexDirection: 'row',
     marginVertical: 4,
   },
   left: {
-    justifyContent: "flex-start",
+    justifyContent: 'flex-start',
   },
   right: {
-    justifyContent: "flex-end",
+    justifyContent: 'flex-end',
   },
   bubble: {
-    maxWidth: "80%",
+    maxWidth: '80%',
   },
   bubbleText: {
     lineHeight: 20,
@@ -579,19 +657,19 @@ const styles = StyleSheet.create({
   meta: {
     fontSize: 10,
     marginTop: 3,
-    alignSelf: "flex-end",
+    alignSelf: 'flex-end',
   },
   composer: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: 8,
-    alignItems: "flex-end",
+    alignItems: 'flex-end',
   },
   attachBtn: {
     width: 44,
     height: 44,
     borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   input: {
     flex: 1,

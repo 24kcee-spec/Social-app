@@ -3,24 +3,11 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { getPlatformClient } from '../lib/platform';
 import { getAuth, errorMessage, isConfigured } from '../lib/auth';
+import { getProfileClient } from '../lib/profile';
+import { getMessagingClient } from '../lib/messaging';
+import { AppHeader } from './app-header';
+import { useInboxCounts } from '../lib/use-inbox-counts';
 
-const links = [
-  ['/feed', 'Feed'],
-  ['/discover', 'Discover'],
-  ['/connections', 'Connections'],
-  ['/messages', 'Messages'],
-  ['/reels', 'Reels'],
-  ['/stories', 'Stories'],
-  ['/music', 'Music'],
-  ['/plans', 'Plans'],
-  ['/activity', 'Activity'],
-  ['/calls', 'Calls'],
-  ['/location', 'Location'],
-  ['/live', 'Live'],
-  ['/studio', 'Create'],
-  ['/search', 'Search'],
-  ['/profile', 'Profile'],
-];
 export function PlatformShell({
   title,
   description,
@@ -32,11 +19,17 @@ export function PlatformShell({
   children: ReactNode;
   publicPage?: boolean;
 }) {
+  const [identity, setIdentity] = useState<{ displayName: string; email: string | null } | null>(
+    null,
+  );
+  const [activeDestination, setActiveDestination] = useState('');
   const [ready, setReady] = useState(publicPage);
   const [error, setError] = useState<string | null>(null);
   const [signedOut, setSignedOut] = useState(false);
   useEffect(() => {
     let active = true;
+    const path = window.location.pathname.split('/')[1] ?? '';
+    setActiveDestination(path === 'plans' ? 'community' : path);
     if (publicPage) return;
     if (!isConfigured()) {
       setSignedOut(true);
@@ -49,7 +42,14 @@ export function PlatformShell({
           if (active) setSignedOut(true);
           return;
         }
-        await getAuth().fetchMe();
+        const user = await getAuth().fetchMe();
+        if (active) setIdentity({ displayName: 'Member', email: user.email });
+        void getProfileClient()
+          .getProfile()
+          .then((profile) => {
+            if (active) setIdentity({ displayName: profile.displayName, email: user.email });
+          })
+          .catch(() => undefined);
         if (active) {
           setReady(true);
           void getPlatformClient()
@@ -64,64 +64,59 @@ export function PlatformShell({
       active = false;
     };
   }, [publicPage]);
+  const counts = useInboxCounts(ready && !publicPage);
   return (
-    <main id="main" tabIndex={-1} className="platform-page">
-      <header className="platform-header">
-        <a className="platform-wordmark" href="/feed">
-          sidle<span>People. Moments. Possibilities.</span>
-        </a>
-        <div className="platform-header-actions">
-          <a href="/studio" className="secondary compact">
-            ＋ Create
-          </a>
-          <a href="/settings" className="secondary compact">
-            Settings
-          </a>
+    <div className="app-wrapper">
+      <AppHeader
+        active={activeDestination}
+        displayName={identity?.displayName}
+        email={identity?.email}
+        unread={counts.unread}
+        pending={counts.pending}
+        onSignOut={() => {
+          void getAuth()
+            .signOut()
+            .then(() => window.location.assign('/'));
+        }}
+      />
+      <main id="main" tabIndex={-1} className="platform-page">
+        <div className="platform-page-heading">
+          <div>
+            <span className="eyebrow">SIDLE</span>
+            <h1>{title}</h1>
+            {description && <p className="muted">{description}</p>}
+          </div>
         </div>
-      </header>
-      <nav className="platform-navigation" aria-label="Sidle destinations">
-        {links.map(([href, label]) => (
-          <a key={href} href={href}>
-            {label}
-          </a>
-        ))}
-      </nav>
-      <div className="platform-page-heading">
-        <div>
-          <span className="eyebrow">SIDLE</span>
-          <h1>{title}</h1>
-          {description && <p className="muted">{description}</p>}
-        </div>
-      </div>
-      {signedOut ? (
-        <section className="empty-state-card">
-          <h2>Join the conversation</h2>
-          <p>Sign in to publish, follow people and explore Sidle.</p>
-          <a
-            className="secondary"
-            href={`/?next=${encodeURIComponent(typeof window === 'undefined' ? '/feed' : window.location.pathname)}`}
-          >
-            Sign in or create an account
-          </a>
-        </section>
-      ) : error ? (
-        <section className="notice err" role="alert">
-          <p>{error}</p>
-          <button onClick={() => window.location.reload()}>Try again</button>
-        </section>
-      ) : !ready ? (
-        <section className="empty-state-card" aria-busy="true">
-          <p>Opening your account… The service may take a moment to wake.</p>
-        </section>
-      ) : (
-        children
-      )}
-      <footer className="platform-footer">
-        <a href="/help">Help & feedback</a>
-        <a href="/privacy">Privacy</a>
-        <a href="/community-guidelines">Community rules</a>
-        <a href="/billing">Billing & ads</a>
-      </footer>
-    </main>
+        {signedOut ? (
+          <section className="empty-state-card">
+            <h2>Join the conversation</h2>
+            <p>Sign in to publish, follow people and explore Sidle.</p>
+            <a
+              className="secondary"
+              href={`/?next=${encodeURIComponent(typeof window === 'undefined' ? '/feed' : window.location.pathname)}`}
+            >
+              Sign in or create an account
+            </a>
+          </section>
+        ) : error ? (
+          <section className="notice err" role="alert">
+            <p>{error}</p>
+            <button onClick={() => window.location.reload()}>Try again</button>
+          </section>
+        ) : !ready ? (
+          <section className="empty-state-card" aria-busy="true">
+            <p>Opening your account… The service may take a moment to wake.</p>
+          </section>
+        ) : (
+          children
+        )}
+        <footer className="platform-footer">
+          <a href="/help">Help & feedback</a>
+          <a href="/privacy">Privacy</a>
+          <a href="/community-guidelines">Community rules</a>
+          <a href="/billing">Billing & ads</a>
+        </footer>
+      </main>
+    </div>
   );
 }

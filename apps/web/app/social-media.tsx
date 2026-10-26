@@ -16,6 +16,9 @@ export function SocialMedia({
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState(false);
   const [retry, setRetry] = useState(0);
+  const issuedAt = useRef(0);
+  const automaticRetry = useRef(false);
+  const playback = useRef({ at: 0, playing: false });
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
   useEffect(() => {
@@ -41,7 +44,10 @@ export function SocialMedia({
     setError(false);
     void mediaUrl(asset.path, Math.max(1, Math.min(60, remaining)))
       .then((value) => {
-        if (alive) setUrl(value);
+        if (alive) {
+          issuedAt.current = Date.now();
+          setUrl(value);
+        }
       })
       .catch(() => {
         if (alive) setError(true);
@@ -50,12 +56,33 @@ export function SocialMedia({
       alive = false;
     };
   }, [asset.path, visible, expiresAt, retry]);
+  function renew(event: React.SyntheticEvent<HTMLMediaElement>) {
+    playback.current = {
+      at: event.currentTarget.currentTime,
+      playing: !event.currentTarget.paused,
+    };
+    if (!automaticRetry.current) {
+      automaticRetry.current = true;
+      setRetry((value) => value + 1);
+    } else setError(true);
+  }
+  function restore(event: React.SyntheticEvent<HTMLMediaElement>) {
+    automaticRetry.current = false;
+    if (playback.current.at > 0) event.currentTarget.currentTime = playback.current.at;
+    if (playback.current.playing) void event.currentTarget.play().catch(() => undefined);
+  }
   return (
     <div ref={ref} className={`social-media ${vertical ? 'social-media-vertical' : ''}`}>
       {error ? (
         <div className="media-unavailable">
           <p>Media unavailable or link expired.</p>
-          <button className="secondary compact" onClick={() => setRetry((value) => value + 1)}>
+          <button
+            className="secondary compact"
+            onClick={() => {
+              automaticRetry.current = false;
+              setRetry((value) => value + 1);
+            }}
+          >
             Reload media
           </button>
         </div>
@@ -71,7 +98,11 @@ export function SocialMedia({
           controls
           playsInline
           preload="metadata"
-          onError={() => setError(true)}
+          onError={renew}
+          onLoadedMetadata={restore}
+          onSeeking={(event) => {
+            if (Date.now() - issuedAt.current > 50_000) renew(event);
+          }}
           onPlay={(event) => {
             document.querySelectorAll('video,audio').forEach((element) => {
               if (element !== event.currentTarget) (element as HTMLMediaElement).pause();
@@ -83,8 +114,13 @@ export function SocialMedia({
           src={url}
           controls
           preload="none"
-          onError={() => setError(true)}
+          onError={renew}
+          onLoadedMetadata={restore}
           onPlay={(event) => {
+            if (Date.now() - issuedAt.current > 50_000) {
+              renew(event);
+              return;
+            }
             document.querySelectorAll('video,audio').forEach((element) => {
               if (element !== event.currentTarget) (element as HTMLMediaElement).pause();
             });

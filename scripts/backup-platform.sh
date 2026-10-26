@@ -13,10 +13,11 @@ if [[ -n "${DATABASE_CA_CERT_PATH:-}" ]]; then export PGSSLROOTCERT="$DATABASE_C
 stamp=$(date -u +%Y%m%dT%H%M%SZ)
 temporary=$(mktemp "$BACKUP_DIRECTORY/.sidle-backup.XXXXXX")
 trap 'rm -f -- "$temporary"' EXIT
-pg_dump --format=custom --no-owner --no-acl --schema=public --schema=app_private --schema=auth --schema=storage | age -r "$BACKUP_AGE_RECIPIENT" > "$temporary"
+pg_dump --format=custom --no-owner --schema=public --schema=app_private --schema=auth --schema=storage | age -r "$BACKUP_AGE_RECIPIENT" > "$temporary"
 target="$BACKUP_DIRECTORY/sidle-$stamp.dump.age"
 [[ ! -e "$target" ]]
-mv -- "$temporary" "$target"
-sha256sum "$target" > "$target.sha256"
+ln -- "$temporary" "$target"
+rm -- "$temporary"
+(cd -- "$(dirname -- "$target")" && sha256sum -- "$(basename -- "$target")" > "$(basename -- "$target").sha256")
 printf 'Encrypted database archive created: %s\n' "$target"
 printf 'Storage metadata is included; object bytes and provider secrets need separate encrypted backups.\n'

@@ -281,6 +281,23 @@ export function createPlatformClient(config: ProductClientConfig) {
     exportAccount: () => call<Record<string, unknown>>('account.export'),
     getMessageDetails: (ids: string[]) =>
       call<RichMessage[]>('messages.details', { ids: ids.slice(0, 100) }),
+    lookupMessage: (conversationId: string, id: string) =>
+      call<import('@sp/types').MessageView>('messages.lookup', { conversationId, id }),
+    conversationTools: (
+      conversationId: string,
+      mode: 'search' | 'media',
+      query = '',
+      before?: { beforeAt: string; beforeId: string },
+    ) =>
+      call<{
+        items: {
+          id: string;
+          senderId: string;
+          body: string;
+          createdAt: string;
+          asset: SocialAsset | null;
+        }[];
+      }>(`messages.${mode}`, { conversationId, query, ...before }),
     sendRichMessage: (input: {
       conversationId: string;
       clientId: string;

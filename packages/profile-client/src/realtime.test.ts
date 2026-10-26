@@ -1,7 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
-import { subscribeToConversationMessages, type RealtimeChannelLike } from "./realtime";
+import { describe, expect, it, vi } from 'vitest';
+import { subscribeToConversationMessages, type RealtimeChannelLike } from './realtime';
 
-const CONV = "c0000000-0000-4000-8000-000000000000";
+const CONV = 'c0000000-0000-4000-8000-000000000000';
 
 type PayloadCb = (payload: { new: Record<string, unknown> }) => void;
 type StatusCb = (status: string, err?: Error) => void;
@@ -10,16 +10,17 @@ type StatusCb = (status: string, err?: Error) => void;
 class FakeChannel implements RealtimeChannelLike {
   payloadCb: PayloadCb | null = null;
   readCb: PayloadCb | null = null;
+  changeCb: PayloadCb | null = null;
   statusCb: StatusCb | null = null;
   filter: Record<string, unknown> | null = null;
   unsubscribed = false;
-  on(_type: "postgres_changes", filter: Record<string, unknown>, cb: PayloadCb) {
-    if (filter.table === "conversation_members") {
+  on(_type: 'postgres_changes', filter: Record<string, unknown>, cb: PayloadCb) {
+    if (filter.table === 'conversation_members') {
       this.readCb = cb;
-    } else {
+    } else if (filter.table === 'messages') {
       this.filter = filter;
       this.payloadCb = cb;
-    }
+    } else if (filter.table === 'conversation_changes') this.changeCb = cb;
     return this;
   }
   subscribe(cb?: StatusCb) {
@@ -41,7 +42,15 @@ class FakeChannel implements RealtimeChannelLike {
 }
 
 function row(id: string, body: string, conversationId = CONV) {
-  return { id, conversation_id: conversationId, sender_id: "u1", kind: "text", body, client_tag: "t-" + id, created_at: "2026-10-12 12:00:00+00" };
+  return {
+    id,
+    conversation_id: conversationId,
+    sender_id: 'u1',
+    kind: 'text',
+    body,
+    client_tag: 't-' + id,
+    created_at: '2026-10-12 12:00:00+00',
+  };
 }
 
 function setup(opts: { retryDelaysMs?: number[] } = {}) {
@@ -50,88 +59,130 @@ function setup(opts: { retryDelaysMs?: number[] } = {}) {
   const messages: { id: string; body: string; conversationId: string }[] = [];
   const statuses: string[] = [];
   const resyncs: number[] = [];
-  const sub = subscribeToConversationMessages(() => {
-    const ch = new FakeChannel();
-    channels.push(ch);
-    return ch;
-  }, {
-    conversationId: CONV,
-    onMessage: (m) => messages.push(m),
-    onStatus: (s) => statuses.push(s),
-    onResync: () => resyncs.push(1),
-    retryDelaysMs: opts.retryDelaysMs,
-    setTimeoutImpl: (fn, ms) => { timers.push({ fn, ms }); return timers.length; },
-    clearTimeoutImpl: () => { timers.length = 0; },
-  });
+  const sub = subscribeToConversationMessages(
+    () => {
+      const ch = new FakeChannel();
+      channels.push(ch);
+      return ch;
+    },
+    {
+      conversationId: CONV,
+      onMessage: (m) => messages.push(m),
+      onStatus: (s) => statuses.push(s),
+      onResync: () => resyncs.push(1),
+      retryDelaysMs: opts.retryDelaysMs,
+      setTimeoutImpl: (fn, ms) => {
+        timers.push({ fn, ms });
+        return timers.length;
+      },
+      clearTimeoutImpl: () => {
+        timers.length = 0;
+      },
+    },
+  );
   return { sub, channels, timers, messages, statuses, resyncs };
 }
 
-describe("subscribeToConversationMessages", () => {
-  it("delivers new messages for this conversation and goes live", () => {
+describe('subscribeToConversationMessages', () => {
+  it('invalidates only the subscribed conversation and stops after close', () => {
+    const channel = new FakeChannel();
+    const changes = vi.fn();
+    const sub = subscribeToConversationMessages(() => channel, {
+      conversationId: CONV,
+      onMessage: () => {},
+      onChange: changes,
+    });
+    channel.changeCb?.({ new: { conversation_id: 'outsider' } });
+    expect(changes).not.toHaveBeenCalled();
+    channel.changeCb?.({ new: { conversation_id: CONV } });
+    expect(changes).toHaveBeenCalledTimes(1);
+    sub.close();
+    channel.changeCb?.({ new: { conversation_id: CONV } });
+    expect(changes).toHaveBeenCalledTimes(1);
+  });
+  it('delivers new messages for this conversation and goes live', () => {
     const { channels, messages, statuses, resyncs } = setup();
     const ch = channels[0]!;
-    expect(ch.filter).toMatchObject({ event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${CONV}` });
-    ch.status("SUBSCRIBED");
-    ch.emit(row("m1", "hi"));
-    expect(messages.map((m) => m.body)).toEqual(["hi"]);
-    expect(statuses).toEqual(["connecting", "live"]);
+    expect(ch.filter).toMatchObject({
+      event: 'INSERT',
+      schema: 'public',
+      table: 'messages',
+      filter: `conversation_id=eq.${CONV}`,
+    });
+    ch.status('SUBSCRIBED');
+    ch.emit(row('m1', 'hi'));
+    expect(messages.map((m) => m.body)).toEqual(['hi']);
+    expect(statuses).toEqual(['connecting', 'live']);
     expect(resyncs).toHaveLength(1); // gap-fill on first subscribe
   });
 
-  it("ignores duplicates and messages from other conversations", () => {
+  it('ignores duplicates and messages from other conversations', () => {
     const { channels, messages } = setup();
     const ch = channels[0]!;
-    ch.status("SUBSCRIBED");
-    ch.emit(row("m1", "hi"));
-    ch.emit(row("m1", "hi")); // realtime re-delivery / multi-tab overlap
-    ch.emit(row("m2", "stranger", "c9999999-0000-4000-8000-000000000000"));
-    expect(messages.map((m) => m.id)).toEqual(["m1"]);
+    ch.status('SUBSCRIBED');
+    ch.emit(row('m1', 'hi'));
+    ch.emit(row('m1', 'hi')); // realtime re-delivery / multi-tab overlap
+    ch.emit(row('m2', 'stranger', 'c9999999-0000-4000-8000-000000000000'));
+    expect(messages.map((m) => m.id)).toEqual(['m1']);
   });
 
-  it("resubscribes with backoff after a drop and gap-fills again", () => {
+  it('resubscribes with backoff after a drop and gap-fills again', () => {
     const { channels, timers, statuses, resyncs } = setup({ retryDelaysMs: [1000, 2000] });
     const first = channels[0]!;
-    first.status("SUBSCRIBED");
-    first.status("TIMED_OUT");
+    first.status('SUBSCRIBED');
+    first.status('TIMED_OUT');
     expect(timers).toHaveLength(1);
     expect(timers[0]!.ms).toBe(1000);
     timers[0]!.fn();
     expect(first.unsubscribed).toBe(true);
     expect(channels).toHaveLength(2);
     const second = channels[1]!;
-    second.status("CHANNEL_ERROR");
+    second.status('CHANNEL_ERROR');
     expect(timers[1]!.ms).toBe(2000);
     timers[1]!.fn();
     expect(channels).toHaveLength(3);
-    channels[2]!.status("SUBSCRIBED");
+    channels[2]!.status('SUBSCRIBED');
     expect(resyncs).toHaveLength(2); // gap-fill after every reconnect
-    expect(statuses.filter((s) => s === "reconnecting").length).toBeGreaterThan(0);
-    expect(statuses[statuses.length - 1]).toBe("live");
+    expect(statuses.filter((s) => s === 'reconnecting').length).toBeGreaterThan(0);
+    expect(statuses[statuses.length - 1]).toBe('live');
   });
 
-  it("close() stops everything: no retry, no late messages", () => {
+  it('close() stops everything: no retry, no late messages', () => {
     const { sub, channels, timers, messages, statuses } = setup();
     const ch = channels[0]!;
-    ch.status("CLOSED");
+    ch.status('CLOSED');
     sub.close();
     expect(timers).toHaveLength(0);
     expect(ch.unsubscribed).toBe(true);
-    ch.emit(row("m9", "late"));
+    ch.emit(row('m9', 'late'));
     expect(messages).toHaveLength(0);
-    expect(statuses[statuses.length - 1]).toBe("closed");
+    expect(statuses[statuses.length - 1]).toBe('closed');
   });
 
   it("reports the other person's read watermark live, only for this conversation, and ignores junk", () => {
     const receipts: { userId: string; lastReadAt: string }[] = [];
     const channels: FakeChannel[] = [];
-    subscribeToConversationMessages(() => { const ch = new FakeChannel(); channels.push(ch); return ch; }, {
-      conversationId: CONV, onMessage: () => {}, onRead: (r) => receipts.push(r),
-    });
+    subscribeToConversationMessages(
+      () => {
+        const ch = new FakeChannel();
+        channels.push(ch);
+        return ch;
+      },
+      {
+        conversationId: CONV,
+        onMessage: () => {},
+        onRead: (r) => receipts.push(r),
+      },
+    );
     const ch = channels[0]!;
-    ch.emitRead({ conversation_id: CONV, user_id: "u2", last_read_at: "2026-10-12 12:05:00+00" });
-    ch.emitRead({ conversation_id: "c9999999-0000-4000-8000-000000000000", user_id: "u2", last_read_at: "2026-10-12 12:06:00+00" });
-    ch.emitRead({ conversation_id: CONV, user_id: "u2", last_read_at: "not a date" });
-    ch.emitRead({ conversation_id: CONV, last_read_at: "2026-10-12 12:07:00+00" });
-    expect(receipts).toEqual([{ userId: "u2", lastReadAt: "2026-10-12T12:05:00.000Z" }]);
+    ch.emitRead({ conversation_id: CONV, user_id: 'u2', last_read_at: '2026-10-12 12:05:00+00' });
+    ch.emitRead({
+      conversation_id: 'c9999999-0000-4000-8000-000000000000',
+      user_id: 'u2',
+      last_read_at: '2026-10-12 12:06:00+00',
+    });
+    ch.emitRead({ conversation_id: CONV, user_id: 'u2', last_read_at: 'not a date' });
+    ch.emitRead({ conversation_id: CONV, last_read_at: '2026-10-12 12:07:00+00' });
+    expect(receipts).toEqual([{ userId: 'u2', lastReadAt: '2026-10-12T12:05:00.000Z' }]);
   });
 });

@@ -112,8 +112,8 @@ function Billing() {
           </p>
           {cap && !cap.payments && (
             <p className="provider-status">
-              Checkout is awaiting payment-provider configuration and an eligible commercial hosting
-              plan. No payment is taken from this screen until setup is complete.
+              Payments are not available yet. You will see the price and currency before confirming
+              any future purchase.
             </p>
           )}
           <div className="card-actions">

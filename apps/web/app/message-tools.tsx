@@ -3,7 +3,10 @@ import { useEffect, useRef, useState } from 'react';
 import type { RichMessage } from '@sp/profile-client';
 import { getPlatformClient } from '../lib/platform';
 import { uploadSocialMedia, SOCIAL_MEDIA_TYPES, supportedRecordingMime } from '../lib/media-upload';
-import { errorMessage } from '../lib/auth';
+import { errorMessage, getAuth } from '../lib/auth';
+import { readOutgoing, saveOutgoing, type OutgoingMessage } from '../lib/chat-state';
+import { attachmentDraft } from '../lib/chat-attachments';
+import { confirmAction } from '../lib/confirm-action';
 import { SocialMedia } from './social-media';
 import { UiIcon } from './ui-icon';
 
@@ -129,8 +132,11 @@ export function MessageDetails({
                 disabled={busy}
                 onClick={() => {
                   if (menu.current) menu.current.open = false;
-                  if (window.confirm('Remove this message for everyone?'))
-                    void act(() => getPlatformClient().deleteMessage(message.id));
+                  void confirmAction('Remove this message for everyone?', 'Remove message').then(
+                    (confirmed) => {
+                      if (confirmed) void act(() => getPlatformClient().deleteMessage(message.id));
+                    },
+                  );
                 }}
               >
                 <UiIcon name="trash" size={16} />
@@ -173,13 +179,23 @@ export function RichComposer({
   replyTo,
   onCancelReply,
   onSent,
+  onOutgoing,
 }: {
   conversationId: string;
   replyTo: { id: string; body: string } | null;
   onCancelReply: () => void;
   onSent: () => Promise<void>;
+  onOutgoing: (item: OutgoingMessage | null) => void;
 }) {
   const [text, setText] = useState('');
+  const [owner, setOwner] = useState('');
+  const [attachmentsReady, setAttachmentsReady] = useState(false);
+  const [queued, setQueued] = useState<OutgoingMessage | null>(null);
+  const queuedRef = useRef<OutgoingMessage | null>(null);
+  const onOutgoingRef = useRef(onOutgoing);
+  onOutgoingRef.current = onOutgoing;
+  const cancelledRecording = useRef(false);
+  const tick = useRef<ReturnType<typeof setInterval> | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [voice, setVoice] = useState(false);
   const [seconds, setSeconds] = useState(0);
@@ -222,28 +238,72 @@ export function RichComposer({
     document.addEventListener('pointerdown', close);
     return () => document.removeEventListener('pointerdown', close);
   }, [attachmentMenu]);
-  const key = `sidle-rich-draft:${conversationId}`;
+  const key = `sidle-rich-draft:${owner}:${conversationId}`;
   useEffect(() => {
-    tag.current = crypto.randomUUID();
+    let active = true;
+    void getAuth()
+      .getSupabaseClient()
+      .auth.getSession()
+      .then(async ({ data }) => {
+        const user = data.session?.user.id;
+        if (!user || !active) return;
+        setOwner(user);
+        const pending = readOutgoing(sessionStorage, user, conversationId);
+        if (pending) {
+          const failed = { ...pending, failed: true };
+          queuedRef.current = failed;
+          setQueued(failed);
+          tag.current = failed.clientId;
+          onOutgoingRef.current(failed);
+        }
+        const saved = await attachmentDraft(`${user}:${conversationId}`).catch(() => null);
+        if (active) {
+          if (saved) {
+            setFile(saved.file);
+            setVoice(saved.voice);
+            setSeconds(saved.seconds);
+            setRights(saved.rights);
+          }
+          setAttachmentsReady(true);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [conversationId]);
+  useEffect(() => {
+    if (owner && attachmentsReady)
+      void attachmentDraft(
+        `${owner}:${conversationId}`,
+        file ? { file, voice, seconds, rights } : null,
+      ).catch(() => undefined);
+  }, [owner, conversationId, file, voice, seconds, rights, attachmentsReady]);
+  useEffect(() => {
+    if (!queuedRef.current) tag.current = crypto.randomUUID();
   }, [replyTo?.id]);
   useEffect(() => {
+    if (!owner) return;
     try {
       setText(sessionStorage.getItem(key) ?? '');
     } catch {}
     return () => {
       if (timer.current) clearTimeout(timer.current);
+      if (tick.current) clearInterval(tick.current);
       if (recorder.current?.state === 'recording') recorder.current.stop();
       stream.current?.getTracks().forEach((track) => track.stop());
     };
-  }, [key]);
+  }, [key, owner]);
   useEffect(() => {
+    if (!owner) return;
     try {
       if (text) sessionStorage.setItem(key, text);
       else sessionStorage.removeItem(key);
     } catch {}
-  }, [text, key]);
+  }, [text, key, owner]);
   async function record() {
     if (busy || recording || recordStarting) return;
+    cancelledRecording.current = false;
+    setSeconds(0);
     setRecordStarting(true);
     tag.current = crypto.randomUUID();
     setError(null);
@@ -268,7 +328,12 @@ export function RichComposer({
       instance.onstop = () => {
         stream.current?.getTracks().forEach((track) => track.stop());
         if (timer.current) clearTimeout(timer.current);
+        if (tick.current) clearInterval(tick.current);
         if (!mounted.current) return;
+        if (cancelledRecording.current) {
+          setRecording(false);
+          return;
+        }
         setRecording(false);
         setSeconds(Math.max(1, Math.ceil((Date.now() - started) / 1000)));
         const type = mime.split(';')[0]!;
@@ -283,6 +348,7 @@ export function RichComposer({
         setRights(true);
       };
       instance.start(1000);
+      tick.current = setInterval(() => setSeconds(Math.floor((Date.now() - started) / 1000)), 1000);
       setRecording(true);
       timer.current = setTimeout(() => instance.state === 'recording' && instance.stop(), 119000);
     } catch (err) {
@@ -293,12 +359,33 @@ export function RichComposer({
     }
   }
   async function send() {
-    if (busy || recording || recordStarting || (!text.trim() && !file)) return;
+    if (
+      !owner ||
+      busy ||
+      recording ||
+      recordStarting ||
+      (!queuedRef.current && !text.trim() && !file)
+    )
+      return;
     setBusy(true);
     setError(null);
+    let outgoing: OutgoingMessage = queuedRef.current ?? {
+      conversationId,
+      clientId: tag.current,
+      body: text.trim(),
+      replyTo: replyTo?.id,
+      createdAt: new Date().toISOString(),
+      senderId: owner,
+    };
+    outgoing = { ...outgoing, failed: false };
+    tag.current = outgoing.clientId;
+    queuedRef.current = outgoing;
+    setQueued(outgoing);
+    saveOutgoing(sessionStorage, owner, conversationId, outgoing);
+    onOutgoingRef.current(outgoing);
     try {
-      let assetId: string | undefined;
-      if (file) {
+      let assetId = outgoing.assetId;
+      if (file && !assetId) {
         if (!rights) throw new Error('Confirm that you can share this attachment.');
         if (uploaded.current?.file === file) assetId = uploaded.current.id;
         else {
@@ -312,14 +399,21 @@ export function RichComposer({
           assetId = asset.id;
         }
       }
+      outgoing = { ...outgoing, assetId };
+      queuedRef.current = outgoing;
+      saveOutgoing(sessionStorage, owner, conversationId, outgoing);
       setNotice('Sending…');
       await getPlatformClient().sendRichMessage({
         conversationId,
         clientId: tag.current,
-        body: text.trim(),
-        assetId,
-        replyTo: replyTo?.id,
+        body: outgoing.body,
+        assetId: outgoing.assetId,
+        replyTo: outgoing.replyTo,
       });
+      saveOutgoing(sessionStorage, owner, conversationId, null);
+      queuedRef.current = null;
+      setQueued(null);
+      await attachmentDraft(`${owner}:${conversationId}`, null).catch(() => undefined);
       tag.current = crypto.randomUUID();
       setText('');
       setFile(null);
@@ -328,13 +422,26 @@ export function RichComposer({
       uploaded.current = null;
       setNotice('');
       onCancelReply();
+      onOutgoingRef.current(null);
       await onSent().catch(() => setNotice('Message sent. Refresh the conversation to load it.'));
     } catch (err) {
+      const failed = { ...outgoing, failed: true };
+      queuedRef.current = failed;
+      setQueued(failed);
+      saveOutgoing(sessionStorage, owner, conversationId, failed);
+      onOutgoingRef.current(failed);
       setError(errorMessage(err));
     } finally {
       setBusy(false);
     }
   }
+  useEffect(() => {
+    const retry = () => {
+      if (queuedRef.current) void send();
+    };
+    window.addEventListener('sidle:retry-message', retry);
+    return () => window.removeEventListener('sidle:retry-message', retry);
+  });
   function chooseAttachment(accept: string) {
     setAttachmentMenu(false);
     if (picker.current) {
@@ -394,7 +501,7 @@ export function RichComposer({
             <button
               type="button"
               className="icon-control"
-              disabled={busy}
+              disabled={busy || !!queued}
               aria-label="Remove attachment"
               onClick={() => {
                 setFile(null);
@@ -407,6 +514,9 @@ export function RichComposer({
               <UiIcon name="close" size={17} />
             </button>
           </div>
+        )}
+        {file && voice && preview && (
+          <audio src={preview} controls preload="metadata" aria-label="Preview voice message" />
         )}
         {file && !voice && (
           <label className="attachment-permission">
@@ -437,7 +547,7 @@ export function RichComposer({
               title="Add attachment"
               aria-expanded={attachmentMenu}
               aria-controls="attachment-options"
-              disabled={busy || recording || recordStarting}
+              disabled={busy || !!queued || recording || recordStarting}
               onClick={() => setAttachmentMenu(!attachmentMenu)}
             >
               <UiIcon name="clip" size={22} />
@@ -487,11 +597,26 @@ export function RichComposer({
             type="file"
             aria-label="Choose an attachment"
             accept={SOCIAL_MEDIA_TYPES.join(',')}
-            disabled={busy || recording || recordStarting}
+            disabled={busy || !!queued || recording || recordStarting}
             onChange={(event) => {
               const chosen = event.target.files?.[0];
               event.currentTarget.value = '';
               if (!chosen) return;
+              const maxBytes = chosen.type.startsWith('video/')
+                ? 20 * 1024 * 1024
+                : chosen.type.startsWith('image/')
+                  ? 5 * 1024 * 1024
+                  : 10 * 1024 * 1024;
+              if (
+                !SOCIAL_MEDIA_TYPES.includes(chosen.type) ||
+                chosen.size < 1 ||
+                chosen.size > maxBytes
+              ) {
+                setError(
+                  'Choose a supported photo up to 5 MB, video up to 20 MB or audio up to 10 MB.',
+                );
+                return;
+              }
               setFile(chosen);
               tag.current = crypto.randomUUID();
               uploaded.current = null;
@@ -507,7 +632,7 @@ export function RichComposer({
             id="rich-message-text"
             value={text}
             maxLength={2000}
-            disabled={busy}
+            disabled={busy || !!queued}
             rows={1}
             placeholder="Message…"
             onChange={(event) => {
@@ -534,7 +659,7 @@ export function RichComposer({
             className={`icon-control composer-mic ${recording ? 'recording' : ''}`}
             aria-label={recording ? 'Stop recording' : 'Record voice'}
             title={recording ? 'Stop recording' : 'Record voice'}
-            disabled={busy || recordStarting}
+            disabled={busy || !!queued || recordStarting}
             onClick={() => (recording ? recorder.current?.stop() : void record())}
           >
             {recording ? (
@@ -556,10 +681,50 @@ export function RichComposer({
         {recording && (
           <p className="recording-status" role="status">
             <span />
-            Recording voice message. Tap stop when you are done.
+            Recording {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}
+            <button
+              type="button"
+              className="link"
+              onClick={() => {
+                cancelledRecording.current = true;
+                recorder.current?.stop();
+              }}
+            >
+              Cancel recording
+            </button>
           </p>
         )}
         {recordStarting && <p role="status">Waiting for microphone permission…</p>}
+        {queued?.failed && (
+          <div className="outbox-recovery" role="status">
+            <span>This send is not confirmed. Retry uses the same ID to prevent duplicates.</span>
+            <button type="button" disabled={busy} onClick={() => void send()}>
+              Retry message
+            </button>
+            <button
+              type="button"
+              className="link"
+              disabled={busy}
+              onClick={() => {
+                if (
+                  !window.confirm(
+                    'Clear this pending send? A message already received by the server cannot be unsent here.',
+                  )
+                )
+                  return;
+                saveOutgoing(sessionStorage, owner, conversationId, null);
+                queuedRef.current = null;
+                setQueued(null);
+                window.dispatchEvent(
+                  new CustomEvent('sidle:discard-outgoing', { detail: tag.current }),
+                );
+                tag.current = crypto.randomUUID();
+              }}
+            >
+              Clear pending send
+            </button>
+          </div>
+        )}
         {notice && <p role="status">{notice}</p>}
         {error && (
           <p role="alert" className="notice err">

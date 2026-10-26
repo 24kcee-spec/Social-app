@@ -29,4 +29,14 @@ jobs:
       - run: pnpm --filter @sp/mobile run config:check
       - run: pnpm --filter @sp/mobile exec expo config --type public
       - run: pnpm verify
-      - run: pnpm --filter @sp/web build
+      - run: python3 -m unittest discover -s scripts/tests -v
+      - run: pnpm --filter @sp/web exec playwright install --with-deps chromium
+      - run: pnpm --filter @sp/web test:browser
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-failure-evidence
+          path: |
+            apps/web/playwright-report/
+            apps/web/test-results/
+          retention-days: 7

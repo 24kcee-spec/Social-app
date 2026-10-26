@@ -8,6 +8,7 @@ import { UiIcon } from './ui-icon';
 export type ThemePreference = 'system' | 'light' | 'dark';
 
 interface SettingsOverviewProps {
+  onDirtyChange: (dirty: boolean, busy?: boolean) => void;
   me: Me;
   profile?: Profile | null;
   sessions: DeviceSession[];
@@ -29,6 +30,7 @@ const THEMES: { value: ThemePreference; label: string; icon: string; description
 ];
 
 export function SettingsOverview({
+  onDirtyChange,
   me,
   profile,
   sessions,
@@ -43,10 +45,35 @@ export function SettingsOverview({
   onVerifyStudent,
 }: SettingsOverviewProps) {
   const [section, setSection] = useState<MemberSettingsSection>('overview');
+  const [search, setSearch] = useState('');
   useEffect(() => {
-    const requested = new URLSearchParams(window.location.search).get('section');
-    if (requested === 'profile') setSection('profile');
+    const restore = () => {
+      const params = new URLSearchParams(window.location.search);
+      const requested = params.get('settingsSection') ?? params.get('section');
+      setSection(
+        [
+          'overview',
+          'profile',
+          'connections',
+          'messaging',
+          'appearance',
+          'security',
+          'data',
+        ].includes(requested ?? '')
+          ? (requested as MemberSettingsSection)
+          : 'overview',
+      );
+    };
+    restore();
+    window.addEventListener('popstate', restore);
+    return () => window.removeEventListener('popstate', restore);
   }, []);
+  function chooseSection(value: MemberSettingsSection) {
+    setSection(value);
+    const url = new URL(window.location.href);
+    url.searchParams.set('settingsSection', value);
+    window.history.pushState(window.history.state, '', url.pathname + url.search);
+  }
   const sections: {
     id: MemberSettingsSection;
     label: string;
@@ -86,19 +113,30 @@ export function SettingsOverview({
 
       <div className="settings-workspace-layout">
         <nav className="editor-section-nav" aria-label="Settings sections">
-          {sections.map((item) => (
-            <button
-              type="button"
-              key={item.id}
-              aria-current={section === item.id ? 'page' : undefined}
-              onClick={() => setSection(item.id)}
-            >
-              <UiIcon name={item.icon} />
-              <span>
-                <strong>{item.label}</strong>
-              </span>
-            </button>
-          ))}
+          <label className="settings-section-search">
+            Find a setting
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search settings…"
+            />
+          </label>
+          {sections
+            .filter((item) => item.label.toLowerCase().includes(search.toLowerCase()))
+            .map((item) => (
+              <button
+                type="button"
+                key={item.id}
+                aria-current={section === item.id ? 'page' : undefined}
+                onClick={() => chooseSection(item.id)}
+              >
+                <UiIcon name={item.icon} />
+                <span>
+                  <strong>{item.label}</strong>
+                </span>
+              </button>
+            ))}
         </nav>
         <div className="settings-workspace-content">
           <div hidden={section !== 'overview'}>
@@ -338,7 +376,7 @@ export function SettingsOverview({
               </button>
             </div>
           </div>
-          <MemberSettings section={section} />
+          <MemberSettings section={section} onDirtyChange={onDirtyChange} />
           <section
             className="settings-panel"
             hidden={section !== 'appearance'}

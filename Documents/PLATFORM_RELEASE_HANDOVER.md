@@ -1,5 +1,7 @@
 # Sidle platform release handover
 
+The [26 October interaction release](../docs/production-release.md) supersedes messaging/navigation/test-count and recovery-tool notes below. Earlier platform scope and external provider boundaries remain documented here.
+
 Updated 25 October 2026 (Africa/Harare). This supersedes earlier media/feed/monetization deferrals and the earlier low-pressure-only direction. The 88-item [implementation ledger](sidle_superb_88_implementation_status.md) remains the complete recommendation map.
 
 A subsequent [profile/settings/chat follow-up](PROFILE_CHAT_POLISH.md) reorganizes editing, adds local crop/filter tools, improves messaging controls and fixes repeated profile saves. Its release evidence supersedes the UI/test baseline below.

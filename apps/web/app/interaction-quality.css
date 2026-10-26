@@ -1,0 +1,331 @@
+/* Shared interaction primitives. Explicit icons/roles replace positional masks. */
+.shared-app-header .brand-home-button {
+  text-decoration: none;
+  color: var(--text);
+}
+.shared-app-header .brand-text-wrap {
+  display: flex;
+  flex-direction: column;
+}
+.shared-app-header .nav-pill-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  text-decoration: none;
+  color: var(--text);
+  cursor: pointer;
+  gap: 7px;
+}
+.shared-app-header .nav-pill-btn.active {
+  color: #fff;
+}
+.shared-app-header .nav-pill-btn > .navigation-icon {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  overflow: visible;
+}
+.shared-app-header .nav-pill-btn > .navigation-icon::before {
+  display: none;
+  content: none;
+}
+.shared-app-header .navigation-label {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  clip: auto !important;
+  margin: 0 !important;
+}
+.navigation-more {
+  position: relative;
+}
+.navigation-more > summary {
+  list-style: none;
+  min-height: 44px;
+}
+.navigation-more > summary::-webkit-details-marker {
+  display: none;
+}
+.navigation-more-panel {
+  position: absolute;
+  z-index: 1100;
+  right: 0;
+  top: calc(100% + 10px);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-width: 260px;
+  max-height: 60dvh;
+  overflow: auto;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow-2);
+}
+.navigation-more-panel a {
+  padding: 12px;
+  color: var(--text);
+  text-decoration: none;
+  border-radius: 8px;
+  min-height: 44px;
+}
+.navigation-more-panel a:hover,
+.navigation-more-panel a:focus-visible {
+  background: var(--surface-sunken);
+}
+.chip-btn {
+  color: var(--text) !important;
+  min-height: 44px;
+  box-shadow: none !important;
+}
+.chip-btn.on {
+  color: #2048bd !important;
+}
+kbd {
+  color: var(--text) !important;
+  background: var(--surface-sunken) !important;
+}
+[data-theme='dark'] .chip-btn.on {
+  color: #b9ccff !important;
+}
+.footer-note {
+  color: var(--text-muted);
+}
+.footer-note > span,
+.footer-note strong {
+  color: var(--text-muted);
+}
+.settings-section-search {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.settings-section-search input {
+  width: 100%;
+  min-width: 0;
+}
+.messages-page > .discover-header-bar {
+  padding: 0 0 12px;
+  margin: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+}
+.messages-page > .discover-header-bar::after {
+  display: none;
+}
+.messages-page > .discover-header-bar h1 {
+  font-size: 1.7rem !important;
+}
+.messages-page > .discover-header-bar .discover-philosophy {
+  display: none;
+}
+.conversation-options {
+  flex-shrink: 0;
+  padding: 4px 16px;
+  font-size: 0.8rem;
+  border-bottom: 1px solid var(--line);
+}
+.conversation-options > summary {
+  cursor: pointer;
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+}
+.conversation-options[open] {
+  max-height: 32dvh;
+  overflow: auto;
+}
+.conversation-options .card-actions {
+  margin: 8px 0;
+}
+.conversation-search form {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: end;
+  padding: 12px 0;
+}
+.conversation-search label {
+  display: grid;
+  gap: 5px;
+}
+.conversation-result {
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+.conversation-result .social-media {
+  max-width: 260px;
+}
+.chat-date-divider,
+.chat-unread-divider {
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 18px 0 12px;
+}
+.chat-unread-divider {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  color: var(--accent);
+}
+.chat-bubble-row.grouped .message-sender {
+  display: none;
+}
+.chat-bubble-row.grouped {
+  margin-top: 3px;
+}
+.chat-jump-latest {
+  align-self: center;
+  position: absolute;
+  bottom: 94px;
+  z-index: 3;
+  border-radius: 99px;
+  box-shadow: var(--shadow-2);
+}
+.chat-thread {
+  position: relative;
+}
+.message-quoted-reply button {
+  color: inherit;
+  text-align: left;
+}
+.outbox-recovery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.8rem;
+  align-items: center;
+}
+.outbox-recovery button {
+  min-height: 40px;
+}
+.rich-composer audio {
+  width: 100%;
+  max-height: 44px;
+}
+.recording-status {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.sidle-confirm-dialog {
+  width: min(440px, calc(100vw - 32px));
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: var(--shadow-2);
+}
+.sidle-confirm-dialog::backdrop,
+.photo-viewer::backdrop {
+  background: #111827b3;
+}
+.photo-viewer {
+  width: min(1000px, calc(100vw - 24px));
+  max-height: 92dvh;
+  padding: 14px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text);
+}
+.photo-viewer > button {
+  float: right;
+  margin-bottom: 12px;
+}
+.photo-viewer > img {
+  width: 100%;
+  max-height: 78dvh;
+  object-fit: contain;
+  display: block;
+}
+.profile-photo-open {
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border: 0;
+}
+.message-body {
+  overflow-wrap: anywhere;
+}
+.messages-page .chat-messages-scroll {
+  /* Position restoration is immediate; only an explicit jump animates. */
+  scroll-behavior: auto;
+}
+@media (min-width: 901px) {
+  .messages-page .messages-layout {
+    height: calc(100dvh - 190px);
+    min-height: 360px;
+    max-height: none;
+  }
+  .messages-page .chat-thread,
+  .messages-page .chat-thread-pane {
+    height: 100%;
+    min-height: 0;
+  }
+}
+@media (max-width: 1100px) and (min-width: 721px) {
+  .shared-app-header .brand-tagline {
+    display: none;
+  }
+  .shared-app-header .nav-pill-btn {
+    padding-inline: 8px;
+    width: auto;
+  }
+}
+@media (max-width: 720px) {
+  .shared-app-header .brand-text-wrap {
+    display: none;
+  }
+  .shared-app-header .nav-pill-bar {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    overflow: visible;
+    width: auto;
+  }
+  .shared-app-header .nav-pill-btn {
+    flex-direction: column;
+    padding: 5px 1px;
+    gap: 2px;
+    min-width: 0;
+    min-height: 52px;
+    font-size: 0.63rem;
+  }
+  .shared-app-header .navigation-label {
+    display: block;
+    max-width: 100%;
+    white-space: nowrap;
+    font-size: 0.6rem !important;
+  }
+  .navigation-more-panel {
+    top: auto;
+    bottom: calc(100% + 12px);
+    right: 0;
+    min-width: 260px;
+  }
+  .settings-section-search {
+    flex: 0 0 160px;
+    padding: 0 5px;
+  }
+  .settings-section-search input {
+    min-height: 34px;
+  }
+}
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme='light']) .chip-btn.on {
+    color: #b9ccff !important;
+  }
+}
+@media (forced-colors: active) {
+  .chip-btn.on,
+  .shared-app-header .nav-pill-btn.active {
+    color: HighlightText !important;
+    background: Highlight !important;
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "commit": "bd3598a",
+  "results": [
+    {
+      "check": "Two real accounts send and receive live text",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Reaction reaches the other open conversation without refresh",
+      "passed": false,
+      "detail": "Actor sees saved reaction; compare recipient without navigation."
+    },
+    {
+      "check": "Edit reaches the other open conversation without refresh",
+      "passed": false,
+      "detail": ""
+    },
+    {
+      "check": "Removal reaches the other open conversation without refresh",
+      "passed": false,
+      "detail": ""
+    },
+    {
+      "check": "Incoming message preserves a reader scrolled into earlier history",
+      "passed": false,
+      "detail": "Scroll before/after: {\"before\": {\"top\": 0, \"height\": 5003, \"client\": 607}, \"after\": {\"top\": 4429, \"height\": 5102, \"client\": 607}}"
+    },
+    {
+      "check": "Composer draft survives closing and reopening thread",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Phone chat contains horizontally",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Phone composer clears navigation in a standard viewport",
+      "passed": true,
+      "detail": "{\"composer\": {\"x\": 23, \"y\": 656, \"width\": 344, \"height\": 75}, \"navigation\": {\"x\": 6, \"y\": 774, \"width\": 390, \"height\": 64}}"
+    },
+    {
+      "check": "Authenticated /profile horizontal containment",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Authenticated /settings horizontal containment",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Authenticated /feed horizontal containment",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Authenticated /plans horizontal containment",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Authenticated /calls horizontal containment",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Authenticated /live horizontal containment",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Authenticated /billing horizontal containment",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "check": "Uncaught browser errors",
+      "passed": true,
+      "detail": "0"
+    },
+    {
+      "check": "Owned test data removed and original production counts restored",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "http_failures": []
+}

@@ -1,6 +1,31 @@
 import type { CSSProperties } from 'react';
 
 const paths = {
+  feed: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="3" />
+      <path d="M3 9h18M9 9v12" />
+    </>
+  ),
+  compass: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m16 8-3 5-5 3 3-5Z" />
+    </>
+  ),
+  people: (
+    <>
+      <circle cx="9" cy="8" r="3" />
+      <path d="M2 21v-2a7 7 0 0 1 14 0v2M17 5a3 3 0 0 1 0 6m2 4a6 6 0 0 1 3 6" />
+    </>
+  ),
+  chat: <path d="M21 11a9 9 0 0 1-9 9H3l2-5a9 9 0 1 1 16-4ZM8 10h8m-8 4h5" />,
+  calendar: (
+    <>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 10h18M8 3v4m8-4v4M8 14h3m3 3h3" />
+    </>
+  ),
   image: (
     <>
       <rect x="3" y="3" width="18" height="18" rx="4" />
