@@ -127,7 +127,7 @@ module.exports = {
   expo: {
     name: "Sidle",
     slug: "social-app",
-    version: "0.0.2",
+    version: "0.0.3",
     orientation: "portrait",
     icon: "./assets/icon.png",
     scheme: "socialapp",
@@ -142,7 +142,7 @@ module.exports = {
     },
     android: {
       package: androidPackage,
-      versionCode: 2,
+      versionCode: 3,
       ...(androidGoogleServicesFile ? { googleServicesFile: androidGoogleServicesFile } : {}),
       permissions:["CAMERA","RECORD_AUDIO","ACCESS_COARSE_LOCATION","ACCESS_FINE_LOCATION"],
       adaptiveIcon: { foregroundImage: "./assets/adaptive-icon.png", backgroundColor: "#F7F6F2" },
