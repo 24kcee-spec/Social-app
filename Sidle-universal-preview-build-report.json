@@ -1,0 +1,22 @@
+{
+  "abis": [
+    "arm64-v8a",
+    "armeabi-v7a",
+    "x86",
+    "x86_64"
+  ],
+  "bundled_javascript": true,
+  "native_runtime_verified": true,
+  "source_commit": "8565aa0d9dbb1a146e9343c43c9a2ca80a100a6c",
+  "package": "app.kcee24.sidle",
+  "version": "0.0.3",
+  "version_code": 3,
+  "min_android_api": 24,
+  "bytes": 78215222,
+  "sha256": "aa45ebeb3e7571a8d1afb752ee3c4e77ad3707e89b3395a95cd6bc00ec0eb564",
+  "same_preview_signer_verified": true,
+  "public_endpoints_verified": true,
+  "server_credentials_absent": true,
+  "live_ad_units": false,
+  "physical_device_tested": false
+}

@@ -1,0 +1,17 @@
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): true
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+Verified for SourceStamp: false
+Number of signers: 1
+Signer #1 certificate DN: CN=Sidle Internal Preview, O=Sidle, C=ZW
+Signer #1 certificate SHA-256 digest: e1b8a797d33cec567e7e9eebda632d6b2332eb5922c50f89ff313bc5036d9abf
+Signer #1 certificate SHA-1 digest: 4a9e43329d5bfc658fa1bd232dee70df58915db2
+Signer #1 certificate MD5 digest: 04aeb1386d238b5052548ddfa712ce24
+Signer #1 key algorithm: RSA
+Signer #1 key size (bits): 3072
+Signer #1 public key SHA-256 digest: 04ff9d3ec470c42ee2dced1ad8670f0cfbdd0056e436de47de25c770b3fb5a99
+Signer #1 public key SHA-1 digest: bb064a1fc76548fde28b2e8ee62340da6bace9e7
+Signer #1 public key MD5 digest: 43576c2330107435f9260bb3bbce9097
