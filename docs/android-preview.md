@@ -6,7 +6,7 @@ In the preview APK, sign in, open **Your Sidle**, and choose **Show test ad**. N
 
 ## Build locally
 
-Prerequisites: Node 22+, Java 21, Android SDK/build tools and NDK for the checked-in Expo/React Native version, plus installed pnpm workspace dependencies. Supply only public client bindings to the native build: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `MOBILE_API_URL`, `PUBLIC_WEB_URL`, and `ANDROID_PACKAGE`. Keep server/private keys out of the APK. Android SDK downloads/builds do not require paid EAS credits.
+Prerequisites: Node 22+, Python 3, Java 21, Android SDK/build tools and NDK for the checked-in Expo/React Native version, plus installed pnpm workspace dependencies. Supply only public client bindings to the native build: `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `MOBILE_API_URL`, `PUBLIC_WEB_URL`, and `ANDROID_PACKAGE`. Keep server/private keys out of the APK. Android SDK downloads/builds do not require paid EAS credits.
 
 From the repository root:
 
@@ -14,7 +14,7 @@ From the repository root:
 bash apps/mobile/scripts/build-preview-apk.sh
 ```
 
-The default native ABI is **arm64-v8a**. This is a self-contained preview build with the JavaScript/Hermes bundle included; it does not use a developer's Metro server. Its native screens talk to the existing hosted API/Supabase, and embedded platform screens retain the current Vercel URL and separate browser sign-in session.
+The default APK contains **armeabi-v7a, arm64-v8a, x86 and x86_64**, covering supported 32-bit and 64-bit Android devices. The previous ARM64-only download failed on a device with `INSTALL_FAILED_NO_MATCHING_ABIS`; ADB cannot convert an APK's native architecture. `ANDROID_ABIS` can explicitly narrow the build when a device is known. After building, the script verifies each requested architecture, native runtime libraries and their actual ELF headers, and the bundled JavaScript. This is a self-contained preview build; it does not use a developer's Metro server. Its native screens talk to the existing hosted API/Supabase, and embedded platform screens retain the current Vercel URL and separate browser sign-in session.
 
 The local Expo template signing identity is for preview; it is not a backed-up production release identity. Validate package, SDK levels, release/non-debuggable state, bundled assets and APK signatures before distributing. A successful build does not prove launch, keyboard, permissions, push or ad loading on a real Android phone. Those checks require the installed APK/device.
 
